@@ -5,6 +5,7 @@ import Browser
 import Browser.Dom as Dom
 import Browser.Events as Events
 import Html exposing(..)
+import Html.Events exposing(..)
 import Html.Attributes exposing(..)
 import Json.Decode as JsonD
 import Set
@@ -62,6 +63,10 @@ emptyKeyboard =
 type Tool model =
   Tool model Runtime
 
+type alias Cell a =
+  Html (Msg a)
+
+{--
 type Cell parent child =
   Cell
   -- encode commonalities of cells here
@@ -92,16 +97,51 @@ propertyCell node text =
 
 refCell node cell =
   Cell "" (RefCell node cell)
+--}
+
+constantCell : String -> Cell a
+constantCell txt =
+  span [] [ text txt ]
+
+propertyCell : (a -> String) -> a -> Cell a
+propertyCell access a =
+  div 
+    [ ]
+    [ input 
+        [ placeholder "<no value>"
+        , value (access a)
+        , onInput (UpdateProperty access a)
+        --, id event.id
+        --, produceKeyboardMsg event
+        ]
+        []
+    ]
+
+vertColl : (a -> Cell a) -> List a -> Cell a
+vertColl viewElement elements =
+  div 
+    [ style "margin" "0"
+    ]
+    [ div 
+      [ style "margin" "3px 20px"]
+      <| List.map viewElement elements
+    ]
+
+makeVertColl : List (Cell a) -> (Cell a)
+makeVertColl cells = 
+  div [ ] cells
 
 
-type Msg
+type Msg a
   = KeyChanged Bool String
   | MouseMove Float Float
   | MouseClick
   | MouseButton Bool
+  | UpdateProperty (a -> String) a String
 
 
-tool : (Runtime -> model -> Cell parent child) -> (Runtime -> model -> model) -> model -> Program () (Tool model) Msg
+
+tool : (Runtime -> model -> Cell a) -> (Runtime -> model -> model) -> model -> Program () (Tool model) (Msg a)
 tool editor updateModel initialModel =
   let
     init () =
@@ -129,11 +169,12 @@ tool editor updateModel initialModel =
       , subscriptions = subscriptions
       }  
 
-render : Cell parent child -> Html Msg
+render : Cell a -> Html (Msg a)
 render cell  =
-  div [] [ renderCell cell ]
+  div [] [ cell ]
+  
 
-
+{--
 renderCell : Cell parent child -> Html Msg
 renderCell (Cell id kcell) =
   case kcell of  
@@ -168,14 +209,29 @@ renderPropertyCell parent txt =
 
 renderConstantCell txt =
   text txt
+--}
 
-
-toolUpdate : (Runtime -> model -> model) -> Msg -> Tool model -> Tool model
+toolUpdate : (Runtime -> model -> model) -> Msg a -> Tool model -> Tool model
 toolUpdate updateModel msg (Tool model runtime) =
-  Tool model runtime
+  case msg of
+    KeyChanged _ _ -> 
+      Tool model runtime
+
+    MouseMove _ _ -> 
+      Tool model runtime
+
+    MouseClick ->
+      Tool model runtime
+
+    MouseButton _ -> 
+      Tool model runtime
+
+    UpdateProperty access a txt ->
+      Tool (updateModel runtime model) runtime 
 
 
-toolSubscriptions : Sub Msg
+
+toolSubscriptions : Sub (Msg a)
 toolSubscriptions =
   Sub.batch
     [ Events.onKeyUp (JsonD.map (KeyChanged False) (JsonD.field "key" JsonD.string))
