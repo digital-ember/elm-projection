@@ -34,7 +34,7 @@ root =
 xform : Sm -> Cell Msg
 xform sm =
   P.vertStackCell []  
-    [ P.constantCell [ onClick (P.AppMsg ToggleCase) ] sm.name
+    [ P.constantCell [ onCellClick (P.AppMsg ToggleCase) ] sm.name
     , xformEvents sm.events      
     ]
 

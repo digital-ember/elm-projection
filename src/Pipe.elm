@@ -2,7 +2,7 @@ module Pipe exposing(..)
 
 import Browser
 import Html exposing(div, span, text, input, Html)
-import Html.Events exposing(onInput)
+import Html.Events exposing(onInput, onClick)
 import Html.Attributes exposing(..)
 
 type alias Pipe root appMsg =
@@ -12,8 +12,7 @@ type alias Pipe root appMsg =
 
 
 type Msg appMsg
-  = NoOp
-  | Behavior (CellMsg appMsg)
+  = PipeMsg (CellMsg appMsg)
   
 pipeProgram : root -> (root -> Cell appMsg) -> (appMsg -> root -> root) -> Program () (Pipe root appMsg) (Msg appMsg)
 pipeProgram root xform appUpdate = 
@@ -37,13 +36,10 @@ pipeProgram root xform appUpdate =
 pipeUpdate : (appMsg -> root -> root) -> (Msg appMsg) -> Pipe root appMsg -> Pipe root appMsg
 pipeUpdate appUpdate msg pipe = 
   case msg of
-    NoOp ->
-      pipe  
-
-    Behavior ( Input _ _ ) ->
+    PipeMsg ( Input cell text ) ->
       pipe --this is where the backmapping to the actual app model mus thappen somehow: via dict lookup? just by passing on a appMsg? 
 
-    Behavior (AppMsg appMsg) ->
+    PipeMsg (AppMsg appMsg) ->
       {pipe | root = appUpdate appMsg pipe.root }
         
   
@@ -53,7 +49,7 @@ render pipe =
   let
     cellRoot = pipe.xform pipe.root
   in
-    renderCell cellRoot
+    renderCell { localIndex = 0, id= ""} cellRoot
   
   
 
@@ -61,7 +57,7 @@ render pipe =
 
 type Cell appMsg =
   Cell
-    (List (Html.Attribute (CellMsg appMsg) ))
+    (List (CellAttribute (CellMsg appMsg) ))
     (KCell appMsg)
 
 type KCell appMsg
@@ -77,59 +73,90 @@ type CellMsg appMsg
   = Input (Cell appMsg) String
   | AppMsg appMsg
 
+type CellAttribute msg
+  = CellAttribute (Html.Attribute msg) 
 
-constantCell : List (Html.Attribute (CellMsg appMsg)) -> String -> Cell appMsg
+type alias CellIdAggregator = 
+  { localIndex : Int
+  , id : String 
+  }
+
+
+constantCell : List (CellAttribute (CellMsg appMsg)) -> String -> Cell appMsg
 constantCell attributes txt =
   Cell attributes (ConstantCell txt)
 
 
-propertyCell : List (Html.Attribute (CellMsg appMsg)) -> String -> Cell appMsg
+propertyCell : List (CellAttribute (CellMsg appMsg)) -> String -> Cell appMsg
 propertyCell attributes txt =
   Cell attributes (PropertyCell txt)
 
-vertStackCell : List (Html.Attribute (CellMsg appMsg)) -> List (Cell appMsg) -> Cell appMsg
+
+vertStackCell : List (CellAttribute (CellMsg appMsg)) -> List (Cell appMsg) -> Cell appMsg
 vertStackCell attributes cells =
   Cell attributes (StackCell Vert cells)
 
 
-renderCell : Cell appMsg -> Html (Msg appMsg)
-renderCell cell  =
-  case cell of  
-    (Cell attributes (ConstantCell txt)) -> 
-      renderConstantCell attributes cell txt
-    
-    (Cell attributes (PropertyCell txt)) -> 
-      renderPropertyCell attributes cell txt
+renderCell : CellIdAggregator -> Cell appMsg -> Html (Msg appMsg)
+renderCell { localIndex, id } cell  =
+  let
+    (Cell attributes kcell) = cell 
+    cida = { localIndex = localIndex, id = id ++ String.fromInt localIndex }
+  in
+    case kcell of  
+      ConstantCell txt -> 
+        renderConstantCell cida attributes cell txt
+      
+      PropertyCell txt -> 
+        renderPropertyCell cida attributes cell txt
 
-    (Cell attributes (StackCell orientation cells)) -> 
-      renderStackCell attributes orientation cells
+      StackCell orientation cells -> 
+        renderStackCell cida attributes orientation cells
 
-renderStackCell : List (Html.Attribute (CellMsg appMsg)) -> StackOrientation -> List (Cell appMsg) -> Html (Msg appMsg)
-renderStackCell attributes orientation cells =
-  div 
-    ( style "margin" "0"  :: liftAttr attributes )
-    [ div 
-      [ style "margin" "3px 20px"]
-      <| List.map renderCell cells
-    ]
 
-renderPropertyCell : List (Html.Attribute (CellMsg appMsg)) -> Cell appMsg -> String -> Html (Msg appMsg)
-renderPropertyCell attributes cell txt =
+renderConstantCell : CellIdAggregator -> List (CellAttribute (CellMsg appMsg)) -> Cell appMsg -> String -> Html (Msg appMsg)
+renderConstantCell {id} attributes cell txt =
+  span ( Html.Attributes.id id :: liftAttr attributes) [ text txt ]
+
+
+renderPropertyCell : CellIdAggregator -> List (CellAttribute (CellMsg appMsg)) -> Cell appMsg -> String -> Html (Msg appMsg)
+renderPropertyCell {id} attributes cell txt =
   div []
   [
     input 
-      ([ placeholder "<no value>"
+      ([ Html.Attributes.id id 
+      , placeholder "<no value>"
       , value txt
-      , Html.Attributes.map (\cellMsg -> Behavior cellMsg) (onInput (Input cell))
+      , Html.Attributes.map (\cellMsg -> PipeMsg cellMsg) (onInput (Input cell))
       ] ++ liftAttr attributes)
       []
   ]
 
-renderConstantCell : List (Html.Attribute (CellMsg appMsg)) -> Cell appMsg -> String -> Html (Msg appMsg)
-renderConstantCell attributes cell txt =
-  span ([ ] ++ liftAttr attributes) [ text txt ]
+
+renderStackCell : CellIdAggregator -> List (CellAttribute (CellMsg appMsg)) -> StackOrientation -> List (Cell appMsg) -> Html (Msg appMsg)
+renderStackCell cida attributes orientation cells =
+  div 
+    ( style "margin" "0"  :: liftAttr attributes )
+    [ div 
+      [ style "margin" "3px 20px"
+      , Html.Attributes.id cida.id
+      ]
+      <| List.indexedMap (\i c -> renderCell { cida | localIndex = i } c) cells
+    ]
 
 
-liftAttr : List (Html.Attribute (CellMsg appMsg)) -> List (Html.Attribute (Msg appMsg))
+
+liftAttr : List (CellAttribute (CellMsg appMsg)) -> List (Html.Attribute (Msg appMsg))
 liftAttr attributes =
-  List.map (Html.Attributes.map (\cellMsg -> Behavior cellMsg)) attributes 
+  List.map (\(CellAttribute htmlAttr) -> htmlAttr) attributes 
+    |> List.map (Html.Attributes.map (\cellMsg -> PipeMsg cellMsg)) 
+
+-- CELL ATTRIBUTES
+
+cid : String -> CellAttribute msg
+cid idParam =
+  CellAttribute (id idParam)
+
+onCellClick : msg -> CellAttribute msg
+onCellClick msg =
+  CellAttribute (onClick msg)
