@@ -17,7 +17,7 @@ type Msg appMsg
 pipeProgram : root -> (root -> Cell appMsg) -> (appMsg -> root -> root) -> Program () (Pipe root appMsg) (Msg appMsg)
 pipeProgram root xform appUpdate = 
   let
-    init = { root = root, xform = xform } 
+    init () = ({ root = root, xform = xform }, Cmd.none)
 
     update msg pipe =
       pipeUpdate appUpdate msg pipe
@@ -26,21 +26,22 @@ pipeProgram root xform appUpdate =
       render pipe
 
   in  
-    Browser.sandbox 
+    Browser.element 
       { init = init
       , update = update
       , view = view
+      , subscriptions = \_ -> Sub.none
       }
 
 
-pipeUpdate : (appMsg -> root -> root) -> (Msg appMsg) -> Pipe root appMsg -> Pipe root appMsg
+pipeUpdate : (appMsg -> root -> root) -> (Msg appMsg) -> Pipe root appMsg -> (Pipe root appMsg, Cmd (Msg appMsg))
 pipeUpdate appUpdate msg pipe = 
   case msg of
     PipeMsg ( Input cell text ) ->
-      pipe --this is where the backmapping to the actual app model mus thappen somehow: via dict lookup? just by passing on a appMsg? 
+      (pipe, Cmd.none) --this is where the backmapping to the actual app model mus thappen somehow: via dict lookup? just by passing on a appMsg? 
 
     PipeMsg (AppMsg appMsg) ->
-      {pipe | root = appUpdate appMsg pipe.root }
+      ( { pipe | root = appUpdate appMsg pipe.root }, Cmd.none)
         
   
 

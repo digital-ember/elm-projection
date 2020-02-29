@@ -5055,20 +5055,24 @@ var author$project$Demo$xform = function (sm) {
 				author$project$Demo$xformEvents(sm.events)
 			]));
 };
+var elm$core$Platform$Cmd$batch = _Platform_batch;
+var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
 var author$project$Pipe$pipeUpdate = F3(
 	function (appUpdate, msg, pipe) {
 		if (msg.a.$ === 'Input') {
 			var _n1 = msg.a;
 			var cell = _n1.a;
 			var text = _n1.b;
-			return pipe;
+			return _Utils_Tuple2(pipe, elm$core$Platform$Cmd$none);
 		} else {
 			var appMsg = msg.a.a;
-			return _Utils_update(
-				pipe,
-				{
-					root: A2(appUpdate, appMsg, pipe.root)
-				});
+			return _Utils_Tuple2(
+				_Utils_update(
+					pipe,
+					{
+						root: A2(appUpdate, appMsg, pipe.root)
+					}),
+				elm$core$Platform$Cmd$none);
 		}
 	});
 var author$project$Pipe$PipeMsg = function (a) {
@@ -5105,15 +5109,12 @@ var elm$html$Html$Attributes$stringProperty = F2(
 var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
 var author$project$Pipe$renderConstantCell = F4(
 	function (_n0, attributes, cell, txt) {
-		var localIndex = _n0.localIndex;
 		var id = _n0.id;
 		return A2(
 			elm$html$Html$span,
-			_Utils_ap(
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$id(id)
-					]),
+			A2(
+				elm$core$List$cons,
+				elm$html$Html$Attributes$id(id),
 				author$project$Pipe$liftAttr(attributes)),
 			_List_fromArray(
 				[
@@ -5163,7 +5164,6 @@ var elm$html$Html$Events$onInput = function (tagger) {
 };
 var author$project$Pipe$renderPropertyCell = F4(
 	function (_n0, attributes, cell, txt) {
-		var localIndex = _n0.localIndex;
 		var id = _n0.id;
 		return A2(
 			elm$html$Html$div,
@@ -5256,10 +5256,6 @@ var author$project$Pipe$render = function (pipe) {
 		{id: '', localIndex: 0},
 		cellRoot);
 };
-var elm$core$Platform$Cmd$batch = _Platform_batch;
-var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
-var elm$core$Platform$Sub$batch = _Platform_batch;
-var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
 };
@@ -5486,24 +5482,9 @@ var elm$url$Url$fromString = function (str) {
 		elm$url$Url$Https,
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
-var elm$browser$Browser$sandbox = function (impl) {
-	return _Browser_element(
-		{
-			init: function (_n0) {
-				return _Utils_Tuple2(impl.init, elm$core$Platform$Cmd$none);
-			},
-			subscriptions: function (_n1) {
-				return elm$core$Platform$Sub$none;
-			},
-			update: F2(
-				function (msg, model) {
-					return _Utils_Tuple2(
-						A2(impl.update, msg, model),
-						elm$core$Platform$Cmd$none);
-				}),
-			view: impl.view
-		});
-};
+var elm$browser$Browser$element = _Browser_element;
+var elm$core$Platform$Sub$batch = _Platform_batch;
+var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
 var author$project$Pipe$pipeProgram = F3(
 	function (root, xform, appUpdate) {
 		var view = function (pipe) {
@@ -5513,9 +5494,20 @@ var author$project$Pipe$pipeProgram = F3(
 			function (msg, pipe) {
 				return A3(author$project$Pipe$pipeUpdate, appUpdate, msg, pipe);
 			});
-		var init = {root: root, xform: xform};
-		return elm$browser$Browser$sandbox(
-			{init: init, update: update, view: view});
+		var init = function (_n1) {
+			return _Utils_Tuple2(
+				{root: root, xform: xform},
+				elm$core$Platform$Cmd$none);
+		};
+		return elm$browser$Browser$element(
+			{
+				init: init,
+				subscriptions: function (_n0) {
+					return elm$core$Platform$Sub$none;
+				},
+				update: update,
+				view: view
+			});
 	});
 var author$project$Demo$main = A3(author$project$Pipe$pipeProgram, author$project$Demo$root, author$project$Demo$xform, author$project$Demo$appUpdate);
 _Platform_export({'Demo':{'init':author$project$Demo$main(
