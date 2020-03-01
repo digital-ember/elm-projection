@@ -4477,17 +4477,18 @@ var author$project$Demo$root = {
 	name: 'my statemachine'
 };
 var author$project$Demo$ToggleCase = {$: 'ToggleCase'};
-var author$project$Pipe$Cell = F2(
-	function (a, b) {
-		return {$: 'Cell', a: a, b: b};
+var author$project$Pipe$Cell = F3(
+	function (a, b, c) {
+		return {$: 'Cell', a: a, b: b, c: c};
 	});
 var author$project$Pipe$PropertyCell = function (a) {
 	return {$: 'PropertyCell', a: a};
 };
 var author$project$Pipe$propertyCell = F2(
 	function (attributes, txt) {
-		return A2(
+		return A3(
 			author$project$Pipe$Cell,
+			'',
 			attributes,
 			author$project$Pipe$PropertyCell(txt));
 	});
@@ -4597,8 +4598,9 @@ var author$project$Pipe$ConstantCell = function (a) {
 };
 var author$project$Pipe$constantCell = F2(
 	function (attributes, txt) {
-		return A2(
+		return A3(
 			author$project$Pipe$Cell,
+			'',
 			attributes,
 			author$project$Pipe$ConstantCell(txt));
 	});
@@ -4609,8 +4611,9 @@ var author$project$Pipe$StackCell = F2(
 var author$project$Pipe$Vert = {$: 'Vert'};
 var author$project$Pipe$vertStackCell = F2(
 	function (attributes, cells) {
-		return A2(
+		return A3(
 			author$project$Pipe$Cell,
+			'',
 			attributes,
 			A2(author$project$Pipe$StackCell, author$project$Pipe$Vert, cells));
 	});
@@ -4631,6 +4634,111 @@ var author$project$Demo$xformEvents = function (events) {
 };
 var author$project$Pipe$AppMsg = function (a) {
 	return {$: 'AppMsg', a: a};
+};
+var author$project$Pipe$RootCell = function (a) {
+	return {$: 'RootCell', a: a};
+};
+var elm$core$Basics$apL = F2(
+	function (f, x) {
+		return f(x);
+	});
+var elm$core$Basics$sub = _Basics_sub;
+var elm$core$List$length = function (xs) {
+	return A3(
+		elm$core$List$foldl,
+		F2(
+			function (_n0, i) {
+				return i + 1;
+			}),
+		0,
+		xs);
+};
+var elm$core$List$map2 = _List_map2;
+var elm$core$Basics$le = _Utils_le;
+var elm$core$List$rangeHelp = F3(
+	function (lo, hi, list) {
+		rangeHelp:
+		while (true) {
+			if (_Utils_cmp(lo, hi) < 1) {
+				var $temp$lo = lo,
+					$temp$hi = hi - 1,
+					$temp$list = A2(elm$core$List$cons, hi, list);
+				lo = $temp$lo;
+				hi = $temp$hi;
+				list = $temp$list;
+				continue rangeHelp;
+			} else {
+				return list;
+			}
+		}
+	});
+var elm$core$List$range = F2(
+	function (lo, hi) {
+		return A3(elm$core$List$rangeHelp, lo, hi, _List_Nil);
+	});
+var elm$core$List$indexedMap = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$map2,
+			f,
+			A2(
+				elm$core$List$range,
+				0,
+				elm$core$List$length(xs) - 1),
+			xs);
+	});
+var elm$core$String$fromInt = _String_fromNumber;
+var author$project$Pipe$addIds = F3(
+	function (parentId, localIndex, cell) {
+		var parentIdNew = _Utils_ap(
+			parentId,
+			elm$core$String$fromInt(localIndex));
+		var _n0 = cell;
+		var attributes = _n0.b;
+		var kcell = _n0.c;
+		switch (kcell.$) {
+			case 'RootCell':
+				return cell;
+			case 'StackCell':
+				var orientation = kcell.a;
+				var children = kcell.b;
+				return A3(
+					author$project$Pipe$Cell,
+					parentIdNew,
+					attributes,
+					A2(
+						author$project$Pipe$StackCell,
+						orientation,
+						A2(
+							elm$core$List$indexedMap,
+							author$project$Pipe$addIds(parentIdNew),
+							children)));
+			case 'ConstantCell':
+				var txt = kcell.a;
+				return A3(
+					author$project$Pipe$Cell,
+					parentIdNew,
+					attributes,
+					author$project$Pipe$ConstantCell(txt));
+			default:
+				var txt = kcell.a;
+				return A3(
+					author$project$Pipe$Cell,
+					parentIdNew,
+					attributes,
+					author$project$Pipe$PropertyCell(txt));
+		}
+	});
+var author$project$Pipe$createRootCell = function (children) {
+	return A3(
+		author$project$Pipe$Cell,
+		'0',
+		_List_Nil,
+		author$project$Pipe$RootCell(
+			A2(
+				elm$core$List$indexedMap,
+				author$project$Pipe$addIds('0'),
+				children)));
 };
 var author$project$Pipe$CellAttribute = function (a) {
 	return {$: 'CellAttribute', a: a};
@@ -4718,17 +4826,12 @@ var elm$core$Array$treeFromBuilder = F2(
 			}
 		}
 	});
-var elm$core$Basics$apL = F2(
-	function (f, x) {
-		return f(x);
-	});
 var elm$core$Basics$floor = _Basics_floor;
 var elm$core$Basics$max = F2(
 	function (x, y) {
 		return (_Utils_cmp(x, y) > 0) ? x : y;
 	});
 var elm$core$Basics$mul = _Basics_mul;
-var elm$core$Basics$sub = _Basics_sub;
 var elm$core$Elm$JsArray$length = _JsArray_length;
 var elm$core$Array$builderToArray = F2(
 	function (reverseNodeList, builder) {
@@ -4782,7 +4885,6 @@ var elm$core$Array$initializeHelp = F5(
 			}
 		}
 	});
-var elm$core$Basics$le = _Utils_le;
 var elm$core$Basics$remainderBy = _Basics_remainderBy;
 var elm$core$Array$initialize = F2(
 	function (len, fn) {
@@ -4837,51 +4939,7 @@ var elm$core$Char$isDigit = function (_char) {
 var elm$core$Char$isAlphaNum = function (_char) {
 	return elm$core$Char$isLower(_char) || (elm$core$Char$isUpper(_char) || elm$core$Char$isDigit(_char));
 };
-var elm$core$List$length = function (xs) {
-	return A3(
-		elm$core$List$foldl,
-		F2(
-			function (_n0, i) {
-				return i + 1;
-			}),
-		0,
-		xs);
-};
-var elm$core$List$map2 = _List_map2;
-var elm$core$List$rangeHelp = F3(
-	function (lo, hi, list) {
-		rangeHelp:
-		while (true) {
-			if (_Utils_cmp(lo, hi) < 1) {
-				var $temp$lo = lo,
-					$temp$hi = hi - 1,
-					$temp$list = A2(elm$core$List$cons, hi, list);
-				lo = $temp$lo;
-				hi = $temp$hi;
-				list = $temp$list;
-				continue rangeHelp;
-			} else {
-				return list;
-			}
-		}
-	});
-var elm$core$List$range = F2(
-	function (lo, hi) {
-		return A3(elm$core$List$rangeHelp, lo, hi, _List_Nil);
-	});
-var elm$core$List$indexedMap = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$map2,
-			f,
-			A2(
-				elm$core$List$range,
-				0,
-				elm$core$List$length(xs) - 1),
-			xs);
-	});
 var elm$core$String$all = _String_all;
-var elm$core$String$fromInt = _String_fromNumber;
 var elm$core$String$join = F2(
 	function (sep, chunks) {
 		return A2(
@@ -5039,222 +5097,64 @@ var author$project$Pipe$onCellClick = function (msg) {
 		elm$html$Html$Events$onClick(msg));
 };
 var author$project$Demo$xform = function (sm) {
-	return A2(
-		author$project$Pipe$vertStackCell,
-		_List_Nil,
+	return author$project$Pipe$createRootCell(
 		_List_fromArray(
 			[
 				A2(
-				author$project$Pipe$constantCell,
+				author$project$Pipe$vertStackCell,
+				_List_Nil,
 				_List_fromArray(
 					[
-						author$project$Pipe$onCellClick(
-						author$project$Pipe$AppMsg(author$project$Demo$ToggleCase))
-					]),
-				sm.name),
-				author$project$Demo$xformEvents(sm.events)
-			]));
-};
-var elm$core$Platform$Cmd$batch = _Platform_batch;
-var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
-var author$project$Pipe$pipeUpdate = F3(
-	function (appUpdate, msg, pipe) {
-		if (msg.a.$ === 'Input') {
-			var _n1 = msg.a;
-			var cell = _n1.a;
-			var text = _n1.b;
-			return _Utils_Tuple2(pipe, elm$core$Platform$Cmd$none);
-		} else {
-			var appMsg = msg.a.a;
-			return _Utils_Tuple2(
-				_Utils_update(
-					pipe,
-					{
-						root: A2(appUpdate, appMsg, pipe.root)
-					}),
-				elm$core$Platform$Cmd$none);
-		}
-	});
-var author$project$Pipe$PipeMsg = function (a) {
-	return {$: 'PipeMsg', a: a};
-};
-var elm$virtual_dom$VirtualDom$mapAttribute = _VirtualDom_mapAttribute;
-var elm$html$Html$Attributes$map = elm$virtual_dom$VirtualDom$mapAttribute;
-var author$project$Pipe$liftAttr = function (attributes) {
-	return A2(
-		elm$core$List$map,
-		elm$html$Html$Attributes$map(
-			function (cellMsg) {
-				return author$project$Pipe$PipeMsg(cellMsg);
-			}),
-		A2(
-			elm$core$List$map,
-			function (_n0) {
-				var htmlAttr = _n0.a;
-				return htmlAttr;
-			},
-			attributes));
-};
-var elm$html$Html$span = _VirtualDom_node('span');
-var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
-var elm$json$Json$Encode$string = _Json_wrap;
-var elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			elm$json$Json$Encode$string(string));
-	});
-var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
-var author$project$Pipe$renderConstantCell = F4(
-	function (_n0, attributes, cell, txt) {
-		var id = _n0.id;
-		return A2(
-			elm$html$Html$span,
-			A2(
-				elm$core$List$cons,
-				elm$html$Html$Attributes$id(id),
-				author$project$Pipe$liftAttr(attributes)),
-			_List_fromArray(
-				[
-					elm$html$Html$text(txt)
-				]));
-	});
-var author$project$Pipe$Input = F2(
-	function (a, b) {
-		return {$: 'Input', a: a, b: b};
-	});
-var elm$html$Html$div = _VirtualDom_node('div');
-var elm$html$Html$input = _VirtualDom_node('input');
-var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
-var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
-var elm$html$Html$Events$alwaysStop = function (x) {
-	return _Utils_Tuple2(x, true);
-};
-var elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
-	return {$: 'MayStopPropagation', a: a};
-};
-var elm$html$Html$Events$stopPropagationOn = F2(
-	function (event, decoder) {
-		return A2(
-			elm$virtual_dom$VirtualDom$on,
-			event,
-			elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
-	});
-var elm$json$Json$Decode$field = _Json_decodeField;
-var elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3(elm$core$List$foldr, elm$json$Json$Decode$field, decoder, fields);
-	});
-var elm$json$Json$Decode$string = _Json_decodeString;
-var elm$html$Html$Events$targetValue = A2(
-	elm$json$Json$Decode$at,
-	_List_fromArray(
-		['target', 'value']),
-	elm$json$Json$Decode$string);
-var elm$html$Html$Events$onInput = function (tagger) {
-	return A2(
-		elm$html$Html$Events$stopPropagationOn,
-		'input',
-		A2(
-			elm$json$Json$Decode$map,
-			elm$html$Html$Events$alwaysStop,
-			A2(elm$json$Json$Decode$map, tagger, elm$html$Html$Events$targetValue)));
-};
-var author$project$Pipe$renderPropertyCell = F4(
-	function (_n0, attributes, cell, txt) {
-		var id = _n0.id;
-		return A2(
-			elm$html$Html$div,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					elm$html$Html$input,
-					_Utils_ap(
+						A2(
+						author$project$Pipe$constantCell,
 						_List_fromArray(
 							[
-								elm$html$Html$Attributes$id(id),
-								elm$html$Html$Attributes$placeholder('<no value>'),
-								elm$html$Html$Attributes$value(txt),
-								A2(
-								elm$html$Html$Attributes$map,
-								function (cellMsg) {
-									return author$project$Pipe$PipeMsg(cellMsg);
-								},
-								elm$html$Html$Events$onInput(
-									author$project$Pipe$Input(cell)))
+								author$project$Pipe$onCellClick(
+								author$project$Pipe$AppMsg(author$project$Demo$ToggleCase))
 							]),
-						author$project$Pipe$liftAttr(attributes)),
-					_List_Nil)
-				]));
-	});
-var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
-var author$project$Pipe$renderCell = F2(
-	function (_n0, cell) {
-		var localIndex = _n0.localIndex;
-		var id = _n0.id;
-		var cida = {
-			id: _Utils_ap(
-				id,
-				elm$core$String$fromInt(localIndex)),
-			localIndex: localIndex
-		};
-		var _n1 = cell;
-		var attributes = _n1.a;
-		var kcell = _n1.b;
-		switch (kcell.$) {
-			case 'ConstantCell':
-				var txt = kcell.a;
-				return A4(author$project$Pipe$renderConstantCell, cida, attributes, cell, txt);
-			case 'PropertyCell':
-				var txt = kcell.a;
-				return A4(author$project$Pipe$renderPropertyCell, cida, attributes, cell, txt);
-			default:
-				var orientation = kcell.a;
-				var cells = kcell.b;
-				return A4(author$project$Pipe$renderStackCell, cida, attributes, orientation, cells);
-		}
-	});
-var author$project$Pipe$renderStackCell = F4(
-	function (cida, attributes, orientation, cells) {
-		return A2(
-			elm$html$Html$div,
+						sm.name),
+						author$project$Demo$xformEvents(sm.events)
+					]))
+			]));
+};
+var author$project$Pipe$NoOp = {$: 'NoOp'};
+var author$project$Pipe$Up = {$: 'Up'};
+var elm$core$Char$fromCode = _Char_fromCode;
+var elm$core$String$cons = _String_cons;
+var elm$core$String$reverse = _String_reverse;
+var author$project$Pipe$getNext = function (id) {
+	var mbLast = elm$core$String$uncons(
+		elm$core$String$reverse(id));
+	if (mbLast.$ === 'Nothing') {
+		return id;
+	} else {
+		var _n1 = mbLast.a;
+		var last = _n1.a;
+		var tail = _n1.b;
+		return elm$core$String$reverse(
 			A2(
-				elm$core$List$cons,
-				A2(elm$html$Html$Attributes$style, 'margin', '0'),
-				author$project$Pipe$liftAttr(attributes)),
-			_List_fromArray(
-				[
-					A2(
-					elm$html$Html$div,
-					_List_fromArray(
-						[
-							A2(elm$html$Html$Attributes$style, 'margin', '3px 20px'),
-							elm$html$Html$Attributes$id(cida.id)
-						]),
-					A2(
-						elm$core$List$indexedMap,
-						F2(
-							function (i, c) {
-								return A2(
-									author$project$Pipe$renderCell,
-									_Utils_update(
-										cida,
-										{localIndex: i}),
-									c);
-							}),
-						cells))
-				]));
-	});
-var author$project$Pipe$render = function (pipe) {
-	var cellRoot = pipe.xform(pipe.root);
-	return A2(
-		author$project$Pipe$renderCell,
-		{id: '', localIndex: 0},
-		cellRoot);
+				elm$core$String$cons,
+				elm$core$Char$fromCode(
+					elm$core$Char$toCode(last) + 1),
+				tail));
+	}
+};
+var author$project$Pipe$getPrev = function (id) {
+	var mbLast = elm$core$String$uncons(
+		elm$core$String$reverse(id));
+	if (mbLast.$ === 'Nothing') {
+		return id;
+	} else {
+		var _n1 = mbLast.a;
+		var last = _n1.a;
+		var tail = _n1.b;
+		return (elm$core$Char$toCode(last) < 1) ? id : elm$core$String$reverse(
+			A2(
+				elm$core$String$cons,
+				elm$core$Char$fromCode(
+					elm$core$Char$toCode(last) - 1),
+				tail));
+	}
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
@@ -5482,14 +5382,273 @@ var elm$url$Url$fromString = function (str) {
 		elm$url$Url$Https,
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
+var elm$browser$Browser$Dom$focus = _Browser_call('focus');
+var elm$core$Platform$Cmd$batch = _Platform_batch;
+var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Task$onError = _Scheduler_onError;
+var elm$core$Task$attempt = F2(
+	function (resultToMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(
+					elm$core$Task$onError,
+					A2(
+						elm$core$Basics$composeL,
+						A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+						elm$core$Result$Err),
+					A2(
+						elm$core$Task$andThen,
+						A2(
+							elm$core$Basics$composeL,
+							A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+							elm$core$Result$Ok),
+						task))));
+	});
+var author$project$Pipe$cellUpdate = F3(
+	function (appUpdate, msg, pipe) {
+		switch (msg.$) {
+			case 'Input':
+				var cell = msg.a;
+				var text = msg.b;
+				return _Utils_Tuple2(pipe, elm$core$Platform$Cmd$none);
+			case 'NavSelection':
+				var _n1 = msg.a;
+				var id = _n1.a;
+				var dir = msg.b;
+				var idNew = (_Utils_eq(dir, author$project$Pipe$Up) ? author$project$Pipe$getPrev : author$project$Pipe$getNext)(id);
+				var focus = elm$browser$Browser$Dom$focus(idNew);
+				return _Utils_Tuple2(
+					pipe,
+					A2(
+						elm$core$Task$attempt,
+						function (_n2) {
+							return author$project$Pipe$NoOp;
+						},
+						focus));
+			default:
+				var appMsg = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						pipe,
+						{
+							root: A2(appUpdate, appMsg, pipe.root)
+						}),
+					elm$core$Platform$Cmd$none);
+		}
+	});
+var author$project$Pipe$pipeUpdate = F3(
+	function (appUpdate, msg, pipe) {
+		if (msg.$ === 'NoOp') {
+			return _Utils_Tuple2(pipe, elm$core$Platform$Cmd$none);
+		} else {
+			var cmdMsg = msg.a;
+			return A3(author$project$Pipe$cellUpdate, appUpdate, cmdMsg, pipe);
+		}
+	});
+var author$project$Pipe$PipeMsg = function (a) {
+	return {$: 'PipeMsg', a: a};
+};
+var elm$virtual_dom$VirtualDom$mapAttribute = _VirtualDom_mapAttribute;
+var elm$html$Html$Attributes$map = elm$virtual_dom$VirtualDom$mapAttribute;
+var author$project$Pipe$liftAttr = function (attributes) {
+	return A2(
+		elm$core$List$map,
+		elm$html$Html$Attributes$map(
+			function (cellMsg) {
+				return author$project$Pipe$PipeMsg(cellMsg);
+			}),
+		A2(
+			elm$core$List$map,
+			function (_n0) {
+				var htmlAttr = _n0.a;
+				return htmlAttr;
+			},
+			attributes));
+};
+var elm$html$Html$span = _VirtualDom_node('span');
+var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var elm$json$Json$Encode$string = _Json_wrap;
+var elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			elm$json$Json$Encode$string(string));
+	});
+var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
+var author$project$Pipe$renderConstantCell = F4(
+	function (id, attributes, cell, txt) {
+		return A2(
+			elm$html$Html$span,
+			A2(
+				elm$core$List$cons,
+				elm$html$Html$Attributes$id(id),
+				author$project$Pipe$liftAttr(attributes)),
+			_List_fromArray(
+				[
+					elm$html$Html$text(txt)
+				]));
+	});
+var author$project$Pipe$Input = F2(
+	function (a, b) {
+		return {$: 'Input', a: a, b: b};
+	});
+var author$project$Pipe$Down = {$: 'Down'};
+var author$project$Pipe$NavSelection = F2(
+	function (a, b) {
+		return {$: 'NavSelection', a: a, b: b};
+	});
+var elm$json$Json$Decode$field = _Json_decodeField;
+var elm$json$Json$Decode$int = _Json_decodeInt;
+var elm$html$Html$Events$keyCode = A2(elm$json$Json$Decode$field, 'keyCode', elm$json$Json$Decode$int);
+var elm$json$Json$Decode$andThen = _Json_andThen;
+var elm$json$Json$Decode$fail = _Json_fail;
+var author$project$Pipe$produceKeyboardMsg = function (cell) {
+	var canHandle = function (c) {
+		switch (c) {
+			case 38:
+				return elm$json$Json$Decode$succeed(
+					A2(author$project$Pipe$NavSelection, cell, author$project$Pipe$Up));
+			case 40:
+				return elm$json$Json$Decode$succeed(
+					A2(author$project$Pipe$NavSelection, cell, author$project$Pipe$Down));
+			default:
+				return elm$json$Json$Decode$fail(
+					'incorrect code: ' + elm$core$String$fromInt(c));
+		}
+	};
+	return A2(
+		elm$html$Html$Events$on,
+		'keydown',
+		A2(elm$json$Json$Decode$andThen, canHandle, elm$html$Html$Events$keyCode));
+};
+var elm$html$Html$div = _VirtualDom_node('div');
+var elm$html$Html$input = _VirtualDom_node('input');
+var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
+var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
+var elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			elm$virtual_dom$VirtualDom$on,
+			event,
+			elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3(elm$core$List$foldr, elm$json$Json$Decode$field, decoder, fields);
+	});
+var elm$json$Json$Decode$string = _Json_decodeString;
+var elm$html$Html$Events$targetValue = A2(
+	elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	elm$json$Json$Decode$string);
+var elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			elm$json$Json$Decode$map,
+			elm$html$Html$Events$alwaysStop,
+			A2(elm$json$Json$Decode$map, tagger, elm$html$Html$Events$targetValue)));
+};
+var author$project$Pipe$renderPropertyCell = F4(
+	function (id, attributes, cell, txt) {
+		return A2(
+			elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$input,
+					_Utils_ap(
+						_List_fromArray(
+							[
+								elm$html$Html$Attributes$id(id),
+								A2(
+								elm$html$Html$Attributes$map,
+								function (cellMsg) {
+									return author$project$Pipe$PipeMsg(cellMsg);
+								},
+								author$project$Pipe$produceKeyboardMsg(cell)),
+								elm$html$Html$Attributes$placeholder('<no value>'),
+								elm$html$Html$Attributes$value(txt),
+								A2(
+								elm$html$Html$Attributes$map,
+								function (cellMsg) {
+									return author$project$Pipe$PipeMsg(cellMsg);
+								},
+								elm$html$Html$Events$onInput(
+									author$project$Pipe$Input(cell)))
+							]),
+						author$project$Pipe$liftAttr(attributes)),
+					_List_Nil)
+				]));
+	});
+var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
+var author$project$Pipe$renderCell = function (cell) {
+	var _n0 = cell;
+	var id = _n0.a;
+	var attributes = _n0.b;
+	var kcell = _n0.c;
+	switch (kcell.$) {
+		case 'RootCell':
+			var cells = kcell.a;
+			return A4(author$project$Pipe$renderStackCell, id, _List_Nil, author$project$Pipe$Vert, cells);
+		case 'ConstantCell':
+			var txt = kcell.a;
+			return A4(author$project$Pipe$renderConstantCell, id, attributes, cell, txt);
+		case 'PropertyCell':
+			var txt = kcell.a;
+			return A4(author$project$Pipe$renderPropertyCell, id, attributes, cell, txt);
+		default:
+			var orientation = kcell.a;
+			var cells = kcell.b;
+			return A4(author$project$Pipe$renderStackCell, id, attributes, orientation, cells);
+	}
+};
+var author$project$Pipe$renderStackCell = F4(
+	function (id, attributes, orientation, cells) {
+		return A2(
+			elm$html$Html$div,
+			A2(
+				elm$core$List$cons,
+				A2(elm$html$Html$Attributes$style, 'margin', '0'),
+				author$project$Pipe$liftAttr(attributes)),
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							A2(elm$html$Html$Attributes$style, 'margin', '3px 20px'),
+							elm$html$Html$Attributes$id(id)
+						]),
+					A2(elm$core$List$map, author$project$Pipe$renderCell, cells))
+				]));
+	});
+var author$project$Pipe$view = function (pipe) {
+	var cellRoot = pipe.xform(pipe.root);
+	return author$project$Pipe$renderCell(cellRoot);
+};
 var elm$browser$Browser$element = _Browser_element;
 var elm$core$Platform$Sub$batch = _Platform_batch;
 var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
 var author$project$Pipe$pipeProgram = F3(
 	function (root, xform, appUpdate) {
-		var view = function (pipe) {
-			return author$project$Pipe$render(pipe);
-		};
 		var update = F2(
 			function (msg, pipe) {
 				return A3(author$project$Pipe$pipeUpdate, appUpdate, msg, pipe);
@@ -5506,7 +5665,7 @@ var author$project$Pipe$pipeProgram = F3(
 					return elm$core$Platform$Sub$none;
 				},
 				update: update,
-				view: view
+				view: author$project$Pipe$view
 			});
 	});
 var author$project$Demo$main = A3(author$project$Pipe$pipeProgram, author$project$Demo$root, author$project$Demo$xform, author$project$Demo$appUpdate);
