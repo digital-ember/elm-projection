@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Demo</title>
+  <title>StateMachine</title>
 </head>
 
 <body>
@@ -88,6 +88,271 @@ function A9(fun, a, b, c, d, e, f, g, h, i) {
 }
 
 console.warn('Compiled in DEV mode. Follow the advice at https://elm-lang.org/0.19.0/optimize for better performance and smaller assets.');
+
+
+var _List_Nil_UNUSED = { $: 0 };
+var _List_Nil = { $: '[]' };
+
+function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
+function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
+
+
+var _List_cons = F2(_List_Cons);
+
+function _List_fromArray(arr)
+{
+	var out = _List_Nil;
+	for (var i = arr.length; i--; )
+	{
+		out = _List_Cons(arr[i], out);
+	}
+	return out;
+}
+
+function _List_toArray(xs)
+{
+	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		out.push(xs.a);
+	}
+	return out;
+}
+
+var _List_map2 = F3(function(f, xs, ys)
+{
+	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
+	{
+		arr.push(A2(f, xs.a, ys.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map3 = F4(function(f, xs, ys, zs)
+{
+	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A3(f, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map4 = F5(function(f, ws, xs, ys, zs)
+{
+	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
+{
+	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_sortBy = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		return _Utils_cmp(f(a), f(b));
+	}));
+});
+
+var _List_sortWith = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		var ord = A2(f, a, b);
+		return ord === elm$core$Basics$EQ ? 0 : ord === elm$core$Basics$LT ? -1 : 1;
+	}));
+});
+
+
+
+// EQUALITY
+
+function _Utils_eq(x, y)
+{
+	for (
+		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
+		isEqual && (pair = stack.pop());
+		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
+		)
+	{}
+
+	return isEqual;
+}
+
+function _Utils_eqHelp(x, y, depth, stack)
+{
+	if (x === y)
+	{
+		return true;
+	}
+
+	if (typeof x !== 'object' || x === null || y === null)
+	{
+		typeof x === 'function' && _Debug_crash(5);
+		return false;
+	}
+
+	if (depth > 100)
+	{
+		stack.push(_Utils_Tuple2(x,y));
+		return true;
+	}
+
+	/**/
+	if (x.$ === 'Set_elm_builtin')
+	{
+		x = elm$core$Set$toList(x);
+		y = elm$core$Set$toList(y);
+	}
+	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
+	{
+		x = elm$core$Dict$toList(x);
+		y = elm$core$Dict$toList(y);
+	}
+	//*/
+
+	/**_UNUSED/
+	if (x.$ < 0)
+	{
+		x = elm$core$Dict$toList(x);
+		y = elm$core$Dict$toList(y);
+	}
+	//*/
+
+	for (var key in x)
+	{
+		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+var _Utils_equal = F2(_Utils_eq);
+var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
+
+
+
+// COMPARISONS
+
+// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
+// the particular integer values assigned to LT, EQ, and GT.
+
+function _Utils_cmp(x, y, ord)
+{
+	if (typeof x !== 'object')
+	{
+		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
+	}
+
+	/**/
+	if (x instanceof String)
+	{
+		var a = x.valueOf();
+		var b = y.valueOf();
+		return a === b ? 0 : a < b ? -1 : 1;
+	}
+	//*/
+
+	/**_UNUSED/
+	if (typeof x.$ === 'undefined')
+	//*/
+	/**/
+	if (x.$[0] === '#')
+	//*/
+	{
+		return (ord = _Utils_cmp(x.a, y.a))
+			? ord
+			: (ord = _Utils_cmp(x.b, y.b))
+				? ord
+				: _Utils_cmp(x.c, y.c);
+	}
+
+	// traverse conses until end of a list or a mismatch
+	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
+	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
+}
+
+var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
+var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
+var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
+var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
+
+var _Utils_compare = F2(function(x, y)
+{
+	var n = _Utils_cmp(x, y);
+	return n < 0 ? elm$core$Basics$LT : n ? elm$core$Basics$GT : elm$core$Basics$EQ;
+});
+
+
+// COMMON VALUES
+
+var _Utils_Tuple0_UNUSED = 0;
+var _Utils_Tuple0 = { $: '#0' };
+
+function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
+function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
+
+function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
+function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
+
+function _Utils_chr_UNUSED(c) { return c; }
+function _Utils_chr(c) { return new String(c); }
+
+
+// RECORDS
+
+function _Utils_update(oldRecord, updatedFields)
+{
+	var newRecord = {};
+
+	for (var key in oldRecord)
+	{
+		newRecord[key] = oldRecord[key];
+	}
+
+	for (var key in updatedFields)
+	{
+		newRecord[key] = updatedFields[key];
+	}
+
+	return newRecord;
+}
+
+
+// APPEND
+
+var _Utils_append = F2(_Utils_ap);
+
+function _Utils_ap(xs, ys)
+{
+	// append Strings
+	if (typeof xs === 'string')
+	{
+		return xs + ys;
+	}
+
+	// append Lists
+	if (!xs.b)
+	{
+		return ys;
+	}
+	var root = _List_Cons(xs.a, ys);
+	xs = xs.b
+	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		curr = curr.b = _List_Cons(xs.a, ys);
+	}
+	return root;
+}
+
 
 
 var _JsArray_empty = [];
@@ -538,268 +803,110 @@ function _Debug_regionToString(region)
 
 
 
-// EQUALITY
+// MATH
 
-function _Utils_eq(x, y)
+var _Basics_add = F2(function(a, b) { return a + b; });
+var _Basics_sub = F2(function(a, b) { return a - b; });
+var _Basics_mul = F2(function(a, b) { return a * b; });
+var _Basics_fdiv = F2(function(a, b) { return a / b; });
+var _Basics_idiv = F2(function(a, b) { return (a / b) | 0; });
+var _Basics_pow = F2(Math.pow);
+
+var _Basics_remainderBy = F2(function(b, a) { return a % b; });
+
+// https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/divmodnote-letter.pdf
+var _Basics_modBy = F2(function(modulus, x)
 {
-	for (
-		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
-		isEqual && (pair = stack.pop());
-		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
+	var answer = x % modulus;
+	return modulus === 0
+		? _Debug_crash(11)
+		:
+	((answer > 0 && modulus < 0) || (answer < 0 && modulus > 0))
+		? answer + modulus
+		: answer;
+});
+
+
+// TRIGONOMETRY
+
+var _Basics_pi = Math.PI;
+var _Basics_e = Math.E;
+var _Basics_cos = Math.cos;
+var _Basics_sin = Math.sin;
+var _Basics_tan = Math.tan;
+var _Basics_acos = Math.acos;
+var _Basics_asin = Math.asin;
+var _Basics_atan = Math.atan;
+var _Basics_atan2 = F2(Math.atan2);
+
+
+// MORE MATH
+
+function _Basics_toFloat(x) { return x; }
+function _Basics_truncate(n) { return n | 0; }
+function _Basics_isInfinite(n) { return n === Infinity || n === -Infinity; }
+
+var _Basics_ceiling = Math.ceil;
+var _Basics_floor = Math.floor;
+var _Basics_round = Math.round;
+var _Basics_sqrt = Math.sqrt;
+var _Basics_log = Math.log;
+var _Basics_isNaN = isNaN;
+
+
+// BOOLEANS
+
+function _Basics_not(bool) { return !bool; }
+var _Basics_and = F2(function(a, b) { return a && b; });
+var _Basics_or  = F2(function(a, b) { return a || b; });
+var _Basics_xor = F2(function(a, b) { return a !== b; });
+
+
+
+function _Char_toCode(char)
+{
+	var code = char.charCodeAt(0);
+	if (0xD800 <= code && code <= 0xDBFF)
+	{
+		return (code - 0xD800) * 0x400 + char.charCodeAt(1) - 0xDC00 + 0x10000
+	}
+	return code;
+}
+
+function _Char_fromCode(code)
+{
+	return _Utils_chr(
+		(code < 0 || 0x10FFFF < code)
+			? '\uFFFD'
+			:
+		(code <= 0xFFFF)
+			? String.fromCharCode(code)
+			:
+		(code -= 0x10000,
+			String.fromCharCode(Math.floor(code / 0x400) + 0xD800, code % 0x400 + 0xDC00)
 		)
-	{}
-
-	return isEqual;
+	);
 }
 
-function _Utils_eqHelp(x, y, depth, stack)
+function _Char_toUpper(char)
 {
-	if (x === y)
-	{
-		return true;
-	}
-
-	if (typeof x !== 'object' || x === null || y === null)
-	{
-		typeof x === 'function' && _Debug_crash(5);
-		return false;
-	}
-
-	if (depth > 100)
-	{
-		stack.push(_Utils_Tuple2(x,y));
-		return true;
-	}
-
-	/**/
-	if (x.$ === 'Set_elm_builtin')
-	{
-		x = elm$core$Set$toList(x);
-		y = elm$core$Set$toList(y);
-	}
-	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
-	{
-		x = elm$core$Dict$toList(x);
-		y = elm$core$Dict$toList(y);
-	}
-	//*/
-
-	/**_UNUSED/
-	if (x.$ < 0)
-	{
-		x = elm$core$Dict$toList(x);
-		y = elm$core$Dict$toList(y);
-	}
-	//*/
-
-	for (var key in x)
-	{
-		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
-		{
-			return false;
-		}
-	}
-	return true;
+	return _Utils_chr(char.toUpperCase());
 }
 
-var _Utils_equal = F2(_Utils_eq);
-var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
-
-
-
-// COMPARISONS
-
-// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
-// the particular integer values assigned to LT, EQ, and GT.
-
-function _Utils_cmp(x, y, ord)
+function _Char_toLower(char)
 {
-	if (typeof x !== 'object')
-	{
-		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
-	}
-
-	/**/
-	if (x instanceof String)
-	{
-		var a = x.valueOf();
-		var b = y.valueOf();
-		return a === b ? 0 : a < b ? -1 : 1;
-	}
-	//*/
-
-	/**_UNUSED/
-	if (typeof x.$ === 'undefined')
-	//*/
-	/**/
-	if (x.$[0] === '#')
-	//*/
-	{
-		return (ord = _Utils_cmp(x.a, y.a))
-			? ord
-			: (ord = _Utils_cmp(x.b, y.b))
-				? ord
-				: _Utils_cmp(x.c, y.c);
-	}
-
-	// traverse conses until end of a list or a mismatch
-	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
-	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
+	return _Utils_chr(char.toLowerCase());
 }
 
-var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
-var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
-var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
-var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
-
-var _Utils_compare = F2(function(x, y)
+function _Char_toLocaleUpper(char)
 {
-	var n = _Utils_cmp(x, y);
-	return n < 0 ? elm$core$Basics$LT : n ? elm$core$Basics$GT : elm$core$Basics$EQ;
-});
-
-
-// COMMON VALUES
-
-var _Utils_Tuple0_UNUSED = 0;
-var _Utils_Tuple0 = { $: '#0' };
-
-function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
-function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
-
-function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
-function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
-
-function _Utils_chr_UNUSED(c) { return c; }
-function _Utils_chr(c) { return new String(c); }
-
-
-// RECORDS
-
-function _Utils_update(oldRecord, updatedFields)
-{
-	var newRecord = {};
-
-	for (var key in oldRecord)
-	{
-		newRecord[key] = oldRecord[key];
-	}
-
-	for (var key in updatedFields)
-	{
-		newRecord[key] = updatedFields[key];
-	}
-
-	return newRecord;
+	return _Utils_chr(char.toLocaleUpperCase());
 }
 
-
-// APPEND
-
-var _Utils_append = F2(_Utils_ap);
-
-function _Utils_ap(xs, ys)
+function _Char_toLocaleLower(char)
 {
-	// append Strings
-	if (typeof xs === 'string')
-	{
-		return xs + ys;
-	}
-
-	// append Lists
-	if (!xs.b)
-	{
-		return ys;
-	}
-	var root = _List_Cons(xs.a, ys);
-	xs = xs.b
-	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		curr = curr.b = _List_Cons(xs.a, ys);
-	}
-	return root;
+	return _Utils_chr(char.toLocaleLowerCase());
 }
-
-
-
-var _List_Nil_UNUSED = { $: 0 };
-var _List_Nil = { $: '[]' };
-
-function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
-function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
-
-
-var _List_cons = F2(_List_Cons);
-
-function _List_fromArray(arr)
-{
-	var out = _List_Nil;
-	for (var i = arr.length; i--; )
-	{
-		out = _List_Cons(arr[i], out);
-	}
-	return out;
-}
-
-function _List_toArray(xs)
-{
-	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		out.push(xs.a);
-	}
-	return out;
-}
-
-var _List_map2 = F3(function(f, xs, ys)
-{
-	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
-	{
-		arr.push(A2(f, xs.a, ys.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map3 = F4(function(f, xs, ys, zs)
-{
-	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A3(f, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map4 = F5(function(f, ws, xs, ys, zs)
-{
-	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
-{
-	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_sortBy = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		return _Utils_cmp(f(a), f(b));
-	}));
-});
-
-var _List_sortWith = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		var ord = A2(f, a, b);
-		return ord === elm$core$Basics$EQ ? 0 : ord === elm$core$Basics$LT ? -1 : 1;
-	}));
-});
 
 
 
@@ -1112,113 +1219,6 @@ function _String_fromList(chars)
 	return _List_toArray(chars).join('');
 }
 
-
-
-
-// MATH
-
-var _Basics_add = F2(function(a, b) { return a + b; });
-var _Basics_sub = F2(function(a, b) { return a - b; });
-var _Basics_mul = F2(function(a, b) { return a * b; });
-var _Basics_fdiv = F2(function(a, b) { return a / b; });
-var _Basics_idiv = F2(function(a, b) { return (a / b) | 0; });
-var _Basics_pow = F2(Math.pow);
-
-var _Basics_remainderBy = F2(function(b, a) { return a % b; });
-
-// https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/divmodnote-letter.pdf
-var _Basics_modBy = F2(function(modulus, x)
-{
-	var answer = x % modulus;
-	return modulus === 0
-		? _Debug_crash(11)
-		:
-	((answer > 0 && modulus < 0) || (answer < 0 && modulus > 0))
-		? answer + modulus
-		: answer;
-});
-
-
-// TRIGONOMETRY
-
-var _Basics_pi = Math.PI;
-var _Basics_e = Math.E;
-var _Basics_cos = Math.cos;
-var _Basics_sin = Math.sin;
-var _Basics_tan = Math.tan;
-var _Basics_acos = Math.acos;
-var _Basics_asin = Math.asin;
-var _Basics_atan = Math.atan;
-var _Basics_atan2 = F2(Math.atan2);
-
-
-// MORE MATH
-
-function _Basics_toFloat(x) { return x; }
-function _Basics_truncate(n) { return n | 0; }
-function _Basics_isInfinite(n) { return n === Infinity || n === -Infinity; }
-
-var _Basics_ceiling = Math.ceil;
-var _Basics_floor = Math.floor;
-var _Basics_round = Math.round;
-var _Basics_sqrt = Math.sqrt;
-var _Basics_log = Math.log;
-var _Basics_isNaN = isNaN;
-
-
-// BOOLEANS
-
-function _Basics_not(bool) { return !bool; }
-var _Basics_and = F2(function(a, b) { return a && b; });
-var _Basics_or  = F2(function(a, b) { return a || b; });
-var _Basics_xor = F2(function(a, b) { return a !== b; });
-
-
-
-function _Char_toCode(char)
-{
-	var code = char.charCodeAt(0);
-	if (0xD800 <= code && code <= 0xDBFF)
-	{
-		return (code - 0xD800) * 0x400 + char.charCodeAt(1) - 0xDC00 + 0x10000
-	}
-	return code;
-}
-
-function _Char_fromCode(code)
-{
-	return _Utils_chr(
-		(code < 0 || 0x10FFFF < code)
-			? '\uFFFD'
-			:
-		(code <= 0xFFFF)
-			? String.fromCharCode(code)
-			:
-		(code -= 0x10000,
-			String.fromCharCode(Math.floor(code / 0x400) + 0xD800, code % 0x400 + 0xDC00)
-		)
-	);
-}
-
-function _Char_toUpper(char)
-{
-	return _Utils_chr(char.toUpperCase());
-}
-
-function _Char_toLower(char)
-{
-	return _Utils_chr(char.toLowerCase());
-}
-
-function _Char_toLocaleUpper(char)
-{
-	return _Utils_chr(char.toLocaleUpperCase());
-}
-
-function _Char_toLocaleLower(char)
-{
-	return _Utils_chr(char.toLocaleLowerCase());
-}
 
 
 
@@ -4367,38 +4367,16 @@ function _Browser_load(url)
 }
 var elm$core$Basics$False = {$: 'False'};
 var elm$core$Basics$True = {$: 'True'};
-var elm$core$Maybe$Just = function (a) {
-	return {$: 'Just', a: a};
+var elm$core$Result$isOk = function (result) {
+	if (result.$ === 'Ok') {
+		return true;
+	} else {
+		return false;
+	}
 };
-var elm$core$Maybe$Nothing = {$: 'Nothing'};
 var elm$core$Basics$EQ = {$: 'EQ'};
-var elm$core$Basics$LT = {$: 'LT'};
-var elm$core$Elm$JsArray$foldr = _JsArray_foldr;
-var elm$core$Array$foldr = F3(
-	function (func, baseCase, _n0) {
-		var tree = _n0.c;
-		var tail = _n0.d;
-		var helper = F2(
-			function (node, acc) {
-				if (node.$ === 'SubTree') {
-					var subTree = node.a;
-					return A3(elm$core$Elm$JsArray$foldr, helper, acc, subTree);
-				} else {
-					var values = node.a;
-					return A3(elm$core$Elm$JsArray$foldr, func, acc, values);
-				}
-			});
-		return A3(
-			elm$core$Elm$JsArray$foldr,
-			helper,
-			A3(elm$core$Elm$JsArray$foldr, func, baseCase, tail),
-			tree);
-	});
-var elm$core$List$cons = _List_cons;
-var elm$core$Array$toList = function (array) {
-	return A3(elm$core$Array$foldr, elm$core$List$cons, _List_Nil, array);
-};
 var elm$core$Basics$GT = {$: 'GT'};
+var elm$core$Basics$LT = {$: 'LT'};
 var elm$core$Dict$foldr = F3(
 	function (func, acc, t) {
 		foldr:
@@ -4424,6 +4402,7 @@ var elm$core$Dict$foldr = F3(
 			}
 		}
 	});
+var elm$core$List$cons = _List_cons;
 var elm$core$Dict$toList = function (dict) {
 	return A3(
 		elm$core$Dict$foldr,
@@ -4451,310 +4430,29 @@ var elm$core$Set$toList = function (_n0) {
 	var dict = _n0.a;
 	return elm$core$Dict$keys(dict);
 };
-var elm$core$String$toLower = _String_toLower;
-var elm$core$String$toUpper = _String_toUpper;
-var author$project$Demo$appUpdate = F2(
-	function (msg, sm) {
-		return sm.isUpper ? _Utils_update(
-			sm,
-			{
-				isUpper: false,
-				name: elm$core$String$toLower(sm.name)
-			}) : _Utils_update(
-			sm,
-			{
-				isUpper: true,
-				name: elm$core$String$toUpper(sm.name)
-			});
-	});
-var author$project$Demo$root = {
-	events: _List_fromArray(
-		[
-			{name: 'doorClosed'},
-			{name: 'panelClosed'}
-		]),
-	isUpper: false,
-	name: 'my statemachine'
-};
-var author$project$Demo$ToggleCase = {$: 'ToggleCase'};
-var author$project$Pipe$Cell = F3(
-	function (a, b, c) {
-		return {$: 'Cell', a: a, b: b, c: c};
-	});
-var author$project$Pipe$PropertyCell = function (a) {
-	return {$: 'PropertyCell', a: a};
-};
-var author$project$Pipe$propertyCell = F2(
-	function (attributes, txt) {
-		return A3(
-			author$project$Pipe$Cell,
-			'',
-			attributes,
-			author$project$Pipe$PropertyCell(txt));
-	});
-var elm$core$Basics$add = _Basics_add;
-var elm$core$Basics$gt = _Utils_gt;
-var elm$core$List$foldl = F3(
-	function (func, acc, list) {
-		foldl:
-		while (true) {
-			if (!list.b) {
-				return acc;
-			} else {
-				var x = list.a;
-				var xs = list.b;
-				var $temp$func = func,
-					$temp$acc = A2(func, x, acc),
-					$temp$list = xs;
-				func = $temp$func;
-				acc = $temp$acc;
-				list = $temp$list;
-				continue foldl;
-			}
-		}
-	});
-var elm$core$List$reverse = function (list) {
-	return A3(elm$core$List$foldl, elm$core$List$cons, _List_Nil, list);
-};
-var elm$core$List$foldrHelper = F4(
-	function (fn, acc, ctr, ls) {
-		if (!ls.b) {
-			return acc;
-		} else {
-			var a = ls.a;
-			var r1 = ls.b;
-			if (!r1.b) {
-				return A2(fn, a, acc);
-			} else {
-				var b = r1.a;
-				var r2 = r1.b;
-				if (!r2.b) {
-					return A2(
-						fn,
-						a,
-						A2(fn, b, acc));
+var elm$core$Elm$JsArray$foldr = _JsArray_foldr;
+var elm$core$Array$foldr = F3(
+	function (func, baseCase, _n0) {
+		var tree = _n0.c;
+		var tail = _n0.d;
+		var helper = F2(
+			function (node, acc) {
+				if (node.$ === 'SubTree') {
+					var subTree = node.a;
+					return A3(elm$core$Elm$JsArray$foldr, helper, acc, subTree);
 				} else {
-					var c = r2.a;
-					var r3 = r2.b;
-					if (!r3.b) {
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(fn, c, acc)));
-					} else {
-						var d = r3.a;
-						var r4 = r3.b;
-						var res = (ctr > 500) ? A3(
-							elm$core$List$foldl,
-							fn,
-							acc,
-							elm$core$List$reverse(r4)) : A4(elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(
-									fn,
-									c,
-									A2(fn, d, res))));
-					}
+					var values = node.a;
+					return A3(elm$core$Elm$JsArray$foldr, func, acc, values);
 				}
-			}
-		}
-	});
-var elm$core$List$foldr = F3(
-	function (fn, acc, ls) {
-		return A4(elm$core$List$foldrHelper, fn, acc, 0, ls);
-	});
-var elm$core$List$map = F2(
-	function (f, xs) {
+			});
 		return A3(
-			elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
+			elm$core$Elm$JsArray$foldr,
+			helper,
+			A3(elm$core$Elm$JsArray$foldr, func, baseCase, tail),
+			tree);
 	});
-var author$project$Demo$xformEventNames = function (events) {
-	return A2(
-		elm$core$List$map,
-		function (e) {
-			return A2(author$project$Pipe$propertyCell, _List_Nil, e.name);
-		},
-		events);
-};
-var author$project$Pipe$ConstantCell = function (a) {
-	return {$: 'ConstantCell', a: a};
-};
-var author$project$Pipe$constantCell = F2(
-	function (attributes, txt) {
-		return A3(
-			author$project$Pipe$Cell,
-			'',
-			attributes,
-			author$project$Pipe$ConstantCell(txt));
-	});
-var author$project$Pipe$StackCell = F2(
-	function (a, b) {
-		return {$: 'StackCell', a: a, b: b};
-	});
-var author$project$Pipe$Vert = {$: 'Vert'};
-var author$project$Pipe$vertStackCell = F2(
-	function (attributes, cells) {
-		return A3(
-			author$project$Pipe$Cell,
-			'',
-			attributes,
-			A2(author$project$Pipe$StackCell, author$project$Pipe$Vert, cells));
-	});
-var elm$core$Basics$append = _Utils_append;
-var author$project$Demo$xformEvents = function (events) {
-	return A2(
-		author$project$Pipe$vertStackCell,
-		_List_Nil,
-		A2(
-			elm$core$List$cons,
-			A2(author$project$Pipe$constantCell, _List_Nil, 'events'),
-			_Utils_ap(
-				author$project$Demo$xformEventNames(events),
-				_List_fromArray(
-					[
-						A2(author$project$Pipe$constantCell, _List_Nil, 'end')
-					]))));
-};
-var author$project$Pipe$AppMsg = function (a) {
-	return {$: 'AppMsg', a: a};
-};
-var author$project$Pipe$RootCell = function (a) {
-	return {$: 'RootCell', a: a};
-};
-var elm$core$Basics$apL = F2(
-	function (f, x) {
-		return f(x);
-	});
-var elm$core$Basics$sub = _Basics_sub;
-var elm$core$List$length = function (xs) {
-	return A3(
-		elm$core$List$foldl,
-		F2(
-			function (_n0, i) {
-				return i + 1;
-			}),
-		0,
-		xs);
-};
-var elm$core$List$map2 = _List_map2;
-var elm$core$Basics$le = _Utils_le;
-var elm$core$List$rangeHelp = F3(
-	function (lo, hi, list) {
-		rangeHelp:
-		while (true) {
-			if (_Utils_cmp(lo, hi) < 1) {
-				var $temp$lo = lo,
-					$temp$hi = hi - 1,
-					$temp$list = A2(elm$core$List$cons, hi, list);
-				lo = $temp$lo;
-				hi = $temp$hi;
-				list = $temp$list;
-				continue rangeHelp;
-			} else {
-				return list;
-			}
-		}
-	});
-var elm$core$List$range = F2(
-	function (lo, hi) {
-		return A3(elm$core$List$rangeHelp, lo, hi, _List_Nil);
-	});
-var elm$core$List$indexedMap = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$map2,
-			f,
-			A2(
-				elm$core$List$range,
-				0,
-				elm$core$List$length(xs) - 1),
-			xs);
-	});
-var elm$core$String$fromInt = _String_fromNumber;
-var author$project$Pipe$addIds = F3(
-	function (parentId, localIndex, cell) {
-		var parentIdNew = _Utils_ap(
-			parentId,
-			elm$core$String$fromInt(localIndex));
-		var _n0 = cell;
-		var attributes = _n0.b;
-		var kcell = _n0.c;
-		switch (kcell.$) {
-			case 'RootCell':
-				return cell;
-			case 'StackCell':
-				var orientation = kcell.a;
-				var children = kcell.b;
-				return A3(
-					author$project$Pipe$Cell,
-					parentIdNew,
-					attributes,
-					A2(
-						author$project$Pipe$StackCell,
-						orientation,
-						A2(
-							elm$core$List$indexedMap,
-							author$project$Pipe$addIds(parentIdNew),
-							children)));
-			case 'ConstantCell':
-				var txt = kcell.a;
-				return A3(
-					author$project$Pipe$Cell,
-					parentIdNew,
-					attributes,
-					author$project$Pipe$ConstantCell(txt));
-			default:
-				var txt = kcell.a;
-				return A3(
-					author$project$Pipe$Cell,
-					parentIdNew,
-					attributes,
-					author$project$Pipe$PropertyCell(txt));
-		}
-	});
-var author$project$Pipe$createRootCell = function (children) {
-	return A3(
-		author$project$Pipe$Cell,
-		'0',
-		_List_Nil,
-		author$project$Pipe$RootCell(
-			A2(
-				elm$core$List$indexedMap,
-				author$project$Pipe$addIds('0'),
-				children)));
-};
-var author$project$Pipe$CellAttribute = function (a) {
-	return {$: 'CellAttribute', a: a};
-};
-var elm$core$Basics$identity = function (x) {
-	return x;
-};
-var elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var elm$core$Result$isOk = function (result) {
-	if (result.$ === 'Ok') {
-		return true;
-	} else {
-		return false;
-	}
+var elm$core$Array$toList = function (array) {
+	return A3(elm$core$Array$foldr, elm$core$List$cons, _List_Nil, array);
 };
 var elm$core$Array$branchFactor = 32;
 var elm$core$Array$Array_elm_builtin = F4(
@@ -4779,6 +4477,28 @@ var elm$core$Array$SubTree = function (a) {
 	return {$: 'SubTree', a: a};
 };
 var elm$core$Elm$JsArray$initializeFromList = _JsArray_initializeFromList;
+var elm$core$List$foldl = F3(
+	function (func, acc, list) {
+		foldl:
+		while (true) {
+			if (!list.b) {
+				return acc;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				var $temp$func = func,
+					$temp$acc = A2(func, x, acc),
+					$temp$list = xs;
+				func = $temp$func;
+				acc = $temp$acc;
+				list = $temp$list;
+				continue foldl;
+			}
+		}
+	});
+var elm$core$List$reverse = function (list) {
+	return A3(elm$core$List$foldl, elm$core$List$cons, _List_Nil, list);
+};
 var elm$core$Array$compressNodes = F2(
 	function (nodes, acc) {
 		compressNodes:
@@ -4826,12 +4546,19 @@ var elm$core$Array$treeFromBuilder = F2(
 			}
 		}
 	});
+var elm$core$Basics$add = _Basics_add;
+var elm$core$Basics$apL = F2(
+	function (f, x) {
+		return f(x);
+	});
 var elm$core$Basics$floor = _Basics_floor;
+var elm$core$Basics$gt = _Utils_gt;
 var elm$core$Basics$max = F2(
 	function (x, y) {
 		return (_Utils_cmp(x, y) > 0) ? x : y;
 	});
 var elm$core$Basics$mul = _Basics_mul;
+var elm$core$Basics$sub = _Basics_sub;
 var elm$core$Elm$JsArray$length = _JsArray_length;
 var elm$core$Array$builderToArray = F2(
 	function (reverseNodeList, builder) {
@@ -4885,6 +4612,7 @@ var elm$core$Array$initializeHelp = F5(
 			}
 		}
 	});
+var elm$core$Basics$le = _Utils_le;
 var elm$core$Basics$remainderBy = _Basics_remainderBy;
 var elm$core$Array$initialize = F2(
 	function (len, fn) {
@@ -4897,6 +4625,10 @@ var elm$core$Array$initialize = F2(
 			return A5(elm$core$Array$initializeHelp, fn, initialFromIndex, len, _List_Nil, tail);
 		}
 	});
+var elm$core$Maybe$Just = function (a) {
+	return {$: 'Just', a: a};
+};
+var elm$core$Maybe$Nothing = {$: 'Nothing'};
 var elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -4919,6 +4651,7 @@ var elm$json$Json$Decode$OneOf = function (a) {
 	return {$: 'OneOf', a: a};
 };
 var elm$core$Basics$and = _Basics_and;
+var elm$core$Basics$append = _Utils_append;
 var elm$core$Basics$or = _Basics_or;
 var elm$core$Char$toCode = _Char_toCode;
 var elm$core$Char$isLower = function (_char) {
@@ -4939,7 +4672,51 @@ var elm$core$Char$isDigit = function (_char) {
 var elm$core$Char$isAlphaNum = function (_char) {
 	return elm$core$Char$isLower(_char) || (elm$core$Char$isUpper(_char) || elm$core$Char$isDigit(_char));
 };
+var elm$core$List$length = function (xs) {
+	return A3(
+		elm$core$List$foldl,
+		F2(
+			function (_n0, i) {
+				return i + 1;
+			}),
+		0,
+		xs);
+};
+var elm$core$List$map2 = _List_map2;
+var elm$core$List$rangeHelp = F3(
+	function (lo, hi, list) {
+		rangeHelp:
+		while (true) {
+			if (_Utils_cmp(lo, hi) < 1) {
+				var $temp$lo = lo,
+					$temp$hi = hi - 1,
+					$temp$list = A2(elm$core$List$cons, hi, list);
+				lo = $temp$lo;
+				hi = $temp$hi;
+				list = $temp$list;
+				continue rangeHelp;
+			} else {
+				return list;
+			}
+		}
+	});
+var elm$core$List$range = F2(
+	function (lo, hi) {
+		return A3(elm$core$List$rangeHelp, lo, hi, _List_Nil);
+	});
+var elm$core$List$indexedMap = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$map2,
+			f,
+			A2(
+				elm$core$List$range,
+				0,
+				elm$core$List$length(xs) - 1),
+			xs);
+	});
 var elm$core$String$all = _String_all;
+var elm$core$String$fromInt = _String_fromNumber;
 var elm$core$String$join = F2(
 	function (sep, chunks) {
 		return A2(
@@ -5063,6 +4840,26 @@ var elm$json$Json$Decode$errorToStringHelp = F2(
 			}
 		}
 	});
+var elm$core$Platform$Cmd$batch = _Platform_batch;
+var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
+var author$project$Runtime$runtimeUpdate = F2(
+	function (msg, model) {
+		return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
+	});
+var elm$core$Debug$todo = _Debug_todo;
+var author$project$Editor$viewCell = function (cell) {
+	return _Debug_todo(
+		'Editor',
+		{
+			start: {line: 102, column: 5},
+			end: {line: 102, column: 15}
+		})('todo');
+};
+var author$project$Runtime$NoOp = {$: 'NoOp'};
+var elm$core$Debug$log = _Debug_log;
+var elm$core$Basics$identity = function (x) {
+	return x;
+};
 var elm$json$Json$Decode$map = _Json_map1;
 var elm$json$Json$Decode$map2 = _Json_map2;
 var elm$json$Json$Decode$succeed = _Json_succeed;
@@ -5078,83 +4875,19 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
-var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			elm$virtual_dom$VirtualDom$on,
-			event,
-			elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var elm$html$Html$Events$onClick = function (msg) {
+var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
+var elm$html$Html$map = elm$virtual_dom$VirtualDom$map;
+var author$project$Runtime$view = function (model) {
+	var cellRoot = A2(
+		elm$core$Debug$log,
+		'cell',
+		model.xform(model.appModel));
 	return A2(
-		elm$html$Html$Events$on,
-		'click',
-		elm$json$Json$Decode$succeed(msg));
-};
-var author$project$Pipe$onCellClick = function (msg) {
-	return author$project$Pipe$CellAttribute(
-		elm$html$Html$Events$onClick(msg));
-};
-var author$project$Demo$xform = function (sm) {
-	return author$project$Pipe$createRootCell(
-		_List_fromArray(
-			[
-				A2(
-				author$project$Pipe$vertStackCell,
-				_List_Nil,
-				_List_fromArray(
-					[
-						A2(
-						author$project$Pipe$constantCell,
-						_List_fromArray(
-							[
-								author$project$Pipe$onCellClick(
-								author$project$Pipe$AppMsg(author$project$Demo$ToggleCase))
-							]),
-						sm.name),
-						author$project$Demo$xformEvents(sm.events)
-					]))
-			]));
-};
-var author$project$Pipe$NoOp = {$: 'NoOp'};
-var author$project$Pipe$Up = {$: 'Up'};
-var elm$core$Char$fromCode = _Char_fromCode;
-var elm$core$String$cons = _String_cons;
-var elm$core$String$reverse = _String_reverse;
-var author$project$Pipe$getNext = function (id) {
-	var mbLast = elm$core$String$uncons(
-		elm$core$String$reverse(id));
-	if (mbLast.$ === 'Nothing') {
-		return id;
-	} else {
-		var _n1 = mbLast.a;
-		var last = _n1.a;
-		var tail = _n1.b;
-		return elm$core$String$reverse(
-			A2(
-				elm$core$String$cons,
-				elm$core$Char$fromCode(
-					elm$core$Char$toCode(last) + 1),
-				tail));
-	}
-};
-var author$project$Pipe$getPrev = function (id) {
-	var mbLast = elm$core$String$uncons(
-		elm$core$String$reverse(id));
-	if (mbLast.$ === 'Nothing') {
-		return id;
-	} else {
-		var _n1 = mbLast.a;
-		var last = _n1.a;
-		var tail = _n1.b;
-		return (elm$core$Char$toCode(last) < 1) ? id : elm$core$String$reverse(
-			A2(
-				elm$core$String$cons,
-				elm$core$Char$fromCode(
-					elm$core$Char$toCode(last) - 1),
-				tail));
-	}
+		elm$html$Html$map,
+		function (cellMsg) {
+			return author$project$Runtime$NoOp;
+		},
+		author$project$Editor$viewCell(cellRoot));
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
@@ -5179,6 +4912,75 @@ var elm$core$Task$Perform = function (a) {
 };
 var elm$core$Task$succeed = _Scheduler_succeed;
 var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
+var elm$core$List$foldrHelper = F4(
+	function (fn, acc, ctr, ls) {
+		if (!ls.b) {
+			return acc;
+		} else {
+			var a = ls.a;
+			var r1 = ls.b;
+			if (!r1.b) {
+				return A2(fn, a, acc);
+			} else {
+				var b = r1.a;
+				var r2 = r1.b;
+				if (!r2.b) {
+					return A2(
+						fn,
+						a,
+						A2(fn, b, acc));
+				} else {
+					var c = r2.a;
+					var r3 = r2.b;
+					if (!r3.b) {
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(fn, c, acc)));
+					} else {
+						var d = r3.a;
+						var r4 = r3.b;
+						var res = (ctr > 500) ? A3(
+							elm$core$List$foldl,
+							fn,
+							acc,
+							elm$core$List$reverse(r4)) : A4(elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(
+									fn,
+									c,
+									A2(fn, d, res))));
+					}
+				}
+			}
+		}
+	});
+var elm$core$List$foldr = F3(
+	function (fn, acc, ls) {
+		return A4(elm$core$List$foldrHelper, fn, acc, 0, ls);
+	});
+var elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
 var elm$core$Task$andThen = _Scheduler_andThen;
 var elm$core$Task$map = F2(
 	function (func, taskA) {
@@ -5382,280 +5184,18 @@ var elm$url$Url$fromString = function (str) {
 		elm$url$Url$Https,
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
-var elm$browser$Browser$Dom$focus = _Browser_call('focus');
-var elm$core$Platform$Cmd$batch = _Platform_batch;
-var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
-var elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
-var elm$core$Task$onError = _Scheduler_onError;
-var elm$core$Task$attempt = F2(
-	function (resultToMessage, task) {
-		return elm$core$Task$command(
-			elm$core$Task$Perform(
-				A2(
-					elm$core$Task$onError,
-					A2(
-						elm$core$Basics$composeL,
-						A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
-						elm$core$Result$Err),
-					A2(
-						elm$core$Task$andThen,
-						A2(
-							elm$core$Basics$composeL,
-							A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
-							elm$core$Result$Ok),
-						task))));
-	});
-var author$project$Pipe$cellUpdate = F3(
-	function (appUpdate, msg, pipe) {
-		switch (msg.$) {
-			case 'Input':
-				var cell = msg.a;
-				var text = msg.b;
-				return _Utils_Tuple2(pipe, elm$core$Platform$Cmd$none);
-			case 'NavSelection':
-				var _n1 = msg.a;
-				var id = _n1.a;
-				var dir = msg.b;
-				var idNew = (_Utils_eq(dir, author$project$Pipe$Up) ? author$project$Pipe$getPrev : author$project$Pipe$getNext)(id);
-				var focus = elm$browser$Browser$Dom$focus(idNew);
-				return _Utils_Tuple2(
-					pipe,
-					A2(
-						elm$core$Task$attempt,
-						function (_n2) {
-							return author$project$Pipe$NoOp;
-						},
-						focus));
-			default:
-				var appMsg = msg.a;
-				return _Utils_Tuple2(
-					_Utils_update(
-						pipe,
-						{
-							root: A2(appUpdate, appMsg, pipe.root)
-						}),
-					elm$core$Platform$Cmd$none);
-		}
-	});
-var author$project$Pipe$pipeUpdate = F3(
-	function (appUpdate, msg, pipe) {
-		if (msg.$ === 'NoOp') {
-			return _Utils_Tuple2(pipe, elm$core$Platform$Cmd$none);
-		} else {
-			var cmdMsg = msg.a;
-			return A3(author$project$Pipe$cellUpdate, appUpdate, cmdMsg, pipe);
-		}
-	});
-var author$project$Pipe$PipeMsg = function (a) {
-	return {$: 'PipeMsg', a: a};
-};
-var elm$virtual_dom$VirtualDom$mapAttribute = _VirtualDom_mapAttribute;
-var elm$html$Html$Attributes$map = elm$virtual_dom$VirtualDom$mapAttribute;
-var author$project$Pipe$liftAttr = function (attributes) {
-	return A2(
-		elm$core$List$map,
-		elm$html$Html$Attributes$map(
-			function (cellMsg) {
-				return author$project$Pipe$PipeMsg(cellMsg);
-			}),
-		A2(
-			elm$core$List$map,
-			function (_n0) {
-				var htmlAttr = _n0.a;
-				return htmlAttr;
-			},
-			attributes));
-};
-var elm$html$Html$span = _VirtualDom_node('span');
-var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
-var elm$json$Json$Encode$string = _Json_wrap;
-var elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			elm$json$Json$Encode$string(string));
-	});
-var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
-var author$project$Pipe$renderConstantCell = F4(
-	function (id, attributes, cell, txt) {
-		return A2(
-			elm$html$Html$span,
-			A2(
-				elm$core$List$cons,
-				elm$html$Html$Attributes$id(id),
-				author$project$Pipe$liftAttr(attributes)),
-			_List_fromArray(
-				[
-					elm$html$Html$text(txt)
-				]));
-	});
-var author$project$Pipe$Input = F2(
-	function (a, b) {
-		return {$: 'Input', a: a, b: b};
-	});
-var author$project$Pipe$Down = {$: 'Down'};
-var author$project$Pipe$NavSelection = F2(
-	function (a, b) {
-		return {$: 'NavSelection', a: a, b: b};
-	});
-var elm$json$Json$Decode$field = _Json_decodeField;
-var elm$json$Json$Decode$int = _Json_decodeInt;
-var elm$html$Html$Events$keyCode = A2(elm$json$Json$Decode$field, 'keyCode', elm$json$Json$Decode$int);
-var elm$json$Json$Decode$andThen = _Json_andThen;
-var elm$json$Json$Decode$fail = _Json_fail;
-var author$project$Pipe$produceKeyboardMsg = function (cell) {
-	var canHandle = function (c) {
-		switch (c) {
-			case 38:
-				return elm$json$Json$Decode$succeed(
-					A2(author$project$Pipe$NavSelection, cell, author$project$Pipe$Up));
-			case 40:
-				return elm$json$Json$Decode$succeed(
-					A2(author$project$Pipe$NavSelection, cell, author$project$Pipe$Down));
-			default:
-				return elm$json$Json$Decode$fail(
-					'incorrect code: ' + elm$core$String$fromInt(c));
-		}
-	};
-	return A2(
-		elm$html$Html$Events$on,
-		'keydown',
-		A2(elm$json$Json$Decode$andThen, canHandle, elm$html$Html$Events$keyCode));
-};
-var elm$html$Html$div = _VirtualDom_node('div');
-var elm$html$Html$input = _VirtualDom_node('input');
-var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
-var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
-var elm$html$Html$Events$alwaysStop = function (x) {
-	return _Utils_Tuple2(x, true);
-};
-var elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
-	return {$: 'MayStopPropagation', a: a};
-};
-var elm$html$Html$Events$stopPropagationOn = F2(
-	function (event, decoder) {
-		return A2(
-			elm$virtual_dom$VirtualDom$on,
-			event,
-			elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
-	});
-var elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3(elm$core$List$foldr, elm$json$Json$Decode$field, decoder, fields);
-	});
-var elm$json$Json$Decode$string = _Json_decodeString;
-var elm$html$Html$Events$targetValue = A2(
-	elm$json$Json$Decode$at,
-	_List_fromArray(
-		['target', 'value']),
-	elm$json$Json$Decode$string);
-var elm$html$Html$Events$onInput = function (tagger) {
-	return A2(
-		elm$html$Html$Events$stopPropagationOn,
-		'input',
-		A2(
-			elm$json$Json$Decode$map,
-			elm$html$Html$Events$alwaysStop,
-			A2(elm$json$Json$Decode$map, tagger, elm$html$Html$Events$targetValue)));
-};
-var author$project$Pipe$renderPropertyCell = F4(
-	function (id, attributes, cell, txt) {
-		return A2(
-			elm$html$Html$div,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					elm$html$Html$input,
-					_Utils_ap(
-						_List_fromArray(
-							[
-								elm$html$Html$Attributes$id(id),
-								A2(
-								elm$html$Html$Attributes$map,
-								function (cellMsg) {
-									return author$project$Pipe$PipeMsg(cellMsg);
-								},
-								author$project$Pipe$produceKeyboardMsg(cell)),
-								elm$html$Html$Attributes$placeholder('<no value>'),
-								elm$html$Html$Attributes$value(txt),
-								A2(
-								elm$html$Html$Attributes$map,
-								function (cellMsg) {
-									return author$project$Pipe$PipeMsg(cellMsg);
-								},
-								elm$html$Html$Events$onInput(
-									author$project$Pipe$Input(cell)))
-							]),
-						author$project$Pipe$liftAttr(attributes)),
-					_List_Nil)
-				]));
-	});
-var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
-var author$project$Pipe$renderCell = function (cell) {
-	var _n0 = cell;
-	var id = _n0.a;
-	var attributes = _n0.b;
-	var kcell = _n0.c;
-	switch (kcell.$) {
-		case 'RootCell':
-			var cells = kcell.a;
-			return A4(author$project$Pipe$renderStackCell, id, _List_Nil, author$project$Pipe$Vert, cells);
-		case 'ConstantCell':
-			var txt = kcell.a;
-			return A4(author$project$Pipe$renderConstantCell, id, attributes, cell, txt);
-		case 'PropertyCell':
-			var txt = kcell.a;
-			return A4(author$project$Pipe$renderPropertyCell, id, attributes, cell, txt);
-		default:
-			var orientation = kcell.a;
-			var cells = kcell.b;
-			return A4(author$project$Pipe$renderStackCell, id, attributes, orientation, cells);
-	}
-};
-var author$project$Pipe$renderStackCell = F4(
-	function (id, attributes, orientation, cells) {
-		return A2(
-			elm$html$Html$div,
-			A2(
-				elm$core$List$cons,
-				A2(elm$html$Html$Attributes$style, 'margin', '0'),
-				author$project$Pipe$liftAttr(attributes)),
-			_List_fromArray(
-				[
-					A2(
-					elm$html$Html$div,
-					_List_fromArray(
-						[
-							A2(elm$html$Html$Attributes$style, 'margin', '3px 20px'),
-							elm$html$Html$Attributes$id(id)
-						]),
-					A2(elm$core$List$map, author$project$Pipe$renderCell, cells))
-				]));
-	});
-var author$project$Pipe$view = function (pipe) {
-	var cellRoot = pipe.xform(pipe.root);
-	return author$project$Pipe$renderCell(cellRoot);
-};
 var elm$browser$Browser$element = _Browser_element;
 var elm$core$Platform$Sub$batch = _Platform_batch;
 var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
-var author$project$Pipe$pipeProgram = F3(
-	function (root, xform, appUpdate) {
+var author$project$Runtime$program = F2(
+	function (appModel, xform) {
 		var update = F2(
-			function (msg, pipe) {
-				return A3(author$project$Pipe$pipeUpdate, appUpdate, msg, pipe);
+			function (msg, model) {
+				return A2(author$project$Runtime$runtimeUpdate, msg, model);
 			});
 		var init = function (_n1) {
 			return _Utils_Tuple2(
-				{root: root, xform: xform},
+				{appModel: appModel, xform: xform},
 				elm$core$Platform$Cmd$none);
 		};
 		return elm$browser$Browser$element(
@@ -5665,14 +5205,287 @@ var author$project$Pipe$pipeProgram = F3(
 					return elm$core$Platform$Sub$none;
 				},
 				update: update,
-				view: author$project$Pipe$view
+				view: author$project$Runtime$view
 			});
 	});
-var author$project$Demo$main = A3(author$project$Pipe$pipeProgram, author$project$Demo$root, author$project$Demo$xform, author$project$Demo$appUpdate);
-_Platform_export({'Demo':{'init':author$project$Demo$main(
+var author$project$Structure$IntProperty = F2(
+	function (a, b) {
+		return {$: 'IntProperty', a: a, b: b};
+	});
+var author$project$Structure$Mandatory = F2(
+	function (a, b) {
+		return {$: 'Mandatory', a: a, b: b};
+	});
+var author$project$Structure$Node = F3(
+	function (a, b, c) {
+		return {$: 'Node', a: a, b: b, c: c};
+	});
+var author$project$Structure$OneToN = F2(
+	function (a, b) {
+		return {$: 'OneToN', a: a, b: b};
+	});
+var author$project$Structure$StringProperty = F2(
+	function (a, b) {
+		return {$: 'StringProperty', a: a, b: b};
+	});
+var author$project$Structure$ZeroToN = F2(
+	function (a, b) {
+		return {$: 'ZeroToN', a: a, b: b};
+	});
+var author$project$StateMachine$stateMachine = A3(
+	author$project$Structure$Node,
+	'StateMachine',
+	_List_fromArray(
+		[
+			A2(author$project$Structure$StringProperty, 'name', 'MyStatemachine'),
+			A2(author$project$Structure$IntProperty, 'numOfStates', 0)
+		]),
+	_List_fromArray(
+		[
+			A2(author$project$Structure$OneToN, 'states', _List_Nil),
+			A2(author$project$Structure$ZeroToN, 'events', _List_Nil),
+			A2(
+			author$project$Structure$Mandatory,
+			'startState',
+			A3(
+				author$project$Structure$Node,
+				'State',
+				_List_fromArray(
+					[
+						A2(author$project$Structure$StringProperty, 'name', 'startState')
+					]),
+				_List_Nil))
+		]));
+var author$project$Structure$Leaf = F3(
+	function (a, b, c) {
+		return {$: 'Leaf', a: a, b: b, c: c};
+	});
+var author$project$Editor$inputCell = F2(
+	function (properties, text) {
+		return A3(author$project$Structure$Leaf, 'input', properties, text);
+	});
+var author$project$Structure$Optional = F2(
+	function (a, b) {
+		return {$: 'Optional', a: a, b: b};
+	});
+var author$project$Editor$addIds = F2(
+	function (traitId, node) {
+		if (node.$ === 'Node') {
+			var nodeId = node.a;
+			var properties = node.b;
+			var traits = node.c;
+			var idNew = traitId + ('_' + nodeId);
+			return A3(
+				author$project$Structure$Node,
+				idNew,
+				properties,
+				A2(
+					elm$core$List$map,
+					author$project$Editor$addTraitIds(idNew),
+					traits));
+		} else {
+			var leafId = node.a;
+			var properties = node.b;
+			var text = node.c;
+			var idNew = traitId + ('_' + leafId);
+			return A3(author$project$Structure$Leaf, idNew, properties, text);
+		}
+	});
+var author$project$Editor$addTraitIds = F2(
+	function (parentId, trait) {
+		switch (trait.$) {
+			case 'None':
+				return trait;
+			case 'Optional':
+				if (trait.b.$ === 'Nothing') {
+					var localId = trait.a;
+					var _n1 = trait.b;
+					return A2(author$project$Structure$Optional, parentId + (':' + localId), elm$core$Maybe$Nothing);
+				} else {
+					var traitId = trait.a;
+					var node = trait.b.a;
+					var traitIdNew = parentId + (':' + traitId);
+					return A2(
+						author$project$Structure$Optional,
+						traitIdNew,
+						elm$core$Maybe$Just(
+							A2(author$project$Editor$addIds, traitIdNew, node)));
+				}
+			case 'Mandatory':
+				var traitId = trait.a;
+				var node = trait.b;
+				var traitIdNew = parentId + (':' + traitId);
+				return A2(
+					author$project$Structure$Mandatory,
+					traitIdNew,
+					A2(author$project$Editor$addIds, traitIdNew, node));
+			case 'ZeroToN':
+				var traitId = trait.a;
+				var children = trait.b;
+				var traitIdNew = parentId + (':' + traitId);
+				return A2(
+					author$project$Structure$ZeroToN,
+					traitIdNew,
+					A2(
+						elm$core$List$map,
+						author$project$Editor$addIds(traitIdNew),
+						children));
+			default:
+				var traitId = trait.a;
+				var children = trait.b;
+				var traitIdNew = parentId + (':' + traitId);
+				return A2(
+					author$project$Structure$OneToN,
+					traitIdNew,
+					A2(
+						elm$core$List$map,
+						author$project$Editor$addIds(traitIdNew),
+						children));
+		}
+	});
+var author$project$Editor$rootCell = function (traits) {
+	return A3(
+		author$project$Structure$Node,
+		'root',
+		_List_Nil,
+		A2(
+			elm$core$List$map,
+			author$project$Editor$addTraitIds('root'),
+			traits));
+};
+var author$project$Editor$constantCell = F2(
+	function (properties, text) {
+		return A3(author$project$Structure$Leaf, 'constant', properties, text);
+	});
+var author$project$Structure$None = {$: 'None'};
+var author$project$StateMachine$xformStateMachineProperties = function (property) {
+	_n0$2:
+	while (true) {
+		switch (property.$) {
+			case 'StringProperty':
+				if (property.a === 'name') {
+					var value = property.b;
+					return A2(
+						author$project$Structure$Mandatory,
+						'main',
+						A2(author$project$Editor$inputCell, _List_Nil, value));
+				} else {
+					break _n0$2;
+				}
+			case 'IntProperty':
+				if (property.a === 'numOfStates') {
+					var value = property.b;
+					return A2(
+						author$project$Structure$Mandatory,
+						'numOfStates',
+						A2(
+							author$project$Editor$constantCell,
+							_List_Nil,
+							elm$core$String$fromInt(value)));
+				} else {
+					break _n0$2;
+				}
+			default:
+				break _n0$2;
+		}
+	}
+	return author$project$Structure$None;
+};
+var author$project$Editor$vertStackCell = F2(
+	function (properties, traits) {
+		return A3(author$project$Structure$Node, 'vStack', properties, traits);
+	});
+var author$project$StateMachine$xformStateMachineTraits = function (trait) {
+	_n0$3:
+	while (true) {
+		switch (trait.$) {
+			case 'OneToN':
+				if (trait.a === 'states') {
+					var states = trait.b;
+					return A2(
+						author$project$Structure$ZeroToN,
+						'states',
+						_List_fromArray(
+							[
+								A2(author$project$Editor$vertStackCell, _List_Nil, _List_Nil)
+							]));
+				} else {
+					break _n0$3;
+				}
+			case 'ZeroToN':
+				if (trait.a === 'events') {
+					var events = trait.b;
+					return A2(
+						author$project$Structure$ZeroToN,
+						'events',
+						_List_fromArray(
+							[
+								A2(
+								author$project$Editor$vertStackCell,
+								_List_Nil,
+								_List_fromArray(
+									[
+										A2(
+										author$project$Structure$Mandatory,
+										'eventsKeyword',
+										A2(author$project$Editor$constantCell, _List_Nil, 'events')),
+										A2(
+										author$project$Structure$OneToN,
+										'main',
+										_List_fromArray(
+											[
+												A2(author$project$Editor$vertStackCell, _List_Nil, _List_Nil)
+											])),
+										A2(
+										author$project$Structure$Mandatory,
+										'endKeyword',
+										A2(author$project$Editor$constantCell, _List_Nil, 'end'))
+									]))
+							]));
+				} else {
+					break _n0$3;
+				}
+			case 'Mandatory':
+				if (trait.a === 'startState') {
+					var startState = trait.b;
+					return author$project$Structure$None;
+				} else {
+					break _n0$3;
+				}
+			default:
+				break _n0$3;
+		}
+	}
+	return author$project$Structure$None;
+};
+var author$project$StateMachine$xformStateMachine = function (root) {
+	if (root.$ === 'Node') {
+		var id = root.a;
+		var properties = root.b;
+		var traits = root.c;
+		return author$project$Editor$rootCell(
+			_Utils_ap(
+				A2(elm$core$List$map, author$project$StateMachine$xformStateMachineProperties, properties),
+				A2(elm$core$List$map, author$project$StateMachine$xformStateMachineTraits, traits)));
+	} else {
+		var id = root.a;
+		var properties = root.b;
+		var text = root.c;
+		return author$project$Editor$rootCell(
+			_List_fromArray(
+				[
+					A2(
+					author$project$Structure$Mandatory,
+					'main',
+					A2(author$project$Editor$inputCell, _List_Nil, text))
+				]));
+	}
+};
+var author$project$StateMachine$main = A2(author$project$Runtime$program, author$project$StateMachine$stateMachine, author$project$StateMachine$xformStateMachine);
+_Platform_export({'StateMachine':{'init':author$project$StateMachine$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
 
-var app = Elm.Demo.init({ node: document.getElementById("elm-f0111bc4e658d0f98db96260c16f7e49") });
+var app = Elm.StateMachine.init({ node: document.getElementById("elm-f0111bc4e658d0f98db96260c16f7e49") });
 if (document.getElementById("elm-f0111bc4e658d0f98db96260c16f7e49"))
 {
   document.getElementById("elm-f0111bc4e658d0f98db96260c16f7e49").innerText = 'This is a headless program, meaning there is nothing to show here.\n\nI started the program anyway though, and you can access it as `app` in the developer console.';
