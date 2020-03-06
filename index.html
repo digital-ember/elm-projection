@@ -4851,8 +4851,8 @@ var author$project$Editor$viewCell = function (cell) {
 	return _Debug_todo(
 		'Editor',
 		{
-			start: {line: 44, column: 5},
-			end: {line: 44, column: 15}
+			start: {line: 53, column: 5},
+			end: {line: 53, column: 15}
 		})('todo');
 };
 var author$project$Runtime$NoOp = {$: 'NoOp'};
@@ -5208,21 +5208,184 @@ var author$project$Runtime$program = F2(
 				view: author$project$Runtime$view
 			});
 	});
-var author$project$Structure$Node = F4(
-	function (a, b, c, d) {
-		return {$: 'Node', a: a, b: b, c: c, d: d};
+var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
+var author$project$Structure$addProperties = F2(
+	function (properties, node) {
+		return node;
 	});
-var author$project$Structure$Text = function (a) {
-	return {$: 'Text', a: a};
+var author$project$Structure$StringProperty = function (a) {
+	return {$: 'StringProperty', a: a};
 };
+var author$project$Structure$Node = function (a) {
+	return {$: 'Node', a: a};
+};
+var author$project$Structure$NodeI = F4(
+	function (a, b, c, d) {
+		return {$: 'NodeI', a: a, b: b, c: c, d: d};
+	});
+var elm$core$Dict$Black = {$: 'Black'};
+var elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var elm$core$Basics$compare = _Utils_compare;
+var elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var elm$core$Dict$Red = {$: 'Red'};
+var elm$core$Dict$balance = F5(
+	function (color, key, value, left, right) {
+		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
+			var _n1 = right.a;
+			var rK = right.b;
+			var rV = right.c;
+			var rLeft = right.d;
+			var rRight = right.e;
+			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+				var _n3 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var lLeft = left.d;
+				var lRight = left.e;
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Red,
+					key,
+					value,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, lK, lV, lLeft, lRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					color,
+					rK,
+					rV,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, key, value, left, rLeft),
+					rRight);
+			}
+		} else {
+			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
+				var _n5 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var _n6 = left.d;
+				var _n7 = _n6.a;
+				var llK = _n6.b;
+				var llV = _n6.c;
+				var llLeft = _n6.d;
+				var llRight = _n6.e;
+				var lRight = left.e;
+				return A5(
+					elm$core$Dict$RBNode_elm_builtin,
+					elm$core$Dict$Red,
+					lK,
+					lV,
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, llK, llV, llLeft, llRight),
+					A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, key, value, lRight, right));
+			} else {
+				return A5(elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
+			}
+		}
+	});
+var elm$core$Dict$insertHelp = F3(
+	function (key, value, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Red, key, value, elm$core$Dict$RBEmpty_elm_builtin, elm$core$Dict$RBEmpty_elm_builtin);
+		} else {
+			var nColor = dict.a;
+			var nKey = dict.b;
+			var nValue = dict.c;
+			var nLeft = dict.d;
+			var nRight = dict.e;
+			var _n1 = A2(elm$core$Basics$compare, key, nKey);
+			switch (_n1.$) {
+				case 'LT':
+					return A5(
+						elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						A3(elm$core$Dict$insertHelp, key, value, nLeft),
+						nRight);
+				case 'EQ':
+					return A5(elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
+				default:
+					return A5(
+						elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						nLeft,
+						A3(elm$core$Dict$insertHelp, key, value, nRight));
+			}
+		}
+	});
+var elm$core$Dict$insert = F3(
+	function (key, value, dict) {
+		var _n0 = A3(elm$core$Dict$insertHelp, key, value, dict);
+		if ((_n0.$ === 'RBNode_elm_builtin') && (_n0.a.$ === 'Red')) {
+			var _n1 = _n0.a;
+			var k = _n0.b;
+			var v = _n0.c;
+			var l = _n0.d;
+			var r = _n0.e;
+			return A5(elm$core$Dict$RBNode_elm_builtin, elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _n0;
+			return x;
+		}
+	});
+var author$project$Structure$addProperty = F3(
+	function (key, property, _n0) {
+		var _n1 = _n0.a;
+		var name = _n1.a;
+		var id = _n1.b;
+		var properties = _n1.c;
+		var features = _n1.d;
+		return author$project$Structure$Node(
+			A4(
+				author$project$Structure$NodeI,
+				name,
+				id,
+				A3(elm$core$Dict$insert, key, property, properties),
+				features));
+	});
+var author$project$Structure$addText = F3(
+	function (key, value, node) {
+		return A3(
+			author$project$Structure$addProperty,
+			key,
+			author$project$Structure$StringProperty(value),
+			node);
+	});
+var elm$core$Dict$empty = elm$core$Dict$RBEmpty_elm_builtin;
+var author$project$Structure$createNode = function (_n0) {
+	return author$project$Structure$Node(
+		A4(author$project$Structure$NodeI, '', '', elm$core$Dict$empty, _List_Nil));
+};
+var author$project$Editor$constantCell = F2(
+	function (properties, text) {
+		return A3(
+			author$project$Structure$addText,
+			'constant',
+			text,
+			A2(
+				author$project$Structure$addProperties,
+				properties,
+				author$project$Structure$createNode(author$project$Editor$ConstantCell)));
+	});
+var author$project$Editor$RootCell = {$: 'RootCell'};
+var author$project$Structure$Custom = F2(
+	function (a, b) {
+		return {$: 'Custom', a: a, b: b};
+	});
 var author$project$Structure$addToCustomFeature = F3(
-	function (customFeatureKey, child, features) {
-		var _n0 = A3(
+	function (customFeatureKey, _n0, features) {
+		var child = _n0.a;
+		var _n1 = A3(
 			elm$core$List$foldl,
 			F2(
-				function (feature, _n1) {
-					var tChildren = _n1.a;
-					var featuresOther = _n1.b;
+				function (feature, _n2) {
+					var tChildren = _n2.a;
+					var featuresOther = _n2.b;
 					if (feature.$ === 'Custom') {
 						var key = feature.a;
 						var children = feature.b;
@@ -5242,37 +5405,40 @@ var author$project$Structure$addToCustomFeature = F3(
 					[child]),
 				_List_Nil),
 			features);
-		var textChildren = _n0.a;
-		var otherFeatures = _n0.b;
+		var textChildren = _n1.a;
+		var otherFeatures = _n1.b;
 		return A2(
 			elm$core$List$cons,
-			author$project$Structure$Text(textChildren),
+			A2(author$project$Structure$Custom, customFeatureKey, textChildren),
 			otherFeatures);
 	});
 var author$project$Structure$underCustom = F3(
 	function (customFeatureKey, child, _n0) {
-		var name = _n0.a;
-		var idParent = _n0.b;
-		var properties = _n0.c;
-		var features = _n0.d;
-		return A4(
-			author$project$Structure$Node,
-			name,
-			idParent,
-			properties,
-			A3(author$project$Structure$addToCustomFeature, customFeatureKey, child, features));
+		var _n1 = _n0.a;
+		var name = _n1.a;
+		var idParent = _n1.b;
+		var properties = _n1.c;
+		var features = _n1.d;
+		return author$project$Structure$Node(
+			A4(
+				author$project$Structure$NodeI,
+				name,
+				idParent,
+				properties,
+				A3(author$project$Structure$addToCustomFeature, customFeatureKey, child, features)));
 	});
 var author$project$Structure$Main = function (a) {
 	return {$: 'Main', a: a};
 };
 var author$project$Structure$addToMainFeature = F2(
-	function (child, features) {
-		var _n0 = A3(
+	function (_n0, features) {
+		var child = _n0.a;
+		var _n1 = A3(
 			elm$core$List$foldl,
 			F2(
-				function (feature, _n1) {
-					var mChildren = _n1.a;
-					var featuresOther = _n1.b;
+				function (feature, _n2) {
+					var mChildren = _n2.a;
+					var featuresOther = _n2.b;
 					if (feature.$ === 'Main') {
 						var children = feature.a;
 						return _Utils_Tuple2(
@@ -5289,8 +5455,8 @@ var author$project$Structure$addToMainFeature = F2(
 					[child]),
 				_List_Nil),
 			features);
-		var mainChildren = _n0.a;
-		var otherFeatures = _n0.b;
+		var mainChildren = _n1.a;
+		var otherFeatures = _n1.b;
 		return A2(
 			elm$core$List$cons,
 			author$project$Structure$Main(mainChildren),
@@ -5298,25 +5464,31 @@ var author$project$Structure$addToMainFeature = F2(
 	});
 var author$project$Structure$underMain = F2(
 	function (child, _n0) {
-		var name = _n0.a;
-		var idParent = _n0.b;
-		var properties = _n0.c;
-		var features = _n0.d;
-		return A4(
-			author$project$Structure$Node,
-			name,
-			idParent,
-			properties,
-			A2(author$project$Structure$addToMainFeature, child, features));
+		var _n1 = _n0.a;
+		var name = _n1.a;
+		var idParent = _n1.b;
+		var properties = _n1.c;
+		var features = _n1.d;
+		return author$project$Structure$Node(
+			A4(
+				author$project$Structure$NodeI,
+				name,
+				idParent,
+				properties,
+				A2(author$project$Structure$addToMainFeature, child, features)));
 	});
+var author$project$Structure$Text = function (a) {
+	return {$: 'Text', a: a};
+};
 var author$project$Structure$addToTextFeature = F2(
-	function (child, features) {
-		var _n0 = A3(
+	function (_n0, features) {
+		var child = _n0.a;
+		var _n1 = A3(
 			elm$core$List$foldl,
 			F2(
-				function (feature, _n1) {
-					var tChildren = _n1.a;
-					var featuresOther = _n1.b;
+				function (feature, _n2) {
+					var tChildren = _n2.a;
+					var featuresOther = _n2.b;
 					if (feature.$ === 'Text') {
 						var children = feature.a;
 						return _Utils_Tuple2(
@@ -5333,8 +5505,8 @@ var author$project$Structure$addToTextFeature = F2(
 					[child]),
 				_List_Nil),
 			features);
-		var textChildren = _n0.a;
-		var otherFeatures = _n0.b;
+		var textChildren = _n1.a;
+		var otherFeatures = _n1.b;
 		return A2(
 			elm$core$List$cons,
 			author$project$Structure$Text(textChildren),
@@ -5342,26 +5514,46 @@ var author$project$Structure$addToTextFeature = F2(
 	});
 var author$project$Structure$underText = F2(
 	function (child, _n0) {
-		var name = _n0.a;
-		var idParent = _n0.b;
-		var properties = _n0.c;
-		var features = _n0.d;
-		return A4(
-			author$project$Structure$Node,
-			name,
-			idParent,
-			properties,
-			A2(author$project$Structure$addToTextFeature, child, features));
+		var _n1 = _n0.a;
+		var name = _n1.a;
+		var idParent = _n1.b;
+		var properties = _n1.c;
+		var features = _n1.d;
+		return author$project$Structure$Node(
+			A4(
+				author$project$Structure$NodeI,
+				name,
+				idParent,
+				properties,
+				A2(author$project$Structure$addToTextFeature, child, features)));
 	});
 var author$project$Structure$addFeature = F2(
 	function (feature, parent) {
 		switch (feature.$) {
 			case 'Main':
 				var children = feature.a;
-				return A3(elm$core$List$foldl, author$project$Structure$underMain, parent, children);
+				return A3(
+					elm$core$List$foldl,
+					author$project$Structure$underMain,
+					parent,
+					A2(
+						elm$core$List$map,
+						function (ni) {
+							return author$project$Structure$Node(ni);
+						},
+						children));
 			case 'Text':
 				var children = feature.a;
-				return A3(elm$core$List$foldl, author$project$Structure$underText, parent, children);
+				return A3(
+					elm$core$List$foldl,
+					author$project$Structure$underText,
+					parent,
+					A2(
+						elm$core$List$map,
+						function (ni) {
+							return author$project$Structure$Node(ni);
+						},
+						children));
 			default:
 				var id = feature.a;
 				var children = feature.b;
@@ -5369,16 +5561,17 @@ var author$project$Structure$addFeature = F2(
 					elm$core$List$foldl,
 					author$project$Structure$underCustom(id),
 					parent,
-					children);
+					A2(
+						elm$core$List$map,
+						function (ni) {
+							return author$project$Structure$Node(ni);
+						},
+						children));
 		}
 	});
 var author$project$Structure$addFeatures = F2(
 	function (features, parent) {
 		return A3(elm$core$List$foldl, author$project$Structure$addFeature, parent, features);
-	});
-var author$project$Structure$Custom = F2(
-	function (a, b) {
-		return {$: 'Custom', a: a, b: b};
 	});
 var author$project$Structure$addFeatureIds = F2(
 	function (parentId, feature) {
@@ -5417,7 +5610,7 @@ var author$project$Structure$addIds = F3(
 		var features = _n0.d;
 		var idNew = path + ('_' + (name + elm$core$String$fromInt(index)));
 		return A4(
-			author$project$Structure$Node,
+			author$project$Structure$NodeI,
 			name,
 			idNew,
 			properties,
@@ -5427,40 +5620,22 @@ var author$project$Structure$addIds = F3(
 				features));
 	});
 var author$project$Structure$addPaths = function (_n0) {
-	var name = _n0.a;
-	var rootId = _n0.b;
-	var properties = _n0.c;
-	var features = _n0.d;
+	var _n1 = _n0.a;
+	var name = _n1.a;
+	var rootId = _n1.b;
+	var properties = _n1.c;
+	var features = _n1.d;
 	var rootId2 = (rootId === '') ? 'root' : rootId;
-	return A4(
-		author$project$Structure$Node,
-		name,
-		rootId2,
-		properties,
-		A2(
-			elm$core$List$map,
-			author$project$Structure$addFeatureIds(rootId2),
-			features));
-};
-var author$project$Structure$addProperty = F2(
-	function (property, _n0) {
-		var name = _n0.a;
-		var id = _n0.b;
-		var properties = _n0.c;
-		var features = _n0.d;
-		return A4(
-			author$project$Structure$Node,
+	return author$project$Structure$Node(
+		A4(
+			author$project$Structure$NodeI,
 			name,
-			id,
-			A2(elm$core$List$cons, property, properties),
-			features);
-	});
-var author$project$Structure$addProperties = F2(
-	function (properties, node) {
-		return A3(elm$core$List$foldl, author$project$Structure$addProperty, node, properties);
-	});
-var author$project$Structure$createNode = function (name) {
-	return A4(author$project$Structure$Node, name, '', _List_Nil, _List_Nil);
+			rootId2,
+			properties,
+			A2(
+				elm$core$List$map,
+				author$project$Structure$addFeatureIds(rootId2),
+				features)));
 };
 var author$project$Editor$rootCell = F2(
 	function (properties, features) {
@@ -5471,68 +5646,178 @@ var author$project$Editor$rootCell = F2(
 				A2(
 					author$project$Structure$addProperties,
 					properties,
-					author$project$Structure$createNode('root'))));
+					author$project$Structure$createNode(author$project$Editor$RootCell))));
 	});
-var author$project$StateMachine$xformStateMachineProperties = function (property) {
-	return _Debug_todo(
-		'StateMachine',
-		{
-			start: {line: 39, column: 5},
-			end: {line: 39, column: 15}
-		})('todo');
+var author$project$Editor$StackCell = function (a) {
+	return {$: 'StackCell', a: a};
 };
-var author$project$StateMachine$xformStateMachineTraits = function (trait) {
-	return _Debug_todo(
-		'StateMachine',
-		{
-			start: {line: 54, column: 5},
-			end: {line: 54, column: 15}
-		})('todo');
-};
-var author$project$Structure$featuresOf = function (_n0) {
-	var feats = _n0.d;
-	return feats;
-};
+var author$project$Editor$Vert = {$: 'Vert'};
+var author$project$Editor$vertStackCell = F2(
+	function (properties, features) {
+		return A2(
+			author$project$Structure$addFeatures,
+			features,
+			A2(
+				author$project$Structure$addProperties,
+				properties,
+				author$project$Structure$createNode(
+					author$project$Editor$StackCell(author$project$Editor$Vert))));
+	});
+var author$project$Editor$InputCell = {$: 'InputCell'};
+var author$project$Editor$inputCell = F2(
+	function (properties, text) {
+		return A3(
+			author$project$Structure$addText,
+			'input',
+			text,
+			A2(
+				author$project$Structure$addProperties,
+				properties,
+				author$project$Structure$createNode(author$project$Editor$InputCell)));
+	});
 var author$project$Structure$propertiesOf = function (_n0) {
-	var props = _n0.c;
+	var _n1 = _n0.a;
+	var props = _n1.c;
 	return props;
 };
-var author$project$StateMachine$editor = function (node) {
-	return A2(
-		author$project$Editor$rootCell,
-		A2(
-			elm$core$List$map,
-			author$project$StateMachine$xformStateMachineProperties,
-			author$project$Structure$propertiesOf(node)),
-		A2(
-			elm$core$List$map,
-			author$project$StateMachine$xformStateMachineTraits,
-			author$project$Structure$featuresOf(node)));
+var elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _n1 = A2(elm$core$Basics$compare, targetKey, key);
+				switch (_n1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var author$project$Structure$propertyStringValueOf = F2(
+	function (node, key) {
+		var props = author$project$Structure$propertiesOf(node);
+		return A2(
+			elm$core$Maybe$andThen,
+			function (prop) {
+				if (prop.$ === 'StringProperty') {
+					var v = prop.a;
+					return elm$core$Maybe$Just(v);
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			},
+			A2(elm$core$Dict$get, key, props));
+	});
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var author$project$StateMachine$editorEvent = function (event) {
+	var text = A2(
+		elm$core$Maybe$withDefault,
+		'',
+		A2(author$project$Structure$propertyStringValueOf, event, 'name'));
+	return A2(author$project$Editor$inputCell, _List_Nil, text);
 };
-var author$project$Structure$IntProperty = F2(
-	function (a, b) {
-		return {$: 'IntProperty', a: a, b: b};
+var author$project$Structure$getUnderCustom = F2(
+	function (customFeatureKey, _n0) {
+		var _n1 = _n0.a;
+		var features = _n1.d;
+		return A3(
+			elm$core$List$foldl,
+			F2(
+				function (feature, mChildren) {
+					if (feature.$ === 'Custom') {
+						var key = feature.a;
+						var children = feature.b;
+						return _Utils_eq(key, customFeatureKey) ? _Utils_ap(
+							mChildren,
+							A2(
+								elm$core$List$map,
+								function (ni) {
+									return author$project$Structure$Node(ni);
+								},
+								children)) : mChildren;
+					} else {
+						return mChildren;
+					}
+				}),
+			_List_Nil,
+			features);
 	});
+var author$project$Structure$underMainRange = F2(
+	function (children, parent) {
+		return A3(elm$core$List$foldl, author$project$Structure$underMain, parent, children);
+	});
+var author$project$StateMachine$editor = function (sm) {
+	return A3(
+		author$project$Structure$underCustom,
+		'events',
+		A3(
+			author$project$Structure$underCustom,
+			'end',
+			A2(author$project$Editor$constantCell, _List_Nil, 'end'),
+			A2(
+				author$project$Structure$underMainRange,
+				A2(
+					elm$core$List$map,
+					author$project$StateMachine$editorEvent,
+					A2(author$project$Structure$getUnderCustom, 'root:events', sm)),
+				A3(
+					author$project$Structure$underCustom,
+					'event',
+					A2(author$project$Editor$constantCell, _List_Nil, 'event'),
+					A2(author$project$Editor$vertStackCell, _List_Nil, _List_Nil)))),
+		A2(author$project$Editor$rootCell, _List_Nil, _List_Nil));
+};
+var author$project$StateMachine$Event = {$: 'Event'};
+var author$project$StateMachine$StateMachine = {$: 'StateMachine'};
+var author$project$Structure$IntProperty = function (a) {
+	return {$: 'IntProperty', a: a};
+};
 var author$project$Structure$addInt = F3(
-	function (id, _int, node) {
-		return A2(
+	function (key, value, node) {
+		return A3(
 			author$project$Structure$addProperty,
-			A2(author$project$Structure$IntProperty, id, _int),
+			key,
+			author$project$Structure$IntProperty(value),
 			node);
 	});
-var author$project$Structure$StringProperty = F2(
-	function (a, b) {
-		return {$: 'StringProperty', a: a, b: b};
-	});
-var author$project$Structure$addText = F3(
-	function (id, text, node) {
-		return A2(
-			author$project$Structure$addProperty,
-			A2(author$project$Structure$StringProperty, id, text),
-			node);
-	});
-var author$project$Structure$createRoot = function (name) {
-	return A4(author$project$Structure$Node, name, 'root', _List_Nil, _List_Nil);
+var author$project$Structure$createRoot = function (_n0) {
+	return author$project$Structure$Node(
+		A4(author$project$Structure$NodeI, '', 'root', elm$core$Dict$empty, _List_Nil));
 };
 var author$project$StateMachine$stateMachine = A2(
 	elm$core$Debug$log,
@@ -5545,7 +5830,7 @@ var author$project$StateMachine$stateMachine = A2(
 				author$project$Structure$addText,
 				'name',
 				'doorClosed',
-				author$project$Structure$createNode('Event')),
+				author$project$Structure$createNode(author$project$StateMachine$Event)),
 			A3(
 				author$project$Structure$addInt,
 				'maxNumOfStates',
@@ -5554,7 +5839,7 @@ var author$project$StateMachine$stateMachine = A2(
 					author$project$Structure$addText,
 					'name',
 					'MyStateMachine',
-					author$project$Structure$createRoot('StateMachine'))))));
+					author$project$Structure$createRoot(author$project$StateMachine$StateMachine))))));
 var author$project$StateMachine$main = A2(author$project$Runtime$program, author$project$StateMachine$stateMachine, author$project$StateMachine$editor);
 _Platform_export({'StateMachine':{'init':author$project$StateMachine$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));

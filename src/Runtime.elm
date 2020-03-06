@@ -6,9 +6,9 @@ import Maybe exposing (..)
 import Html exposing (..)
 import Browser exposing (..)
 
-type alias Model =
-    { appModel : Node
-    , xform : Node -> Node
+type alias Model a =
+    { appModel : Node a
+    , xform : Node a -> (Node Cell)
     }
 
 
@@ -16,7 +16,7 @@ type Msg
     = NoOp
 
 
-program : Node -> (Node -> Node) -> Program () Model Msg 
+program : Node a -> (Node a -> Node Cell) -> Program () (Model a) Msg 
 program appModel xform =
     let
         init () =
@@ -33,12 +33,12 @@ program appModel xform =
             }
 
 
-runtimeUpdate : Msg -> Model -> ( Model, Cmd Msg )
+runtimeUpdate : Msg -> Model a -> ( Model a, Cmd Msg )
 runtimeUpdate msg model =
     ( model, Cmd.none )
 
 
-view : Model -> Html Msg
+view : Model a -> Html Msg
 view model =
     let
         cellRoot =

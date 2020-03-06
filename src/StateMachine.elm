@@ -6,34 +6,48 @@ import Runtime exposing(..)
 
 type Msg
     = NoOp
-    | ChangeStateMachineName Node String
-    | InsertEventAfter Node
-    | UpdateEventName Node String
-    | DeleteEvent Node
+    | ChangeStateMachineName (Node StateMachine) String
+    | InsertEventAfter (Node Event)
+    | UpdateEventName (Node Event) String
+    | DeleteEvent (Node Event)
     --| MoveUpEvent Node
     --| MoveDownEvent Node
 
 
-stateMachine : Node
+type StateMachine = StateMachine
+
+type Event = Event
+
+
+stateMachine : Node StateMachine
 stateMachine =
-    createRoot "StateMachine"
+    createRoot StateMachine
         |> addText "name" "MyStateMachine"
         |> addInt "maxNumOfStates" 0
         |> underCustom "events" 
-            ( createNode "Event"
+            ( createNode Event
                 |> addText "name" "doorClosed"
             )
         |> addPaths 
         |> Debug.log "stateMachine"
 
 
-editor : Node -> Node
-editor node = 
-    rootCell
-        (propertiesOf node |> List.map xformStateMachineProperties)
-        (featuresOf node |> List.map xformStateMachineTraits)
+editor : Node StateMachine -> Node Cell 
+editor sm = 
+    rootCell [] []
+      |> underCustom "events"
+          ( vertStackCell [] [] 
+              |> underCustom "event"
+                ( constantCell [] "event" )
+              
+              |> underMainRange 
+                ( List.map editorEvent (getUnderCustom "root:events" sm) )
 
+              |> underCustom "end"
+                ( constantCell [] "end" )
+          )
 
+ 
 xformStateMachineProperties : Property -> Property
 xformStateMachineProperties property =
     Debug.todo "todo"
@@ -49,10 +63,15 @@ xformStateMachineProperties property =
             None -}
 
 
-xformStateMachineTraits : Feature -> Feature
-xformStateMachineTraits trait =
-    Debug.todo "todo"
-   {- case trait of
+editorEvent : Node Event -> Node Cell
+editorEvent event =
+    let
+      text = propertyStringValueOf event "name" |> Maybe.withDefault ""
+    in
+      inputCell [] text
+    
+{-
+     case trait of
         OneToN "states" states ->
             ZeroToN "states"
                 [ vertStackCell []
@@ -81,5 +100,6 @@ xformStateMachineTraits trait =
         _ ->
             None
 -}
+
 main =
     program stateMachine editor
