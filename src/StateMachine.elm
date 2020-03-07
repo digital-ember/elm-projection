@@ -1,8 +1,9 @@
-module StateMachine exposing(..)
+module StateMachine exposing (..)
 
-import Structure exposing(..)
-import Editor exposing(..)
-import Runtime exposing(..)
+import Structure exposing (..)
+import Editor exposing (..)
+import Runtime exposing (..)
+
 
 type Msg
     = NoOp
@@ -10,13 +11,19 @@ type Msg
     | InsertEventAfter (Node Event)
     | UpdateEventName (Node Event) String
     | DeleteEvent (Node Event)
-    --| MoveUpEvent Node
-    --| MoveDownEvent Node
 
 
-type StateMachine = StateMachine
 
-type Event = Event
+--| MoveUpEvent Node
+--| MoveDownEvent Node
+
+
+type StateMachine
+    = StateMachine
+
+
+type Event
+    = Event
 
 
 stateMachine : Node StateMachine
@@ -24,82 +31,32 @@ stateMachine =
     createRoot StateMachine
         |> addText "name" "MyStateMachine"
         |> addInt "maxNumOfStates" 0
-        |> underCustom "events" 
-            ( createNode Event
+        |> addToCustom "events"
+            (createNode "Event" Event
                 |> addText "name" "doorClosed"
             )
-        |> addPaths 
         |> Debug.log "stateMachine"
 
 
-editor : Node StateMachine -> Node Cell 
-editor sm = 
-    rootCell [] []
-      |> underCustom "events"
-          ( vertStackCell [] [] 
-              |> underCustom "event"
-                ( constantCell [] "event" )
-              
-              |> underMainRange 
-                ( List.map editorEvent (getUnderCustom "root:events" sm) )
+editor : Node StateMachine -> Node Cell
+editor sm =
+    createRootCell
+        |> vertStackCell
+            |> constantCell "event"
+            |> range (editorEvents sm)
+            |> constantCell "end"
+             
 
-              |> underCustom "end"
-                ( constantCell [] "end" )
-          )
-
- 
-xformStateMachineProperties : Property -> Property
-xformStateMachineProperties property =
-    Debug.todo "todo"
-    {-
-    case property of
-        StringProperty "name" value -> 
-            StringProperty 
-
-        IntProperty "numOfStates" value ->
-            Mandatory "numOfStates" <| constantCell [] (String.fromInt value)
-
-        _ ->
-            None -}
+editorEvents : Node StateMachine -> List (Node Cell)
+editorEvents sm =
+    List.map editorEvent (getUnderCustom "events" sm |> Maybe.withDefault [])
 
 
 editorEvent : Node Event -> Node Cell
 editorEvent event =
-    let
-      text = propertyStringValueOf event "name" |> Maybe.withDefault ""
-    in
-      inputCell [] text
-    
-{-
-     case trait of
-        OneToN "states" states ->
-            ZeroToN "states"
-                [ vertStackCell []
-                    [-- map xformState
-                    ]
-                ]
+    inputCell (propertyStringValueOf event "name" |> Maybe.withDefault "")
 
-        ZeroToN "events" events ->
-            ZeroToN "events"
-                [ vertStackCell []
-                    [ Mandatory "eventsKeyword" <|
-                        constantCell [] "events"
-                    , OneToN "main" <|
-                        [ vertStackCell []
-                            [-- map eventName
-                            ]
-                        ]
-                    , Mandatory "endKeyword" <|
-                        constantCell [] "end"
-                    ]
-                ]
 
-        Mandatory "startState" startState ->
-            None
-
-        _ ->
-            None
--}
-
+main : Program () (Model StateMachine) Runtime.Msg
 main =
     program stateMachine editor
