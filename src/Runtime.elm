@@ -38,7 +38,7 @@ runtimeUpdate msg model =
     ( model, Cmd.none )
 
 
-view : Model a -> Html Msg
+view : Model a -> Html Msg 
 view model =
     let
         cellRoot =

@@ -4,7 +4,7 @@ import Structure exposing (..)
 import Html exposing (..)
 
 
-type Cell
+type Cell 
     = RootCell
     | StackCell Orientation
     | ConstantCell
@@ -28,13 +28,13 @@ constantCell : String -> Node Cell -> Node Cell
 constantCell text parent =
     parent 
       |> addToDefault 
-        ( createNode "constantCell" ConstantCell
-            |> addText "constant" text
+        ( createNode ConstantCell
+            |> addText "constant" text 
         )
 
 inputCell : String -> Node Cell
 inputCell text =
-    createNode "inputCell" InputCell
+    createNode InputCell
         |> addText "input" text
     
 
@@ -42,7 +42,7 @@ vertStackCell : Node Cell -> Node Cell
 vertStackCell parent =
     parent 
       |> addToDefault 
-          ( createNode "vertStackCell" (StackCell Vert) )
+          ( createNode (StackCell Vert) )
 
 range : List (Node Cell) -> Node Cell -> Node Cell
 range children parent =
@@ -66,25 +66,25 @@ viewCell cell =
     in
       div [] htmlContent
         
-        
+         
 
 
 viewContent : Node Cell -> Html Msg
 viewContent cell =
-  case cell of
-      Node RootCell ->
+  case isaOf cell of
+      RootCell ->
           text "rootCell"
   
-      Node (StackCell orientation) ->
+      (StackCell orientation) ->
           text "stackCell"
 
 
-      Node ConstantCell ->
+      ConstantCell ->
 
           text "constantCell"
 
 
-      Node InputCell -> 
+      InputCell -> 
 
           text "inputCell"
 

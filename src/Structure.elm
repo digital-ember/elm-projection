@@ -2,23 +2,20 @@ module Structure
     exposing
         ( Node
         , Property
+        , isaOf
         , propertiesOf
         , propertyStringValueOf
         , propertyIntValueOf
         , propertyBoolValueOf
         , createRoot
         , createNode
+        , addText, addInt, addBool
         , addProperty
         , addProperties
-        , addText
-        , addInt
-        , addBool
         , addToDefault
-        , addToText
         , addToCustom
         , addToDefaultRange
         , getUnderDefault
-        , getUnderText
         , getUnderCustom
         )
 
@@ -27,83 +24,85 @@ import Maybe exposing (..)
 
 
 type Node a
-    = Node NodeI
+    = Node
+        { id : String
+        , path : String
+        , isa : a
+        , properties : Dict String Primitive
+        , features : Features a
+        }
 
 
-type NodeI
-    = NodeI String String (Dict String Property) Features
-
-
-type alias Features =
-    { default : Maybe (List NodeI)
-    , text : Maybe (List NodeI)
-    , custom : Dict String (List NodeI)
+type alias Features a =
+    { default : Maybe (List (Node a))
+    , custom : Dict String (List (Node a))
     }
 
 
-type Property
-    = IntProperty Int
-    | StringProperty String
-    | BoolProperty Bool
+type alias Property =
+    ( String, Primitive )
+
+
+type Primitive
+    = PInt Int
+    | PString String
+    | PBool Bool
+
+
+isaOf : Node a -> a
+isaOf (Node {isa}) =
+  isa
+
+propertyValueOf : Node a -> String -> Maybe Primitive
+propertyValueOf (Node { properties }) key =
+    Dict.get key properties
 
 
 propertyStringValueOf : Node a -> String -> Maybe String
 propertyStringValueOf node key =
-    let
-        props =
-            propertiesOf node
-    in
-        Dict.get key props
-            |> Maybe.andThen
-                (\prop ->
-                    case prop of
-                        StringProperty v ->
-                            Just v
+    propertyValueOf node key
+        |> Maybe.andThen
+            (\prop ->
+                case prop of
+                    PString v ->
+                        Just v
 
-                        _ ->
-                            Nothing
-                )
+                    _ ->
+                        Nothing
+            )
 
 
 propertyIntValueOf : Node a -> String -> Maybe Int
 propertyIntValueOf node key =
-    let
-        props =
-            propertiesOf node
-    in
-        Dict.get key props
-            |> Maybe.andThen
-                (\prop ->
-                    case prop of
-                        IntProperty v ->
-                            Just v
+    propertyValueOf node key
+        |> Maybe.andThen
+            (\prop ->
+                case prop of
+                    PInt v ->
+                        Just v
 
-                        _ ->
-                            Nothing
-                )
+                    _ ->
+                        Nothing
+            )
 
 
 propertyBoolValueOf : Node a -> String -> Maybe Bool
 propertyBoolValueOf node key =
-    let
-        props =
-            propertiesOf node
-    in
-        Dict.get key props
-            |> Maybe.andThen
-                (\prop ->
-                    case prop of
-                        BoolProperty v ->
-                            Just v
+    propertyValueOf node key
+        |> Maybe.andThen
+            (\prop ->
+                case prop of
+                    PBool v ->
+                        Just v
 
-                        _ ->
-                            Nothing
-                )
+                    _ ->
+                        Nothing
+            )
 
 
-propertiesOf : Node a -> Dict String Property
-propertiesOf (Node (NodeI _ _ props _)) =
-    props
+propertiesOf : Node a -> Dict String Primitive
+propertiesOf (Node { properties }) =
+    properties
 
 
 
@@ -113,60 +112,62 @@ propertiesOf (Node (NodeI _ _ props _)) =
 -}
 
 
-emptyFeatures : Features
+emptyFeatures : Features a
 emptyFeatures =
     { default = Nothing
-    , text = Nothing
     , custom = Dict.empty
     }
 
 
 createRoot : a -> Node a
-createRoot a =
-    createNode "root" a
+createRoot isa =
+    createNodeInternal "root" isa
 
 
-createNode : String -> a -> Node a
-createNode name _ =
-    Node (NodeI name "" Dict.empty emptyFeatures)
+createNode : a -> Node a
+createNode isa =
+    createNodeInternal "" isa
 
+createNodeInternal : String -> a -> Node a
+createNodeInternal id isa =
+    Node
+        { id = id
+        , isa = isa
+        , path = ""
+        , properties = Dict.empty
+        , features = emptyFeatures
+        }
 
 addText : String -> String -> Node a -> Node a
-addText key value node =
-    addProperty key (StringProperty value) node
-
+addText key text node =
+  addProperty (key, PString text) node
 
 addInt : String -> Int -> Node a -> Node a
 addInt key value node =
-    addProperty key (IntProperty value) node
-
+  addProperty (key, PInt value) node
 
 addBool : String -> Bool -> Node a -> Node a
 addBool key value node =
-    addProperty key (BoolProperty value) node
+  addProperty (key, PBool value) node
 
 
-addProperty : String -> Property -> Node a -> Node a
-addProperty key property (Node (NodeI name id properties features)) =
-    Node (NodeI name id (Dict.insert key property properties) features)
+addProperty : Property -> Node a -> Node a
+addProperty ( key, value ) (Node data) =
+    Node { data | properties = Dict.insert key value data.properties }
 
 
 addProperties : List Property -> Node a -> Node a
 addProperties properties node =
-    node
+    List.foldl addProperty node properties
 
 
-
---List.foldl addProperty node properties
-
-
-addToDefaultRange : List (Node a) -> Node b -> Node b
+addToDefaultRange : List (Node a) -> Node a -> Node a
 addToDefaultRange children parent =
     List.foldl addToDefault parent children
 
 
-addToDefault : Node a -> Node b -> Node b
-addToDefault (Node child) (Node (NodeI name idParent properties features)) =
+addToDefault : Node a -> Node a -> Node a
+addToDefault child (Node ({ features } as data)) =
     let
         featuresNew =
             case features.default of
@@ -176,54 +177,38 @@ addToDefault (Node child) (Node (NodeI name idParent properties features)) =
                 Just children ->
                     { features | default = Just (List.reverse (child :: List.reverse children)) }
     in
-        Node (NodeI name idParent properties featuresNew)
+        Node { data | features = featuresNew }
 
 
-addToText : Node a -> Node b -> Node b
-addToText (Node child) (Node (NodeI name idParent properties features)) =
-    let
-        featuresNew =
-            case features.text of
-                Nothing ->
-                    { features | text = Just ([ child ]) }
-
-                Just children ->
-                    { features | text = Just (List.reverse (child :: List.reverse children)) }
-    in
-        Node (NodeI name idParent properties featuresNew)
-
-
-addToCustom : String -> Node a -> Node b -> Node b
-addToCustom key (Node child) (Node (NodeI name idParent properties ({ custom } as features))) =
+addToCustom : String -> Node a -> Node a -> Node a
+addToCustom key child (Node ({ features } as data)) =
     let
         customNew =
-            case Dict.get key custom of
+            case Dict.get key features.custom of
                 Nothing ->
-                    Dict.insert key [ child ] custom
+                    Dict.insert key [ child ] features.custom
 
                 Just children ->
                     Dict.update key
                         (\mbChildren ->
                             Maybe.andThen (\childrenL -> Just (List.reverse (child :: List.reverse childrenL))) mbChildren
                         )
-                        custom
+                        features.custom
+
+        featuresNew =
+            { features | custom = customNew }
     in
-        Node (NodeI name idParent properties { features | custom = customNew })
+        Node { data | features = featuresNew }
 
 
-getUnderDefault : Node a -> Maybe (List (Node b))
-getUnderDefault (Node (NodeI _ _ _ { default })) =
-    default |> Maybe.andThen (\children -> Just (List.map (\ni -> Node ni) children))
+getUnderDefault : Node a -> Maybe (List (Node a))
+getUnderDefault (Node { features }) =
+    features.default
 
 
-getUnderText : Node a -> Maybe (List (Node b))
-getUnderText (Node (NodeI _ _ _ { text })) =
-    text |> Maybe.andThen (\children -> Just (List.map (\ni -> Node ni) children))
-
-
-getUnderCustom : String -> Node a -> Maybe (List (Node b))
-getUnderCustom key (Node (NodeI _ _ _ { custom })) =
-    Dict.get key custom |> Maybe.andThen (\children -> Just (List.map (\ni -> Node ni) children))
+getUnderCustom : String -> Node a -> Maybe (List (Node a))
+getUnderCustom key (Node { features }) =
+    Dict.get key features.custom
 
 
 
@@ -291,44 +276,4 @@ getUnderCustom key (Node (NodeI _ _ _ { custom })) =
 
 
 cell =
-    Node
-        (NodeI "root"
-            ""
-            (Dict.fromList [])
-            { custom = Dict.fromList []
-            , default =
-                Just
-                    [ NodeI "vertStackCell"
-                        ""
-                        (Dict.fromList [])
-                        { custom = Dict.fromList []
-                        , default =
-                            Just
-                                [ NodeI "constantCell"
-                                    ""
-                                    (Dict.fromList [ ( "constant", StringProperty "event" ) ])
-                                    { custom = Dict.fromList []
-                                    , default = Nothing
-                                    , text = Nothing
-                                    }
-                                , NodeI "inputCell"
-                                    ""
-                                    (Dict.fromList [ ( "input", StringProperty "doorClosed" ) ])
-                                    { custom = Dict.fromList []
-                                    , default = Nothing
-                                    , text = Nothing
-                                    }
-                                , NodeI "constantCell"
-                                    ""
-                                    (Dict.fromList [ ( "constant", StringProperty "end" ) ])
-                                    { custom = Dict.fromList []
-                                    , default = Nothing
-                                    , text = Nothing
-                                    }
-                                ]
-                        , text = Nothing
-                        }
-                    ]
-            , text = Nothing
-            }
-        )
+    ""

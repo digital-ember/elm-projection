@@ -4846,6 +4846,10 @@ var author$project$Runtime$runtimeUpdate = F2(
 	function (msg, model) {
 		return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
 	});
+var author$project$Structure$isaOf = function (_n0) {
+	var isa = _n0.a.isa;
+	return isa;
+};
 var elm$core$Basics$identity = function (x) {
 	return x;
 };
@@ -4864,49 +4868,26 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
-var elm$html$Html$div = _VirtualDom_node('div');
-var author$project$Editor$viewCell = function (cell) {
-	return A2(elm$html$Html$div, _List_Nil, _List_Nil);
-};
-var author$project$Runtime$NoOp = {$: 'NoOp'};
-var elm$core$Debug$log = _Debug_log;
-var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
-var elm$html$Html$map = elm$virtual_dom$VirtualDom$map;
-var author$project$Runtime$view = function (model) {
-	var cellRoot = A2(
-		elm$core$Debug$log,
-		'cell',
-		model.xform(model.appModel));
-	return A2(
-		elm$html$Html$map,
-		function (cellMsg) {
-			return author$project$Runtime$NoOp;
-		},
-		author$project$Editor$viewCell(cellRoot));
-};
-var elm$browser$Browser$External = function (a) {
-	return {$: 'External', a: a};
-};
-var elm$browser$Browser$Internal = function (a) {
-	return {$: 'Internal', a: a};
-};
-var elm$browser$Browser$Dom$NotFound = function (a) {
-	return {$: 'NotFound', a: a};
-};
-var elm$core$Basics$never = function (_n0) {
-	never:
-	while (true) {
-		var nvr = _n0.a;
-		var $temp$_n0 = nvr;
-		_n0 = $temp$_n0;
-		continue never;
+var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var author$project$Editor$viewContent = function (cell) {
+	var _n0 = author$project$Structure$isaOf(cell);
+	switch (_n0.$) {
+		case 'RootCell':
+			return elm$html$Html$text('rootCell');
+		case 'StackCell':
+			var orientation = _n0.a;
+			return elm$html$Html$text('stackCell');
+		case 'ConstantCell':
+			return elm$html$Html$text('constantCell');
+		default:
+			return elm$html$Html$text('inputCell');
 	}
 };
-var elm$core$Task$Perform = function (a) {
-	return {$: 'Perform', a: a};
+var author$project$Structure$getUnderDefault = function (_n0) {
+	var features = _n0.a.features;
+	return features._default;
 };
-var elm$core$Task$succeed = _Scheduler_succeed;
-var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
 var elm$core$List$foldrHelper = F4(
 	function (fn, acc, ctr, ls) {
 		if (!ls.b) {
@@ -4976,6 +4957,61 @@ var elm$core$List$map = F2(
 			_List_Nil,
 			xs);
 	});
+var elm$html$Html$div = _VirtualDom_node('div');
+var author$project$Editor$viewCell = function (cell) {
+	var htmlContent = function () {
+		var _n0 = author$project$Structure$getUnderDefault(cell);
+		if (_n0.$ === 'Nothing') {
+			return _List_fromArray(
+				[
+					elm$html$Html$text('editor empty')
+				]);
+		} else {
+			var content = _n0.a;
+			return A2(elm$core$List$map, author$project$Editor$viewContent, content);
+		}
+	}();
+	return A2(elm$html$Html$div, _List_Nil, htmlContent);
+};
+var author$project$Runtime$NoOp = {$: 'NoOp'};
+var elm$core$Debug$log = _Debug_log;
+var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
+var elm$html$Html$map = elm$virtual_dom$VirtualDom$map;
+var author$project$Runtime$view = function (model) {
+	var cellRoot = A2(
+		elm$core$Debug$log,
+		'cell',
+		model.xform(model.appModel));
+	return A2(
+		elm$html$Html$map,
+		function (cellMsg) {
+			return author$project$Runtime$NoOp;
+		},
+		author$project$Editor$viewCell(cellRoot));
+};
+var elm$browser$Browser$External = function (a) {
+	return {$: 'External', a: a};
+};
+var elm$browser$Browser$Internal = function (a) {
+	return {$: 'Internal', a: a};
+};
+var elm$browser$Browser$Dom$NotFound = function (a) {
+	return {$: 'NotFound', a: a};
+};
+var elm$core$Basics$never = function (_n0) {
+	never:
+	while (true) {
+		var nvr = _n0.a;
+		var $temp$_n0 = nvr;
+		_n0 = $temp$_n0;
+		continue never;
+	}
+};
+var elm$core$Task$Perform = function (a) {
+	return {$: 'Perform', a: a};
+};
+var elm$core$Task$succeed = _Scheduler_succeed;
+var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
 var elm$core$Task$andThen = _Scheduler_andThen;
 var elm$core$Task$map = F2(
 	function (func, taskA) {
@@ -5204,16 +5240,12 @@ var author$project$Runtime$program = F2(
 			});
 	});
 var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
-var author$project$Structure$StringProperty = function (a) {
-	return {$: 'StringProperty', a: a};
+var author$project$Structure$PString = function (a) {
+	return {$: 'PString', a: a};
 };
 var author$project$Structure$Node = function (a) {
 	return {$: 'Node', a: a};
 };
-var author$project$Structure$NodeI = F4(
-	function (a, b, c, d) {
-		return {$: 'NodeI', a: a, b: b, c: c, d: d};
-	});
 var elm$core$Dict$Black = {$: 'Black'};
 var elm$core$Dict$RBNode_elm_builtin = F5(
 	function (a, b, c, d, e) {
@@ -5324,40 +5356,34 @@ var elm$core$Dict$insert = F3(
 			return x;
 		}
 	});
-var author$project$Structure$addProperty = F3(
-	function (key, property, _n0) {
-		var _n1 = _n0.a;
-		var name = _n1.a;
-		var id = _n1.b;
-		var properties = _n1.c;
-		var features = _n1.d;
+var author$project$Structure$addProperty = F2(
+	function (_n0, _n1) {
+		var key = _n0.a;
+		var value = _n0.b;
+		var data = _n1.a;
 		return author$project$Structure$Node(
-			A4(
-				author$project$Structure$NodeI,
-				name,
-				id,
-				A3(elm$core$Dict$insert, key, property, properties),
-				features));
+			_Utils_update(
+				data,
+				{
+					properties: A3(elm$core$Dict$insert, key, value, data.properties)
+				}));
 	});
 var author$project$Structure$addText = F3(
-	function (key, value, node) {
-		return A3(
+	function (key, text, node) {
+		return A2(
 			author$project$Structure$addProperty,
-			key,
-			author$project$Structure$StringProperty(value),
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PString(text)),
 			node);
 	});
 var author$project$Structure$addToDefault = F2(
-	function (_n0, _n1) {
-		var child = _n0.a;
-		var _n2 = _n1.a;
-		var name = _n2.a;
-		var idParent = _n2.b;
-		var properties = _n2.c;
-		var features = _n2.d;
+	function (child, _n0) {
+		var data = _n0.a;
+		var features = data.features;
 		var featuresNew = function () {
-			var _n3 = features._default;
-			if (_n3.$ === 'Nothing') {
+			var _n1 = features._default;
+			if (_n1.$ === 'Nothing') {
 				return _Utils_update(
 					features,
 					{
@@ -5366,7 +5392,7 @@ var author$project$Structure$addToDefault = F2(
 								[child]))
 					});
 			} else {
-				var children = _n3.a;
+				var children = _n1.a;
 				return _Utils_update(
 					features,
 					{
@@ -5380,15 +5406,20 @@ var author$project$Structure$addToDefault = F2(
 			}
 		}();
 		return author$project$Structure$Node(
-			A4(author$project$Structure$NodeI, name, idParent, properties, featuresNew));
+			_Utils_update(
+				data,
+				{features: featuresNew}));
 	});
 var elm$core$Dict$empty = elm$core$Dict$RBEmpty_elm_builtin;
-var author$project$Structure$emptyFeatures = {custom: elm$core$Dict$empty, _default: elm$core$Maybe$Nothing, text: elm$core$Maybe$Nothing};
-var author$project$Structure$createNode = F2(
-	function (name, _n0) {
+var author$project$Structure$emptyFeatures = {custom: elm$core$Dict$empty, _default: elm$core$Maybe$Nothing};
+var author$project$Structure$createNodeInternal = F2(
+	function (id, isa) {
 		return author$project$Structure$Node(
-			A4(author$project$Structure$NodeI, name, '', elm$core$Dict$empty, author$project$Structure$emptyFeatures));
+			{features: author$project$Structure$emptyFeatures, id: id, isa: isa, path: '', properties: elm$core$Dict$empty});
 	});
+var author$project$Structure$createNode = function (isa) {
+	return A2(author$project$Structure$createNodeInternal, '', isa);
+};
 var author$project$Editor$constantCell = F2(
 	function (text, parent) {
 		return A2(
@@ -5397,12 +5428,12 @@ var author$project$Editor$constantCell = F2(
 				author$project$Structure$addText,
 				'constant',
 				text,
-				A2(author$project$Structure$createNode, 'constantCell', author$project$Editor$ConstantCell)),
+				author$project$Structure$createNode(author$project$Editor$ConstantCell)),
 			parent);
 	});
 var author$project$Editor$RootCell = {$: 'RootCell'};
-var author$project$Structure$createRoot = function (a) {
-	return A2(author$project$Structure$createNode, 'root', a);
+var author$project$Structure$createRoot = function (isa) {
+	return A2(author$project$Structure$createNodeInternal, 'root', isa);
 };
 var author$project$Editor$createRootCell = author$project$Structure$createRoot(author$project$Editor$RootCell);
 var author$project$Structure$addToDefaultRange = F2(
@@ -5420,9 +5451,7 @@ var author$project$Editor$Vert = {$: 'Vert'};
 var author$project$Editor$vertStackCell = function (parent) {
 	return A2(
 		author$project$Structure$addToDefault,
-		A2(
-			author$project$Structure$createNode,
-			'vertStackCell',
+		author$project$Structure$createNode(
 			author$project$Editor$StackCell(author$project$Editor$Vert)),
 		parent);
 };
@@ -5432,12 +5461,7 @@ var author$project$Editor$inputCell = function (text) {
 		author$project$Structure$addText,
 		'input',
 		text,
-		A2(author$project$Structure$createNode, 'inputCell', author$project$Editor$InputCell));
-};
-var author$project$Structure$propertiesOf = function (_n0) {
-	var _n1 = _n0.a;
-	var props = _n1.c;
-	return props;
+		author$project$Structure$createNode(author$project$Editor$InputCell));
 };
 var elm$core$Dict$get = F2(
 	function (targetKey, dict) {
@@ -5470,6 +5494,11 @@ var elm$core$Dict$get = F2(
 			}
 		}
 	});
+var author$project$Structure$propertyValueOf = F2(
+	function (_n0, key) {
+		var properties = _n0.a.properties;
+		return A2(elm$core$Dict$get, key, properties);
+	});
 var elm$core$Maybe$andThen = F2(
 	function (callback, maybeValue) {
 		if (maybeValue.$ === 'Just') {
@@ -5481,18 +5510,17 @@ var elm$core$Maybe$andThen = F2(
 	});
 var author$project$Structure$propertyStringValueOf = F2(
 	function (node, key) {
-		var props = author$project$Structure$propertiesOf(node);
 		return A2(
 			elm$core$Maybe$andThen,
 			function (prop) {
-				if (prop.$ === 'StringProperty') {
+				if (prop.$ === 'PString') {
 					var v = prop.a;
 					return elm$core$Maybe$Just(v);
 				} else {
 					return elm$core$Maybe$Nothing;
 				}
 			},
-			A2(elm$core$Dict$get, key, props));
+			A2(author$project$Structure$propertyValueOf, node, key));
 	});
 var elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
@@ -5512,20 +5540,8 @@ var author$project$StateMachine$editorEvent = function (event) {
 };
 var author$project$Structure$getUnderCustom = F2(
 	function (key, _n0) {
-		var _n1 = _n0.a;
-		var custom = _n1.d.custom;
-		return A2(
-			elm$core$Maybe$andThen,
-			function (children) {
-				return elm$core$Maybe$Just(
-					A2(
-						elm$core$List$map,
-						function (ni) {
-							return author$project$Structure$Node(ni);
-						},
-						children));
-			},
-			A2(elm$core$Dict$get, key, custom));
+		var features = _n0.a.features;
+		return A2(elm$core$Dict$get, key, features.custom);
 	});
 var author$project$StateMachine$editorEvents = function (sm) {
 	return A2(
@@ -5550,15 +5566,16 @@ var author$project$StateMachine$editor = function (sm) {
 };
 var author$project$StateMachine$Event = {$: 'Event'};
 var author$project$StateMachine$StateMachine = {$: 'StateMachine'};
-var author$project$Structure$IntProperty = function (a) {
-	return {$: 'IntProperty', a: a};
+var author$project$Structure$PInt = function (a) {
+	return {$: 'PInt', a: a};
 };
 var author$project$Structure$addInt = F3(
 	function (key, value, node) {
-		return A3(
+		return A2(
 			author$project$Structure$addProperty,
-			key,
-			author$project$Structure$IntProperty(value),
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PInt(value)),
 			node);
 	});
 var elm$core$Dict$getMin = function (dict) {
@@ -5935,25 +5952,20 @@ var elm$core$Dict$update = F3(
 		}
 	});
 var author$project$Structure$addToCustom = F3(
-	function (key, _n0, _n1) {
-		var child = _n0.a;
-		var _n2 = _n1.a;
-		var name = _n2.a;
-		var idParent = _n2.b;
-		var properties = _n2.c;
-		var features = _n2.d;
-		var custom = features.custom;
+	function (key, child, _n0) {
+		var data = _n0.a;
+		var features = data.features;
 		var customNew = function () {
-			var _n3 = A2(elm$core$Dict$get, key, custom);
-			if (_n3.$ === 'Nothing') {
+			var _n1 = A2(elm$core$Dict$get, key, features.custom);
+			if (_n1.$ === 'Nothing') {
 				return A3(
 					elm$core$Dict$insert,
 					key,
 					_List_fromArray(
 						[child]),
-					custom);
+					features.custom);
 			} else {
-				var children = _n3.a;
+				var children = _n1.a;
 				return A3(
 					elm$core$Dict$update,
 					key,
@@ -5970,18 +5982,16 @@ var author$project$Structure$addToCustom = F3(
 							},
 							mbChildren);
 					},
-					custom);
+					features.custom);
 			}
 		}();
+		var featuresNew = _Utils_update(
+			features,
+			{custom: customNew});
 		return author$project$Structure$Node(
-			A4(
-				author$project$Structure$NodeI,
-				name,
-				idParent,
-				properties,
-				_Utils_update(
-					features,
-					{custom: customNew})));
+			_Utils_update(
+				data,
+				{features: featuresNew}));
 	});
 var author$project$StateMachine$stateMachine = A2(
 	elm$core$Debug$log,
@@ -5993,7 +6003,7 @@ var author$project$StateMachine$stateMachine = A2(
 			author$project$Structure$addText,
 			'name',
 			'doorClosed',
-			A2(author$project$Structure$createNode, 'Event', author$project$StateMachine$Event)),
+			author$project$Structure$createNode(author$project$StateMachine$Event)),
 		A3(
 			author$project$Structure$addInt,
 			'maxNumOfStates',

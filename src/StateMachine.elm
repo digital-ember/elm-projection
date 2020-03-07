@@ -7,10 +7,10 @@ import Runtime exposing (..)
 
 type Msg
     = NoOp
-    | ChangeStateMachineName (Node StateMachine) String
-    | InsertEventAfter (Node Event)
-    | UpdateEventName (Node Event) String
-    | DeleteEvent (Node Event)
+    | ChangeStateMachineName (Node Domain) String
+    | InsertEventAfter (Node Domain)
+    | UpdateEventName (Node Domain) String
+    | DeleteEvent (Node Domain)
 
 
 
@@ -18,27 +18,24 @@ type Msg
 --| MoveDownEvent Node
 
 
-type StateMachine
+type Domain
     = StateMachine
+    | Event
 
 
-type Event
-    = Event
-
-
-stateMachine : Node StateMachine
+stateMachine : Node Domain
 stateMachine =
     createRoot StateMachine
         |> addText "name" "MyStateMachine"
         |> addInt "maxNumOfStates" 0
         |> addToCustom "events"
-            (createNode "Event" Event
+            (createNode Event
                 |> addText "name" "doorClosed"
             )
         |> Debug.log "stateMachine"
 
-
-editor : Node StateMachine -> Node Cell
+ 
+editor : Node Domain -> Node Cell
 editor sm =
     createRootCell
         |> vertStackCell
@@ -47,16 +44,16 @@ editor sm =
             |> constantCell "end"
              
 
-editorEvents : Node StateMachine -> List (Node Cell)
+editorEvents : Node Domain -> List (Node Cell)
 editorEvents sm =
     List.map editorEvent (getUnderCustom "events" sm |> Maybe.withDefault [])
 
 
-editorEvent : Node Event -> Node Cell
+editorEvent : Node Domain -> Node Cell
 editorEvent event =
     inputCell (propertyStringValueOf event "name" |> Maybe.withDefault "")
 
 
-main : Program () (Model StateMachine) Runtime.Msg
+main : Program () (Model Domain) Runtime.Msg
 main =
     program stateMachine editor
