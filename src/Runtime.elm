@@ -42,7 +42,7 @@ view : Model a -> Html Msg
 view model =
     let
         cellRoot =
-            model.xform model.appModel |> Debug.log "cell"
+            model.xform model.appModel |> addPaths |> Debug.log "cell"
     in
         Html.map (\cellMsg -> NoOp) (viewCell cellRoot)
  

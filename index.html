@@ -4868,21 +4868,30 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
+var elm$html$Html$div = _VirtualDom_node('div');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
 var author$project$Editor$viewContent = function (cell) {
-	var _n0 = author$project$Structure$isaOf(cell);
-	switch (_n0.$) {
-		case 'RootCell':
-			return elm$html$Html$text('rootCell');
-		case 'StackCell':
-			var orientation = _n0.a;
-			return elm$html$Html$text('stackCell');
-		case 'ConstantCell':
-			return elm$html$Html$text('constantCell');
-		default:
-			return elm$html$Html$text('inputCell');
-	}
+	return A2(
+		elm$html$Html$div,
+		_List_Nil,
+		_List_fromArray(
+			[
+				function () {
+				var _n0 = author$project$Structure$isaOf(cell);
+				switch (_n0.$) {
+					case 'RootCell':
+						return elm$html$Html$text('rootCell');
+					case 'StackCell':
+						var orientation = _n0.a;
+						return elm$html$Html$text('stackCell');
+					case 'ConstantCell':
+						return elm$html$Html$text('constantCell');
+					default:
+						return elm$html$Html$text('inputCell');
+				}
+			}()
+			]));
 };
 var author$project$Structure$getUnderDefault = function (_n0) {
 	var features = _n0.a.features;
@@ -4957,7 +4966,6 @@ var elm$core$List$map = F2(
 			_List_Nil,
 			xs);
 	});
-var elm$html$Html$div = _VirtualDom_node('div');
 var author$project$Editor$viewCell = function (cell) {
 	var htmlContent = function () {
 		var _n0 = author$project$Structure$getUnderDefault(cell);
@@ -4974,6 +4982,92 @@ var author$project$Editor$viewCell = function (cell) {
 	return A2(elm$html$Html$div, _List_Nil, htmlContent);
 };
 var author$project$Runtime$NoOp = {$: 'NoOp'};
+var author$project$Structure$Node = function (a) {
+	return {$: 'Node', a: a};
+};
+var elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var elm$core$Dict$map = F2(
+	function (func, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return elm$core$Dict$RBEmpty_elm_builtin;
+		} else {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			return A5(
+				elm$core$Dict$RBNode_elm_builtin,
+				color,
+				key,
+				A2(func, key, value),
+				A2(elm$core$Dict$map, func, left),
+				A2(elm$core$Dict$map, func, right));
+		}
+	});
+var elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var author$project$Structure$addFeaturePath = F2(
+	function (parentId, _n1) {
+		var _default = _n1._default;
+		var custom = _n1.custom;
+		var indexUpdater = function (postFix) {
+			return elm$core$List$indexedMap(
+				author$project$Structure$addPath(
+					_Utils_ap(parentId, postFix)));
+		};
+		var defaultNew = A2(
+			elm$core$Maybe$map,
+			function (children) {
+				return A2(indexUpdater, ':default', children);
+			},
+			_default);
+		var customNew = A2(
+			elm$core$Dict$map,
+			F2(
+				function (k, children) {
+					return A2(indexUpdater, parentId + (':' + k), children);
+				}),
+			custom);
+		return {custom: customNew, _default: defaultNew};
+	});
+var author$project$Structure$addPath = F3(
+	function (pathParent, index, _n0) {
+		var data = _n0.a;
+		var path = data.path;
+		var pathNew = _Utils_ap(
+			pathParent,
+			elm$core$String$fromInt(index));
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{
+					features: A2(author$project$Structure$addFeaturePath, path, data.features),
+					path: pathNew
+				}));
+	});
+var author$project$Structure$addPaths = function (_n0) {
+	var data = _n0.a;
+	var path = data.path;
+	return author$project$Structure$Node(
+		_Utils_update(
+			data,
+			{
+				features: A2(author$project$Structure$addFeaturePath, path, data.features)
+			}));
+};
 var elm$core$Debug$log = _Debug_log;
 var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
 var elm$html$Html$map = elm$virtual_dom$VirtualDom$map;
@@ -4981,7 +5075,8 @@ var author$project$Runtime$view = function (model) {
 	var cellRoot = A2(
 		elm$core$Debug$log,
 		'cell',
-		model.xform(model.appModel));
+		author$project$Structure$addPaths(
+			model.xform(model.appModel)));
 	return A2(
 		elm$html$Html$map,
 		function (cellMsg) {
@@ -5243,16 +5338,8 @@ var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
 var author$project$Structure$PString = function (a) {
 	return {$: 'PString', a: a};
 };
-var author$project$Structure$Node = function (a) {
-	return {$: 'Node', a: a};
-};
 var elm$core$Dict$Black = {$: 'Black'};
-var elm$core$Dict$RBNode_elm_builtin = F5(
-	function (a, b, c, d, e) {
-		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
-	});
 var elm$core$Basics$compare = _Utils_compare;
-var elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
 var elm$core$Dict$Red = {$: 'Red'};
 var elm$core$Dict$balance = F5(
 	function (color, key, value, left, right) {
@@ -5415,7 +5502,7 @@ var author$project$Structure$emptyFeatures = {custom: elm$core$Dict$empty, _defa
 var author$project$Structure$createNodeInternal = F2(
 	function (id, isa) {
 		return author$project$Structure$Node(
-			{features: author$project$Structure$emptyFeatures, id: id, isa: isa, path: '', properties: elm$core$Dict$empty});
+			{features: author$project$Structure$emptyFeatures, id: id, isa: isa, path: id, properties: elm$core$Dict$empty});
 	});
 var author$project$Structure$createNode = function (isa) {
 	return A2(author$project$Structure$createNodeInternal, '', isa);

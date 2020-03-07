@@ -3,6 +3,7 @@ module Structure
         ( Node
         , Property
         , isaOf
+        , addPaths
         , propertiesOf
         , propertyStringValueOf
         , propertyIntValueOf
@@ -133,7 +134,7 @@ createNodeInternal id isa =
     Node
         { id = id
         , isa = isa
-        , path = ""
+        , path = id
         , properties = Dict.empty
         , features = emptyFeatures
         }
@@ -211,6 +212,35 @@ getUnderCustom key (Node { features }) =
     Dict.get key features.custom
 
 
+addPaths : Node a -> Node a
+addPaths (Node ({path} as data)) =
+       Node { data | features = addFeaturePath path data.features }
+
+
+addFeaturePath : String -> Features a -> Features a
+addFeaturePath parentId { default, custom } =
+    let
+        indexUpdater postFix =
+            List.indexedMap (addPath (parentId ++ postFix))
+
+        defaultNew = 
+            Maybe.map (\children -> indexUpdater ":default" children) default
+
+        customNew =
+            Dict.map (\k children -> indexUpdater (parentId ++ ":" ++ k) children) custom
+    in
+        { default = defaultNew
+        , custom = customNew 
+        }
+
+
+addPath : String -> Int -> Node a -> Node a
+addPath pathParent index (Node ({path} as data)) =
+    let
+        pathNew =
+            pathParent ++ String.fromInt index
+    in
+        Node { data | path = pathNew, features = addFeaturePath path data.features }
 
 {-
    addFeatures : List Feature -> Node a -> Node a
@@ -233,44 +263,6 @@ getUnderCustom key (Node { features }) =
              <| List.map (\ni -> Node ni) children
 
 
-   addPaths : Node a -> Node a
-   addPaths (Node (NodeI name rootId properties features)) =
-       let
-           rootId2 = if rootId == "" then "root" else rootId
-       in
-           Node (NodeI name rootId2 properties (List.map (addFeatureIds rootId2) features))
-
-
-   addFeatureIds : String -> Feature -> Feature
-   addFeatureIds parentId feature =
-       case feature of
-           Main children ->
-               Main <|
-                   List.indexedMap (addIds (parentId ++ ":main")) children
-
-           Text children ->
-               Text <| List.indexedMap (addIds (parentId ++ ":text")) children
-
-           Custom featureId children ->
-               let
-                   featureIdNew =
-                       parentId ++ ":" ++ featureId
-               in
-                   Custom
-                       featureIdNew
-                   <|
-                       List.indexedMap (addIds featureIdNew) children
-
-
-
-   addIds : String -> Int -> NodeI -> NodeI
-   addIds path index (NodeI name _ properties features) =
-       let
-           idNew =
-               path ++ "_" ++ name ++ String.fromInt index
-       in
-           NodeI name idNew properties <|
-               List.map (addFeatureIds idNew) features
 
 -}
 

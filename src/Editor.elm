@@ -71,6 +71,7 @@ viewCell cell =
 
 viewContent : Node Cell -> Html Msg
 viewContent cell =
+  div [] [
   case isaOf cell of
       RootCell ->
           text "rootCell"
@@ -88,5 +89,5 @@ viewContent cell =
 
           text "inputCell"
 
-          
+  ]
   
