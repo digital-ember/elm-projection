@@ -38,11 +38,18 @@ stateMachine =
 editor : Node Domain -> Node Cell
 editor sm =
     createRootCell
-        |> vertStackCell
+        |> addToDefault 
+          ( createNode (StackCell Vert) 
+            |> addToDefault (constantCell "event")
+            |> range (editorEvents sm)
+            |> addToDefault (constantCell "end")
+            
+          )
+        {- |> vertStackCell
             |> constantCell "event"
             |> range (editorEvents sm)
             |> constantCell "end"
-             
+        -}     
 
 editorEvents : Node Domain -> List (Node Cell)
 editorEvents sm =
@@ -51,8 +58,10 @@ editorEvents sm =
 
 editorEvent : Node Domain -> Node Cell
 editorEvent event =
-    inputCell (propertyStringValueOf event "name" |> Maybe.withDefault "")
+    createNode (StackCell Vert)
+        |> addToDefault (inputCell (propertyStringValueOf event "name" |> Maybe.withDefault ""))
 
+        
 
 main : Program () (Model Domain) Runtime.Msg
 main =

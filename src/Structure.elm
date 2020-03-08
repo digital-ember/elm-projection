@@ -3,6 +3,7 @@ module Structure
         ( Node
         , Property
         , isaOf
+        , pathOf
         , addPaths
         , propertiesOf
         , propertyStringValueOf
@@ -10,7 +11,9 @@ module Structure
         , propertyBoolValueOf
         , createRoot
         , createNode
-        , addText, addInt, addBool
+        , addText
+        , addInt
+        , addBool
         , addProperty
         , addProperties
         , addToDefault
@@ -51,8 +54,14 @@ type Primitive
 
 
 isaOf : Node a -> a
-isaOf (Node {isa}) =
-  isa
+isaOf (Node { isa }) =
+    isa
+
+
+pathOf : Node a -> String
+pathOf (Node { path }) =
+    path
+
 
 propertyValueOf : Node a -> String -> Maybe Primitive
 propertyValueOf (Node { properties }) key =
@@ -129,6 +138,7 @@ createNode : a -> Node a
 createNode isa =
     createNodeInternal "" isa
 
+
 createNodeInternal : String -> a -> Node a
 createNodeInternal id isa =
     Node
@@ -139,17 +149,20 @@ createNodeInternal id isa =
         , features = emptyFeatures
         }
 
+
 addText : String -> String -> Node a -> Node a
 addText key text node =
-  addProperty (key, PString text) node
+    addProperty ( key, PString text ) node
+
 
 addInt : String -> Int -> Node a -> Node a
 addInt key value node =
-  addProperty (key, PInt value) node
+    addProperty ( key, PInt value ) node
+
 
 addBool : String -> Bool -> Node a -> Node a
 addBool key value node =
-  addProperty (key, PBool value) node
+    addProperty ( key, PBool value ) node
 
 
 addProperty : Property -> Node a -> Node a
@@ -213,34 +226,36 @@ getUnderCustom key (Node { features }) =
 
 
 addPaths : Node a -> Node a
-addPaths (Node ({path} as data)) =
-       Node { data | features = addFeaturePath path data.features }
+addPaths (Node ({ path } as data)) =
+    Node { data | features = addFeaturePath path data.features }
 
 
 addFeaturePath : String -> Features a -> Features a
-addFeaturePath parentId { default, custom } =
+addFeaturePath pathParent { default, custom } =
     let
         indexUpdater postFix =
-            List.indexedMap (addPath (parentId ++ postFix))
+            List.indexedMap (addPath (pathParent ++ postFix))
 
-        defaultNew = 
+        defaultNew =
             Maybe.map (\children -> indexUpdater ":default" children) default
 
         customNew =
-            Dict.map (\k children -> indexUpdater (parentId ++ ":" ++ k) children) custom
+            Dict.map (\k children -> indexUpdater (":" ++ k) children) custom
     in
         { default = defaultNew
-        , custom = customNew 
+        , custom = customNew
         }
 
 
 addPath : String -> Int -> Node a -> Node a
-addPath pathParent index (Node ({path} as data)) =
+addPath pathParent index (Node ({ path } as data)) =
     let
         pathNew =
             pathParent ++ String.fromInt index
     in
-        Node { data | path = pathNew, features = addFeaturePath path data.features }
+        Node { data | path = pathNew, features = addFeaturePath pathNew data.features }
+
+
 
 {-
    addFeatures : List Feature -> Node a -> Node a
@@ -267,5 +282,71 @@ addPath pathParent index (Node ({path} as data)) =
 -}
 
 
-cell =
-    ""
+cell = ""
+   {- Node
+        { features =
+            { custom = Dict.fromList []
+            , default =
+                Just
+                    [ Node
+                        { features =
+                            { custom = Dict.fromList []
+                            , default =
+                                Just
+                                    [ Node
+                                        { features =
+                                            { custom = Dict.fromList []
+                                            , default = Nothing
+                                            }
+                                        , id = ""
+                                        , isa = ConstantCell
+                                        , path = "root:default0:default0"
+                                        , properties = Dict.fromList [ ( "constant", PString "event" ) ]
+                                        }
+                                    , Node
+                                        { features =
+                                            { custom = Dict.fromList []
+                                            , default =
+                                                Just
+                                                    [ Node
+                                                        { features =
+                                                            { custom = Dict.fromList []
+                                                            , default = Nothing
+                                                            }
+                                                        , id = ""
+                                                        , isa = InputCell
+                                                        , path = "root:default0:default1:default0"
+                                                        , properties = Dict.fromList [ ( "input", PString "doorClosed" ) ]
+                                                        }
+                                                    ]
+                                            }
+                                        , id = ""
+                                        , isa = StackCell Vert
+                                        , path = "root:default0:default1"
+                                        , properties = Dict.fromList []
+                                        }
+                                    , Node
+                                        { features =
+                                            { custom = Dict.fromList []
+                                            , default = Nothing
+                                            }
+                                        , id = ""
+                                        , isa = ConstantCell
+                                        , path = "root:default0:default2"
+                                        , properties = Dict.fromList [ ( "constant", PString "end" ) ]
+                                        }
+                                    ]
+                            }
+                        , id = ""
+                        , isa = StackCell Vert
+                        , path = "root:default0"
+                        , properties = Dict.fromList []
+                        }
+                    ]
+            }
+        , id = "root"
+        , isa = RootCell
+        , path = "root"
+        , properties = Dict.fromList []
+        }
+-}
