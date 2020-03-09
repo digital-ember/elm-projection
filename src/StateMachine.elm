@@ -44,30 +44,44 @@ editor sm =
     createRootCell
         |> with
             (vertStackCell
-                |> with
-                    (constant "events")
-                |> with
-                    (vertStackCell 
-                      |> addIndent
-                      |> withRange (editorEvents sm)
-                    )
-                |> with
-                    (constant "end")
+                |> with ( editorStateMachineName sm )
+
+                |> with ( editorEvents sm )  
+
             )
 
+editorStateMachineName : Node Domain -> Node Cell
+editorStateMachineName sm =
+    horizStackCell
+        |> with 
+          ( constant "name:" ) 
+        |> with
+          ( inputCell (propertyStringValueOf sm "name" |> Maybe.withDefault "") )
 
-editorEvents : Node Domain -> List (Node Cell)
+
+editorEvents : Node Domain -> Node Cell
 editorEvents sm =
     let
-        mbEvents =
-            getUnderCustom "events" sm
-    in
-        case mbEvents of
-            Nothing ->
-                editorEventPlaceholder
+        editorEventsResult =
+            case getUnderCustom "events" sm of
+                Nothing ->
+                    editorEventPlaceholder
 
-            Just events ->
-                List.map editorEvent events
+                Just events ->
+                    List.map editorEvent events      
+    in
+        vertStackCell
+            |> addIndent
+            |> with
+                (constant "events")
+            |> with
+                (vertStackCell 
+                  |> addIndent
+                  |> withRange editorEventsResult
+                )
+            |> with
+                (constant "end")
+        
 
 
 editorEvent : Node Domain -> Node Cell

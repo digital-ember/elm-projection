@@ -44,6 +44,6 @@ view model =
         cellRoot =
             model.xform model.appModel |> addPaths |> Debug.log "cell"
     in
-        Html.map (\cellMsg -> NoOp) (viewCell cellRoot)
+        Html.map (\cellMsg -> NoOp) (viewRoot cellRoot)
  
 
