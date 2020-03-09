@@ -100,7 +100,7 @@ intOf key node =
 
 boolOf : String -> Node a -> Bool
 boolOf key node =
-    valueOf key node 
+    valueOf key node
         |> Maybe.andThen
             (\prop ->
                 case prop of
@@ -207,12 +207,11 @@ addToCustom key child (Node ({ features } as data)) =
                         case mbChildren of
                             Nothing ->
                                 [ child ]
-                        
+
                             Just children ->
                                 List.reverse (child :: List.reverse children)
                 )
                 features.custom
-                    
 
         featuresNew =
             { features | custom = customNew }
@@ -260,121 +259,3 @@ addPath pathParent index (Node ({ path } as data)) =
     in
         Node { data | path = pathNew, features = addFeaturePath pathNew data.features }
 
-
-
-{-
-   addFeatures : List Feature -> Node a -> Node a
-   addFeatures features parent =
-     List.foldl addFeature parent features
-
-   addFeature : Feature -> Node a -> Node a
-   addFeature feature parent =
-     case feature of
-         Main children ->
-           List.foldl addToMain parent
-             <| List.map (\ni -> Node ni) children
-
-         Text children ->
-           List.foldl addToText parent
-             <| List.map (\ni -> Node ni) children
-
-         Custom id children ->
-           List.foldl (addToCustom id) parent
-             <| List.map (\ni -> Node ni) children
-
-
-
--}
-
-
-cell =
-    ""{-
-        Node
-        { features =
-            { custom = Dict.fromList []
-            , default =
-                Just
-                    [ Node
-                        { features =
-                            { custom = Dict.fromList []
-                            , default =
-                                Just
-                                    [ Node
-                                        { features =
-                                            { custom = Dict.fromList []
-                                            , default = Nothing
-                                            }
-                                        , id = ""
-                                        , isa = ConstantCell
-                                        , path = "root:default0:default0"
-                                        , properties = Dict.fromList [ ( "constant", PString "event" ) ]
-                                        }
-                                    , Node
-                                        { features =
-                                            { custom = Dict.fromList []
-                                            , default =
-                                                Just
-                                                    [ Node
-                                                        { features =
-                                                            { custom = Dict.fromList []
-                                                            , default = Nothing
-                                                            }
-                                                        , id = ""
-                                                        , isa = InputCell
-                                                        , path = "root:default0:default1:default0"
-                                                        , properties = Dict.fromList [ ( "input", PString "doorClosed" ) ]
-                                                        }
-                                                    ]
-                                            }
-                                        , id = ""
-                                        , isa = StackCell Vert
-                                        , path = "root:default0:default1"
-                                        , properties = Dict.fromList []
-                                        }
-                                    , Node
-                                        { features =
-                                            { custom = Dict.fromList []
-                                            , default =
-                                                Just
-                                                    [ Node
-                                                        { features =
-                                                            { custom = Dict.fromList []
-                                                            , default = Nothing
-                                                            }
-                                                        , id = ""
-                                                        , isa = InputCell
-                                                        , path = "root:default0:default2:default0"
-                                                        , properties = Dict.fromList [ ( "input", PString "doorOpened" ) ]
-                                                        }
-                                                    ]
-                                            }
-                                        , id = ""
-                                        , isa = StackCell Vert
-                                        , path = "root:default0:default2"
-                                        , properties = Dict.fromList []
-                                        }
-                                    , Node
-                                        { features =
-                                            { custom = Dict.fromList []
-                                            , default = Nothing
-                                            }
-                                        , id = ""
-                                        , isa = ConstantCell
-                                        , path = "root:default0:default3"
-                                        , properties = Dict.fromList [ ( "constant", PString "end" ) ]
-                                        }
-                                    ]
-                            }
-                        , id = ""
-                        , isa = StackCell Vert
-                        , path = "root:default0"
-                        , properties = Dict.fromList []
-                        }
-                    ]
-            }
-        , id = "root"
-        , isa = RootCell
-        , path = "root"
-        , properties = Dict.fromList []
-        }
--}

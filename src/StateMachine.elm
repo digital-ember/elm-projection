@@ -29,17 +29,19 @@ stateMachine =
         |> addText "name" "MyStateMachine"
         |> addInt "maxNumOfStates" 0
         {- |> addToCustom "events"
-            (createNode Event
-                |> addText "name" "doorClosed"
-            )
-        |> addToCustom "events"
-            (createNode Event
-                |> addText "name" "doorOpened"
-            )-}
-        |> Debug.log "stateMachine"
+               (createNode Event
+                   |> addText "name" "doorClosed"
+               )
+           |> addToCustom "events"
+               (createNode Event
+                   |> addText "name" "doorOpened"
+               )
+        -}
+        |>
+            Debug.log "stateMachine"
 
 
-editor : Node Domain -> Node (Cell Domain) 
+editor : Node Domain -> Node (Cell Domain)
 editor sm =
     createRootCell (isaOf sm)
         |> with (editorStateMachine sm)
@@ -93,20 +95,24 @@ editorEvent event =
 
 editorEventPlaceholder : Node Domain -> List (Node (Cell Domain))
 editorEventPlaceholder sm =
-    [ placeholderCell "no events" 
-        |> addToCustom "onEnter" ( onEnterEffect sm addDefaultEvent )
+    [ placeholderCell "no events"
+        |> addToCustom "onEnter" (onEnterEffect sm addDefaultEvent)
     ]
+
 
 addDefaultEvent : Node Domain -> Node Domain
 addDefaultEvent sm =
-    addToCustom "events" 
-      (createNode Event
-          |> addText "name" "new event"
-      ) sm
+    addToCustom "events"
+        (createNode Event
+            |> addText "name" "new event"
+        )
+        sm
 
-domainUpdate : Msg -> Node Domain -> Node Domain 
-domainUpdate msg root = 
-  root
+
+domainUpdate : Msg -> Node Domain -> Node Domain
+domainUpdate msg root =
+    root
+
 
 main : Program () (Model Domain) (Runtime.Msg Domain)
 main =

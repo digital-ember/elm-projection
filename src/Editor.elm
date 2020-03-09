@@ -21,9 +21,11 @@ type ContentCell
 
 
 type Effect a
-    = OnEnterEffect 
-      { source : Node a
-      , handler : (Node a -> Node a)}
+    = OnEnterEffect
+        { source : Node a
+        , handler : Node a -> Node a
+        }
+
 
 type Orientation
     = Vert
@@ -81,10 +83,14 @@ placeholderCell text =
 
 onEnterEffect : Node a -> (Node a -> Node a) -> Node (Cell a)
 onEnterEffect source handler =
-    createNode (EffectCell (OnEnterEffect 
-    { source = source
-    , handler = handler 
-    }))
+    createNode
+        (EffectCell
+            (OnEnterEffect
+                { source = source
+                , handler = handler
+                }
+            )
+        )
 
 
 addIndent : Node (Cell a) -> Node (Cell a)
@@ -92,66 +98,70 @@ addIndent node =
     addBool "indent" True node
 
 
+
 -- BEHAVIOR
 
-editorUpdate : (domainMsg -> Node a -> Node a) -> (Msg a) -> Node a -> ( Node a, Cmd (Msg a))
+
+editorUpdate : (domainMsg -> Node a -> Node a) -> Msg a -> Node a -> ( Node a, Cmd (Msg a) )
 editorUpdate domainUpdate msg domainModel =
     case msg of
         NoOp ->
             ( domainModel, Cmd.none )
-            
+
         Swallow _ ->
             ( domainModel, Cmd.none )
 
-        ReplacePlaceHolder (OnEnterEffect {source, handler}) ->
+        ReplacePlaceHolder (OnEnterEffect { source, handler }) ->
             ( handler source, Cmd.none )
 
+
+
 -- EDITOR
+
 
 viewContentOnly : Node (Cell a) -> List (Html (Msg a)) -> List (Html (Msg a))
 viewContentOnly root html =
     case isaOf root of
         ContentCell _ ->
-          html
-    
+            html
+
         EffectCell _ ->
-          []
+            []
 
 
 viewRoot : Node (Cell a) -> Html (Msg a)
 viewRoot root =
-  div []
-      <| case isaOf root of
-          ContentCell _ ->
-            viewCell root
-      
-          EffectCell _ ->
-            []
-          
+    div [] <|
+        case isaOf root of
+            ContentCell _ ->
+                viewCell root
+
+            EffectCell _ ->
+                []
+
 
 viewCell : Node (Cell a) -> List (Html (Msg a))
 viewCell cell =
     case isaOf cell of
-          ContentCell _ ->
-              case getUnderDefault cell of
-                  Nothing ->
-                      [ text ("editor empty for " ++ pathOf cell) ]
+        ContentCell _ ->
+            case getUnderDefault cell of
+                Nothing ->
+                    [ text ("editor empty for " ++ pathOf cell) ]
 
-                  Just content ->
-                      List.foldl viewContent [] content
-      
-          EffectCell _ ->
+                Just content ->
+                    List.foldl viewContent [] content
+
+        EffectCell _ ->
             []
-    
 
 
 viewContent : Node (Cell a) -> List (Html (Msg a)) -> List (Html (Msg a))
 viewContent cell html =
     case isaOf cell of
-          ContentCell ccell ->
+        ContentCell ccell ->
             let
                 htmlNew =
-                    case ccell of        
+                    case ccell of
                         RootCell ->
                             viewStackCell cell Vert
 
@@ -166,30 +176,26 @@ viewContent cell html =
 
                         PlaceholderCell ->
                             viewPlaceholderCell cell
-                      
             in
                 htmlNew :: List.reverse html |> List.reverse
 
-      
-          EffectCell _ ->
+        EffectCell _ ->
             []
-    
-    
+
 
 viewStackCell : Node (Cell a) -> Orientation -> Html (Msg a)
 viewStackCell cell orientation =
     case isaOf cell of
-          ContentCell _ ->
+        ContentCell _ ->
             case orientation of
                 Vert ->
                     viewVertStackCell cell
 
                 Horiz ->
                     viewHorizStackCell cell
-      
-          EffectCell _ ->
+
+        EffectCell _ ->
             text ""
-    
 
 
 viewVertStackCell : Node (Cell a) -> Html (Msg a)
@@ -203,20 +209,19 @@ viewVertStackCell cell =
                     else
                         HtmlA.style "margin" "0px"
             in
-                div [ indent ]
-                    <| viewCell cell
-      
+                div [ indent ] <|
+                    viewCell cell
+
         EffectCell _ ->
             text ""
-    
 
 
 viewHorizStackCell : Node (Cell a) -> Html (Msg a)
 viewHorizStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div [ HtmlA.style "display" "inline-block" ]
-                <| viewCell cell
+            div [ HtmlA.style "display" "inline-block" ] <|
+                viewCell cell
 
         EffectCell _ ->
             text ""
@@ -230,7 +235,6 @@ viewConstantCell cell =
 
         EffectCell _ ->
             text ""
-    
 
 
 viewInputCell : Node (Cell a) -> Html (Msg a)
@@ -252,7 +256,6 @@ viewInputCell cell =
 
         EffectCell _ ->
             text ""
-    
 
 
 viewPlaceholderCell : Node (Cell a) -> Html (Msg a)
@@ -260,52 +263,49 @@ viewPlaceholderCell cell =
     case isaOf cell of
         ContentCell _ ->
             let
-                mbOnEnterEffect = 
-                    getUnderCustom "onEnter" cell 
-                      |> Maybe.andThen List.head
-                      |> Maybe.andThen 
-                          (\onEnterCell -> 
-                              case isaOf onEnterCell of
-                                  EffectCell effect ->
-                                      Just effect
-                              
-                                  ContentCell _ ->
-                                      Nothing
-                          )
+                mbOnEnterEffect =
+                    getUnderCustom "onEnter" cell
+                        |> Maybe.andThen List.head
+                        |> Maybe.andThen
+                            (\onEnterCell ->
+                                case isaOf onEnterCell of
+                                    EffectCell effect ->
+                                        Just effect
 
+                                    ContentCell _ ->
+                                        Nothing
+                            )
 
                 onEnterAttribute =
                     case mbOnEnterEffect of
                         Nothing ->
                             []
-                            
+
                         Just effect ->
                             [ produceKeyboardMsg effect ]
             in
-            
-
                 div []
                     [ input
                         ([ HtmlA.style "border-width" "0px"
-                        , HtmlA.style "border" "none"
-                        , HtmlA.style "outline" "none"
-                        , HtmlA.placeholder ""
-                        , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
-                          --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
-                        , HtmlE.onInput Swallow
-                        ]
-                        ++ onEnterAttribute)
+                         , HtmlA.style "border" "none"
+                         , HtmlA.style "outline" "none"
+                         , HtmlA.placeholder ""
+                         , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
+                           --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
+                         , HtmlE.onInput Swallow
+                         ]
+                            ++ onEnterAttribute
+                        )
                         []
                     ]
-            
-    
+
         EffectCell _ ->
             text ""
 
 
 produceKeyboardMsg : Effect a -> Attribute (Msg a)
 produceKeyboardMsg effect =
-    let           
+    let
         canHandle c =
             case c of
                 13 ->
