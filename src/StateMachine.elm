@@ -28,74 +28,86 @@ stateMachine =
     createRoot StateMachine
         |> addText "name" "MyStateMachine"
         |> addInt "maxNumOfStates" 0
-        |> addToCustom "events"
+        {- |> addToCustom "events"
             (createNode Event
                 |> addText "name" "doorClosed"
             )
         |> addToCustom "events"
             (createNode Event
                 |> addText "name" "doorOpened"
-            )
+            )-}
         |> Debug.log "stateMachine"
 
 
-editor : Node Domain -> Node Cell
+editor : Node Domain -> Node (Cell Domain) 
 editor sm =
-    createRootCell
+    createRootCell (isaOf sm)
         |> with (editorStateMachine sm)
 
 
-editorStateMachine : Node Domain -> Node Cell
+editorStateMachine : Node Domain -> Node (Cell Domain)
 editorStateMachine sm =
-    vertStackCell
+    vertStackCell (isaOf sm)
         |> with (editorStateMachineName sm)
         |> with (editorEvents sm)
 
 
-editorStateMachineName : Node Domain -> Node Cell
+editorStateMachineName : Node Domain -> Node (Cell Domain)
 editorStateMachineName sm =
-    horizStackCell
+    horizStackCell (isaOf sm)
         |> with
-            (constant "name:")
+            (constant "name:" (isaOf sm))
         |> with
-            (inputCell (textOf "name" sm))
+            (inputCell (textOf "name" sm) (isaOf sm))
 
 
-editorEvents : Node Domain -> Node Cell
+editorEvents : Node Domain -> Node (Cell Domain)
 editorEvents sm =
     let
         editorEventsResult =
             case getUnderCustom "events" sm of
                 Nothing ->
-                    editorEventPlaceholder
+                    editorEventPlaceholder sm
 
                 Just events ->
                     List.map editorEvent events
     in
-        vertStackCell
+        vertStackCell (isaOf sm)
             |> addIndent
             |> with
-                (constant "events")
+                (constant "events" (isaOf sm))
             |> with
-                (vertStackCell
+                (vertStackCell (isaOf sm)
                     |> addIndent
                     |> withRange editorEventsResult
                 )
             |> with
-                (constant "end")
+                (constant "end" (isaOf sm))
 
 
-editorEvent : Node Domain -> Node Cell
+editorEvent : Node Domain -> Node (Cell Domain)
 editorEvent event =
-    vertStackCell
-        |> with (inputCell (textOf "name" event))
+    vertStackCell (isaOf event)
+        |> with (inputCell (textOf "name" event) (isaOf event))
 
 
-editorEventPlaceholder : List (Node Cell)
-editorEventPlaceholder =
-    [ placeholderCell "no events" ]
+editorEventPlaceholder : Node Domain -> List (Node (Cell Domain))
+editorEventPlaceholder sm =
+    [ placeholderCell "no events" 
+        |> addToCustom "onEnter" ( onEnterEffect sm addDefaultEvent )
+    ]
 
+addDefaultEvent : Node Domain -> Node Domain
+addDefaultEvent sm =
+    addToCustom "events" 
+      (createNode Event
+          |> addText "name" "new event"
+      ) sm
 
-main : Program () (Model Domain) Runtime.Msg
+domainUpdate : Msg -> Node Domain -> Node Domain 
+domainUpdate msg root = 
+  root
+
+main : Program () (Model Domain) (Runtime.Msg Domain)
 main =
-    program stateMachine editor
+    program stateMachine editor domainUpdate

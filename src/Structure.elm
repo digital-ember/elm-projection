@@ -201,16 +201,18 @@ addToCustom : String -> Node a -> Node a -> Node a
 addToCustom key child (Node ({ features } as data)) =
     let
         customNew =
-            case Dict.get key features.custom of
-                Nothing ->
-                    Dict.insert key [ child ] features.custom
-
-                Just children ->
-                    Dict.update key
-                        (\mbChildren ->
-                            Maybe.andThen (\childrenL -> Just (List.reverse (child :: List.reverse childrenL))) mbChildren
-                        )
-                        features.custom
+            Dict.update key
+                (\mbChildren ->
+                    Just <|
+                        case mbChildren of
+                            Nothing ->
+                                [ child ]
+                        
+                            Just children ->
+                                List.reverse (child :: List.reverse children)
+                )
+                features.custom
+                    
 
         featuresNew =
             { features | custom = customNew }

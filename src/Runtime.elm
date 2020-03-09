@@ -7,23 +7,24 @@ import Html exposing (..)
 import Browser exposing (..)
 
 type alias Model a =
-    { appModel : Node a
-    , xform : Node a -> (Node Cell)
+    { domainModel : Node a
+    , xform : Node a -> (Node (Cell a))
     }
 
 
-type Msg
+type Msg a
     = NoOp
+    | EditorMsg (Editor.Msg a)
 
 
-program : Node a -> (Node a -> Node Cell) -> Program () (Model a) Msg 
-program appModel xform =
+program : Node a -> (Node a -> Node (Cell a)) -> (domainMsg -> Node a -> Node a) -> Program () (Model a) (Msg a) 
+program domainModel xform domainUpdate =
     let
         init () =
-            ( { appModel = appModel, xform = xform }, Cmd.none )
+            ( { domainModel = domainModel, xform = xform }, Cmd.none )
 
         update msg model =
-            runtimeUpdate msg model
+            runtimeUpdate domainUpdate msg model
     in
         Browser.element
             { init = init
@@ -33,17 +34,27 @@ program appModel xform =
             }
 
 
-runtimeUpdate : Msg -> Model a -> ( Model a, Cmd Msg )
-runtimeUpdate msg model =  
-    ( model, Cmd.none )
+runtimeUpdate : (domainMsg -> Node a -> Node a) -> (Msg a) -> Model a -> ( Model a, Cmd (Msg a) )
+runtimeUpdate domainUpdate msg model = 
+    case msg of
+       NoOp -> 
+          ( model, Cmd.none )
+
+       EditorMsg eMsg -> 
+          let
+              (domainModelNew, editorCmd) =
+                  editorUpdate domainUpdate eMsg model.domainModel
+          in
+          
+          ( { model | domainModel = domainModelNew }, Cmd.map (\editorMsg -> EditorMsg editorMsg ) editorCmd ) 
 
 
-view : Model a -> Html Msg 
+view : Model a -> Html (Msg a) 
 view model =
     let
         cellRoot =
-            model.xform model.appModel |> addPaths |> Debug.log "cell"
+            model.xform model.domainModel |> addPaths |> Debug.log "cell"
     in
-        Html.map (\cellMsg -> NoOp) (viewRoot cellRoot)
+        Html.map (\editorMsg -> EditorMsg editorMsg) (viewRoot cellRoot)
  
 
