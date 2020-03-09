@@ -46,8 +46,11 @@ editor sm =
             (vertStackCell
                 |> with
                     (constant "events")
-                |> withRange
-                    (editorEvents sm)
+                |> with
+                    (vertStackCell 
+                      |> addIndent
+                      |> withRange (editorEvents sm)
+                    )
                 |> with
                     (constant "end")
             )

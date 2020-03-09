@@ -33,7 +33,6 @@ with : Node Cell -> Node Cell -> Node Cell
 with node =
     addToDefault node
 
-
 withRange : List (Node Cell) -> Node Cell -> Node Cell
 withRange children =
     addToDefaultRange children
@@ -60,6 +59,11 @@ placeholderCell : String -> Node Cell
 placeholderCell text =
     createNode PlaceholderCell
         |> addText "placeholder" text
+
+
+addIndent : Node Cell -> Node Cell
+addIndent node =
+  addBool "indent" True node
 
 
 
@@ -103,8 +107,16 @@ viewContent cell =
 
 renderStackCell : Node Cell -> Orientation -> Html Msg
 renderStackCell cell orientation =
-    div []
-        [ viewCell cell ]
+    let
+        indent = 
+            if propertyBoolValueOf cell "indent" |> Maybe.withDefault False then
+                HtmlA.style "margin" "3px 20px"
+            else 
+                HtmlA.style "margin" "0px"
+    in
+    
+        div [ indent ]
+            [ viewCell cell ]
 
 
 renderConstantCell : Node Cell -> Html Msg
