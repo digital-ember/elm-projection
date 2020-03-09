@@ -4942,7 +4942,7 @@ var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
 var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
-var author$project$Editor$renderConstantCell = function (cell) {
+var author$project$Editor$viewConstantCell = function (cell) {
 	return A2(
 		elm$html$Html$span,
 		_List_fromArray(
@@ -4966,7 +4966,7 @@ var elm$html$Html$Attributes$stringProperty = F2(
 	});
 var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
 var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
-var author$project$Editor$renderInputCell = function (cell) {
+var author$project$Editor$viewInputCell = function (cell) {
 	return A2(
 		elm$html$Html$span,
 		_List_Nil,
@@ -5079,7 +5079,7 @@ var elm$html$Html$Events$onInput = function (tagger) {
 			elm$html$Html$Events$alwaysStop,
 			A2(elm$json$Json$Decode$map, tagger, elm$html$Html$Events$targetValue)));
 };
-var author$project$Editor$renderPlaceholderCell = function (cell) {
+var author$project$Editor$viewPlaceholderCell = function (cell) {
 	return A2(
 		elm$html$Html$div,
 		_List_Nil,
@@ -5129,60 +5129,35 @@ var author$project$Structure$pathOf = function (_n0) {
 	var path = _n0.a.path;
 	return path;
 };
-var author$project$Editor$renderHorizStackCell = function (cell) {
-	return A2(
-		elm$html$Html$div,
-		_List_fromArray(
-			[
-				A2(elm$html$Html$Attributes$style, 'display', 'inline-block')
-			]),
-		author$project$Editor$viewCell(cell));
-};
-var author$project$Editor$renderStackCell = F2(
-	function (cell, orientation) {
-		if (orientation.$ === 'Vert') {
-			return author$project$Editor$renderVertStackCell(cell);
-		} else {
-			return author$project$Editor$renderHorizStackCell(cell);
-		}
-	});
-var author$project$Editor$renderVertStackCell = function (cell) {
-	var indent = A2(author$project$Structure$boolOf, 'indent', cell) ? A2(elm$html$Html$Attributes$style, 'margin', '3px 20px') : A2(elm$html$Html$Attributes$style, 'margin', '0px');
-	return A2(
-		elm$html$Html$div,
-		_List_fromArray(
-			[indent]),
-		author$project$Editor$viewCell(cell));
-};
 var author$project$Editor$viewCell = function (cell) {
-	var _n1 = author$project$Structure$getUnderDefault(cell);
-	if (_n1.$ === 'Nothing') {
+	var _n2 = author$project$Structure$getUnderDefault(cell);
+	if (_n2.$ === 'Nothing') {
 		return _List_fromArray(
 			[
 				elm$html$Html$text(
 				'editor empty for ' + author$project$Structure$pathOf(cell))
 			]);
 	} else {
-		var content = _n1.a;
+		var content = _n2.a;
 		return A3(elm$core$List$foldl, author$project$Editor$viewContent, _List_Nil, content);
 	}
 };
 var author$project$Editor$viewContent = F2(
 	function (cell, html) {
 		var htmlNew = function () {
-			var _n0 = author$project$Structure$isaOf(cell);
-			switch (_n0.$) {
+			var _n1 = author$project$Structure$isaOf(cell);
+			switch (_n1.$) {
 				case 'RootCell':
-					return A2(author$project$Editor$renderStackCell, cell, author$project$Editor$Vert);
+					return A2(author$project$Editor$viewStackCell, cell, author$project$Editor$Vert);
 				case 'ConstantCell':
-					return author$project$Editor$renderConstantCell(cell);
+					return author$project$Editor$viewConstantCell(cell);
 				case 'InputCell':
-					return author$project$Editor$renderInputCell(cell);
+					return author$project$Editor$viewInputCell(cell);
 				case 'StackCell':
-					var orientation = _n0.a;
-					return A2(author$project$Editor$renderStackCell, cell, orientation);
+					var orientation = _n1.a;
+					return A2(author$project$Editor$viewStackCell, cell, orientation);
 				default:
-					return author$project$Editor$renderPlaceholderCell(cell);
+					return author$project$Editor$viewPlaceholderCell(cell);
 			}
 		}();
 		return elm$core$List$reverse(
@@ -5191,6 +5166,31 @@ var author$project$Editor$viewContent = F2(
 				htmlNew,
 				elm$core$List$reverse(html)));
 	});
+var author$project$Editor$viewHorizStackCell = function (cell) {
+	return A2(
+		elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2(elm$html$Html$Attributes$style, 'display', 'inline-block')
+			]),
+		author$project$Editor$viewCell(cell));
+};
+var author$project$Editor$viewStackCell = F2(
+	function (cell, orientation) {
+		if (orientation.$ === 'Vert') {
+			return author$project$Editor$viewVertStackCell(cell);
+		} else {
+			return author$project$Editor$viewHorizStackCell(cell);
+		}
+	});
+var author$project$Editor$viewVertStackCell = function (cell) {
+	var indent = A2(author$project$Structure$boolOf, 'indent', cell) ? A2(elm$html$Html$Attributes$style, 'margin', '3px 20px') : A2(elm$html$Html$Attributes$style, 'margin', '0px');
+	return A2(
+		elm$html$Html$div,
+		_List_fromArray(
+			[indent]),
+		author$project$Editor$viewCell(cell));
+};
 var author$project$Editor$viewRoot = function (root) {
 	return A2(
 		elm$html$Html$div,

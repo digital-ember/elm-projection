@@ -22,6 +22,7 @@ type Orientation
 type Msg
     = NoOp
     | Swallow String
+    | ReplacePlaceHolder String
 
 
 createRootCell : Node Cell
@@ -95,35 +96,35 @@ viewContent cell html =
         htmlNew =
             case isaOf cell of
                 RootCell ->
-                    renderStackCell cell Vert
+                    viewStackCell cell Vert
 
                 ConstantCell ->
-                    renderConstantCell cell
+                    viewConstantCell cell
 
                 InputCell ->
-                    renderInputCell cell
+                    viewInputCell cell
 
                 StackCell orientation ->
-                    renderStackCell cell orientation
+                    viewStackCell cell orientation
 
                 PlaceholderCell ->
-                    renderPlaceholderCell cell
+                    viewPlaceholderCell cell
     in
         htmlNew :: List.reverse html |> List.reverse
 
 
-renderStackCell : Node Cell -> Orientation -> Html Msg
-renderStackCell cell orientation =
+viewStackCell : Node Cell -> Orientation -> Html Msg
+viewStackCell cell orientation =
     case orientation of
         Vert ->
-            renderVertStackCell cell
+            viewVertStackCell cell
 
         Horiz ->
-            renderHorizStackCell cell
+            viewHorizStackCell cell
 
 
-renderVertStackCell : Node Cell -> Html Msg
-renderVertStackCell cell =
+viewVertStackCell : Node Cell -> Html Msg
+viewVertStackCell cell =
     let
         indent =
             if boolOf "indent" cell then
@@ -135,19 +136,19 @@ renderVertStackCell cell =
             <| viewCell cell
 
 
-renderHorizStackCell : Node Cell -> Html Msg
-renderHorizStackCell cell =
+viewHorizStackCell : Node Cell -> Html Msg
+viewHorizStackCell cell =
     div [ HtmlA.style "display" "inline-block" ]
         <| viewCell cell
 
 
-renderConstantCell : Node Cell -> Html Msg
-renderConstantCell cell =
+viewConstantCell : Node Cell -> Html Msg
+viewConstantCell cell =
     span [ HtmlA.style "margin" "0px 3px 0px 0px" ] [ text (textOf "constant" cell) ]
 
 
-renderInputCell : Node Cell -> Html Msg
-renderInputCell cell =
+viewInputCell : Node Cell -> Html Msg
+viewInputCell cell =
     span []
         [ input
             [ HtmlA.style "border-width" "0px"
@@ -162,8 +163,8 @@ renderInputCell cell =
         ]
 
 
-renderPlaceholderCell : Node Cell -> Html Msg
-renderPlaceholderCell cell =
+viewPlaceholderCell : Node Cell -> Html Msg
+viewPlaceholderCell cell =
     div []
         [ input
             [ HtmlA.style "border-width" "0px"
