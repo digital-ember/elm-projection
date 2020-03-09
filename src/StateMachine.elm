@@ -42,21 +42,23 @@ stateMachine =
 editor : Node Domain -> Node Cell
 editor sm =
     createRootCell
-        |> with
-            (vertStackCell
-                |> with ( editorStateMachineName sm )
+        |> with (editorStateMachine sm)
 
-                |> with ( editorEvents sm )  
 
-            )
+editorStateMachine : Node Domain -> Node Cell
+editorStateMachine sm =
+    vertStackCell
+        |> with (editorStateMachineName sm)
+        |> with (editorEvents sm)
+
 
 editorStateMachineName : Node Domain -> Node Cell
 editorStateMachineName sm =
     horizStackCell
-        |> with 
-          ( constant "name:" ) 
         |> with
-          ( inputCell (propertyStringValueOf sm "name" |> Maybe.withDefault "") )
+            (constant "name:")
+        |> with
+            (inputCell (propertyStringValueOf sm "name" |> Maybe.withDefault ""))
 
 
 editorEvents : Node Domain -> Node Cell
@@ -68,20 +70,19 @@ editorEvents sm =
                     editorEventPlaceholder
 
                 Just events ->
-                    List.map editorEvent events      
+                    List.map editorEvent events
     in
         vertStackCell
             |> addIndent
             |> with
                 (constant "events")
             |> with
-                (vertStackCell 
-                  |> addIndent
-                  |> withRange editorEventsResult
+                (vertStackCell
+                    |> addIndent
+                    |> withRange editorEventsResult
                 )
             |> with
                 (constant "end")
-        
 
 
 editorEvent : Node Domain -> Node Cell
