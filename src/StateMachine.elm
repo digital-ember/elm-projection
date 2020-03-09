@@ -32,36 +32,51 @@ stateMachine =
             (createNode Event
                 |> addText "name" "doorClosed"
             )
+        |> addToCustom "events"
+            (createNode Event
+                |> addText "name" "doorOpened"
+            )
         |> Debug.log "stateMachine"
 
- 
+
 editor : Node Domain -> Node Cell
 editor sm =
     createRootCell
-        |> addToDefault 
-          ( createNode (StackCell Vert) 
-            |> addToDefault (constantCell "event")
-            |> range (editorEvents sm)
-            |> addToDefault (constantCell "end")
-            
-          )
-        {- |> vertStackCell
-            |> constantCell "event"
-            |> range (editorEvents sm)
-            |> constantCell "end"
-        -}     
+        |> with
+            (vertStackCell
+                |> with
+                    (constant "events")
+                |> withRange
+                    (editorEvents sm)
+                |> with
+                    (constant "end")
+            )
+
 
 editorEvents : Node Domain -> List (Node Cell)
 editorEvents sm =
-    List.map editorEvent (getUnderCustom "events" sm |> Maybe.withDefault [])
+    let
+        mbEvents =
+            getUnderCustom "events" sm
+    in
+        case mbEvents of
+            Nothing ->
+                editorEventPlaceholder
+
+            Just events ->
+                List.map editorEvent events
 
 
 editorEvent : Node Domain -> Node Cell
 editorEvent event =
-    createNode (StackCell Vert)
-        |> addToDefault (inputCell (propertyStringValueOf event "name" |> Maybe.withDefault ""))
+    vertStackCell
+        |> with (inputCell (propertyStringValueOf event "name" |> Maybe.withDefault ""))
 
-        
+
+editorEventPlaceholder : List (Node Cell)
+editorEventPlaceholder =
+    [ placeholderCell "no events" ]
+
 
 main : Program () (Model Domain) Runtime.Msg
 main =

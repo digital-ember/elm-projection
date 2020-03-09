@@ -282,8 +282,9 @@ addPath pathParent index (Node ({ path } as data)) =
 -}
 
 
-cell = ""
-   {- Node
+cell =
+    ""{-
+        Node
         { features =
             { custom = Dict.fromList []
             , default =
@@ -328,11 +329,33 @@ cell = ""
                                     , Node
                                         { features =
                                             { custom = Dict.fromList []
+                                            , default =
+                                                Just
+                                                    [ Node
+                                                        { features =
+                                                            { custom = Dict.fromList []
+                                                            , default = Nothing
+                                                            }
+                                                        , id = ""
+                                                        , isa = InputCell
+                                                        , path = "root:default0:default2:default0"
+                                                        , properties = Dict.fromList [ ( "input", PString "doorOpened" ) ]
+                                                        }
+                                                    ]
+                                            }
+                                        , id = ""
+                                        , isa = StackCell Vert
+                                        , path = "root:default0:default2"
+                                        , properties = Dict.fromList []
+                                        }
+                                    , Node
+                                        { features =
+                                            { custom = Dict.fromList []
                                             , default = Nothing
                                             }
                                         , id = ""
                                         , isa = ConstantCell
-                                        , path = "root:default0:default2"
+                                        , path = "root:default0:default3"
                                         , properties = Dict.fromList [ ( "constant", PString "end" ) ]
                                         }
                                     ]

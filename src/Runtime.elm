@@ -34,7 +34,7 @@ program appModel xform =
 
 
 runtimeUpdate : Msg -> Model a -> ( Model a, Cmd Msg )
-runtimeUpdate msg model = 
+runtimeUpdate msg model =  
     ( model, Cmd.none )
 
 
