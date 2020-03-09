@@ -126,7 +126,7 @@ renderVertStackCell : Node Cell -> Html Msg
 renderVertStackCell cell =
     let
         indent =
-            if propertyBoolValueOf cell "indent" |> Maybe.withDefault False then
+            if boolOf "indent" cell then
                 HtmlA.style "margin" "3px 20px"
             else
                 HtmlA.style "margin" "0px"
@@ -143,7 +143,7 @@ renderHorizStackCell cell =
 
 renderConstantCell : Node Cell -> Html Msg
 renderConstantCell cell =
-    span [ HtmlA.style "margin" "0px 3px 0px 0px" ] [ text (propertyStringValueOf cell "constant" |> Maybe.withDefault "") ]
+    span [ HtmlA.style "margin" "0px 3px 0px 0px" ] [ text (textOf "constant" cell) ]
 
 
 renderInputCell : Node Cell -> Html Msg
@@ -155,7 +155,7 @@ renderInputCell cell =
             , HtmlA.style "outline" "none"
               --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (produceKeyboardMsg cell)
             , HtmlA.placeholder "<no value>"
-            , HtmlA.value (propertyStringValueOf cell "input" |> Maybe.withDefault "")
+            , HtmlA.value (textOf "input" cell)
               --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
             ]
             []
@@ -171,7 +171,7 @@ renderPlaceholderCell cell =
             , HtmlA.style "outline" "none"
               --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (produceKeyboardMsg cell)
             , HtmlA.placeholder ""
-            , HtmlA.value ("<" ++ (propertyStringValueOf cell "placeholder" |> Maybe.withDefault "no values") ++ ">")
+            , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
               --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
             , HtmlE.onInput Swallow
             ]

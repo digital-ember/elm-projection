@@ -6,9 +6,9 @@ module Structure
         , pathOf
         , addPaths
         , propertiesOf
-        , propertyStringValueOf
-        , propertyIntValueOf
-        , propertyBoolValueOf
+        , textOf
+        , intOf
+        , boolOf
         , createRoot
         , createNode
         , addText
@@ -63,14 +63,14 @@ pathOf (Node { path }) =
     path
 
 
-propertyValueOf : Node a -> String -> Maybe Primitive
-propertyValueOf (Node { properties }) key =
+valueOf : String -> Node a -> Maybe Primitive
+valueOf key (Node { properties }) =
     Dict.get key properties
 
 
-propertyStringValueOf : Node a -> String -> Maybe String
-propertyStringValueOf node key =
-    propertyValueOf node key
+textOf : String -> Node a -> String
+textOf key node =
+    valueOf key node
         |> Maybe.andThen
             (\prop ->
                 case prop of
@@ -80,11 +80,12 @@ propertyStringValueOf node key =
                     _ ->
                         Nothing
             )
+        |> Maybe.withDefault ""
 
 
-propertyIntValueOf : Node a -> String -> Maybe Int
-propertyIntValueOf node key =
-    propertyValueOf node key
+intOf : String -> Node a -> Int
+intOf key node =
+    valueOf key node
         |> Maybe.andThen
             (\prop ->
                 case prop of
@@ -94,11 +95,12 @@ propertyIntValueOf node key =
                     _ ->
                         Nothing
             )
+        |> Maybe.withDefault 0
 
 
-propertyBoolValueOf : Node a -> String -> Maybe Bool
-propertyBoolValueOf node key =
-    propertyValueOf node key
+boolOf : String -> Node a -> Bool
+boolOf key node =
+    valueOf key node 
         |> Maybe.andThen
             (\prop ->
                 case prop of
@@ -108,6 +110,7 @@ propertyBoolValueOf node key =
                     _ ->
                         Nothing
             )
+        |> Maybe.withDefault False
 
 
 propertiesOf : Node a -> Dict String Primitive

@@ -58,7 +58,7 @@ editorStateMachineName sm =
         |> with
             (constant "name:")
         |> with
-            (inputCell (propertyStringValueOf sm "name" |> Maybe.withDefault ""))
+            (inputCell (textOf "name" sm))
 
 
 editorEvents : Node Domain -> Node Cell
@@ -88,7 +88,7 @@ editorEvents sm =
 editorEvent : Node Domain -> Node Cell
 editorEvent event =
     vertStackCell
-        |> with (inputCell (propertyStringValueOf event "name" |> Maybe.withDefault ""))
+        |> with (inputCell (textOf "name" event))
 
 
 editorEventPlaceholder : List (Node Cell)
