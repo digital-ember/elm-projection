@@ -1,10 +1,31 @@
-module Editor exposing (..)
+module Editor
+    exposing
+        ( Cell
+        , Msg
+        , createRootCell
+        , with
+        , withRange
+        , constantCell
+        , inputCell
+        , horizStackCell
+        , vertStackCell
+        , placeholderCell
+        , addIndent
+        , withEffect
+        , onEnterEffect
+        , onInputEffect
+        , updateEditor
+        , viewEditor
+        )
 
 import Structure exposing (..)
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as JsonD
+
+
+--import Browser.Dom as Dom
 
 
 type Cell a
@@ -22,8 +43,12 @@ type ContentCell
 
 type Effect a
     = OnEnterEffect
-        { source : Node a
-        , handler : Node a -> Node a
+        { effectInput : Node a
+        , effectHandler : Node a -> Node a
+        }
+    | OnInputEffect
+        { effectInput : ( Node a, Path )
+        , effectHandler : ( Node a, Path ) -> String -> Node a
         }
 
 
@@ -33,13 +58,15 @@ type Orientation
 
 
 type Msg a
-    = NoOp
+    = -- will be needed for selection update
+      NoOp
     | Swallow String
-    | ReplacePlaceHolder (Effect a)
+    | OnEnter (Effect a)
+    | OnInput (Effect a) String
 
 
-createRootCell : a -> Node (Cell a)
-createRootCell a =
+createRootCell : Node (Cell a)
+createRootCell =
     createRoot (ContentCell RootCell)
 
 
@@ -53,25 +80,25 @@ withRange children =
     addToDefaultRange children
 
 
-constant : String -> a -> Node (Cell a)
-constant text a =
+constantCell : String -> Node (Cell a)
+constantCell text =
     createNode (ContentCell ConstantCell)
         |> addText "constant" text
 
 
-inputCell : String -> a -> Node (Cell a)
-inputCell text a =
+inputCell : String -> Node (Cell a)
+inputCell text =
     createNode (ContentCell InputCell)
         |> addText "input" text
 
 
-horizStackCell : a -> Node (Cell a)
-horizStackCell a =
+horizStackCell : Node (Cell a)
+horizStackCell =
     createNode (ContentCell (StackCell Horiz))
 
 
-vertStackCell : a -> Node (Cell a)
-vertStackCell a =
+vertStackCell : Node (Cell a)
+vertStackCell =
     createNode (ContentCell (StackCell Vert))
 
 
@@ -81,29 +108,44 @@ placeholderCell text =
         |> addText "placeholder" text
 
 
-onEnterEffect : Node a -> (Node a -> Node a) -> Node (Cell a)
-onEnterEffect source handler =
-    createNode
-        (EffectCell
-            (OnEnterEffect
-                { source = source
-                , handler = handler
-                }
-            )
-        )
-
-
 addIndent : Node (Cell a) -> Node (Cell a)
 addIndent node =
     addBool "indent" True node
 
 
 
+-- EFFECTS
+
+
+withEffect : Effect a -> Node (Cell a) -> Node (Cell a)
+withEffect effect =
+    addToCustom "effects" <|
+        createNode <|
+            EffectCell effect
+
+
+onEnterEffect : Node a -> (Node a -> Node a) -> Effect a
+onEnterEffect effectInput effectHandler =
+    OnEnterEffect
+        { effectInput = effectInput
+        , effectHandler = effectHandler
+        }
+
+
+onInputEffect : ( Node a, Path ) -> (( Node a, Path ) -> String -> Node a) -> Effect a
+onInputEffect effectInput effectHandler =
+    OnInputEffect
+        { effectInput = effectInput
+        , effectHandler = effectHandler
+        }
+
+
+
 -- BEHAVIOR
 
 
-editorUpdate : (domainMsg -> Node a -> Node a) -> Msg a -> Node a -> ( Node a, Cmd (Msg a) )
-editorUpdate domainUpdate msg domainModel =
+updateEditor : Msg a -> Node a -> ( Node a, Cmd (Msg a) )
+updateEditor msg domainModel =
     case msg of
         NoOp ->
             ( domainModel, Cmd.none )
@@ -111,26 +153,29 @@ editorUpdate domainUpdate msg domainModel =
         Swallow _ ->
             ( domainModel, Cmd.none )
 
-        ReplacePlaceHolder (OnEnterEffect { source, handler }) ->
-            ( handler source, Cmd.none )
+        OnEnter effect ->
+            case effect of
+                OnEnterEffect { effectInput, effectHandler } ->
+                    ( effectHandler effectInput |> updatePaths, Cmd.none )
+
+                _ ->
+                    ( domainModel, Cmd.none )
+
+        OnInput effect value ->
+            case effect of
+                OnInputEffect { effectInput, effectHandler } ->
+                    ( effectHandler effectInput value |> updatePaths, Cmd.none )
+
+                _ ->
+                    ( domainModel, Cmd.none )
 
 
 
 -- EDITOR
 
 
-viewContentOnly : Node (Cell a) -> List (Html (Msg a)) -> List (Html (Msg a))
-viewContentOnly root html =
-    case isaOf root of
-        ContentCell _ ->
-            html
-
-        EffectCell _ ->
-            []
-
-
-viewRoot : Node (Cell a) -> Html (Msg a)
-viewRoot root =
+viewEditor : Node (Cell a) -> Html (Msg a)
+viewEditor root =
     div [] <|
         case isaOf root of
             ContentCell _ ->
@@ -146,7 +191,7 @@ viewCell cell =
         ContentCell _ ->
             case getUnderDefault cell of
                 Nothing ->
-                    [ text ("editor empty for " ++ pathOf cell) ]
+                    [ text "editor empty" ]
 
                 Just content ->
                     List.foldl viewContent [] content
@@ -220,7 +265,7 @@ viewHorizStackCell : Node (Cell a) -> Html (Msg a)
 viewHorizStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div [ HtmlA.style "display" "inline-block" ] <|
+            div [ HtmlA.style "display" "flex" ] <|
                 viewCell cell
 
         EffectCell _ ->
@@ -241,18 +286,28 @@ viewInputCell : Node (Cell a) -> Html (Msg a)
 viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
-            span []
-                [ input
-                    [ HtmlA.style "border-width" "0px"
-                    , HtmlA.style "border" "none"
-                    , HtmlA.style "outline" "none"
-                      --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (produceKeyboardMsg cell)
-                    , HtmlA.placeholder "<no value>"
-                    , HtmlA.value (textOf "input" cell)
-                      --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
+            let
+                effects =
+                    isasUnderCustom "effects" cell
+
+                effectAttributes =
+                    List.map toEffectAttribute effects
+                        |> List.filterMap identity
+            in
+                div []
+                    [ input
+                        ([ HtmlA.style "border-width" "0px"
+                         , HtmlA.style "border" "none"
+                         , HtmlA.style "outline" "none"
+                           --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (produceKeyboardMsg cell)
+                         , HtmlA.placeholder "<no value>"
+                         , HtmlA.value (textOf "input" cell)
+                           --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
+                         ]
+                            ++ effectAttributes
+                        )
+                        []
                     ]
-                    []
-                ]
 
         EffectCell _ ->
             text ""
@@ -263,26 +318,12 @@ viewPlaceholderCell cell =
     case isaOf cell of
         ContentCell _ ->
             let
-                mbOnEnterEffect =
-                    getUnderCustom "onEnter" cell
-                        |> Maybe.andThen List.head
-                        |> Maybe.andThen
-                            (\onEnterCell ->
-                                case isaOf onEnterCell of
-                                    EffectCell effect ->
-                                        Just effect
+                effects =
+                    isasUnderCustom "effects" cell
 
-                                    ContentCell _ ->
-                                        Nothing
-                            )
-
-                onEnterAttribute =
-                    case mbOnEnterEffect of
-                        Nothing ->
-                            []
-
-                        Just effect ->
-                            [ produceKeyboardMsg effect ]
+                effectAttributes =
+                    List.map toEffectAttribute effects
+                        |> List.filterMap identity
             in
                 div []
                     [ input
@@ -294,7 +335,7 @@ viewPlaceholderCell cell =
                            --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
                          , HtmlE.onInput Swallow
                          ]
-                            ++ onEnterAttribute
+                            ++ effectAttributes
                         )
                         []
                     ]
@@ -303,16 +344,57 @@ viewPlaceholderCell cell =
             text ""
 
 
-produceKeyboardMsg : Effect a -> Attribute (Msg a)
-produceKeyboardMsg effect =
-    let
-        canHandle c =
-            case c of
-                13 ->
-                    -- ENTER
-                    JsonD.succeed (ReplacePlaceHolder effect)
+toEffectAttribute : Cell a -> Maybe (Attribute (Msg a))
+toEffectAttribute cell =
+    case cell of
+        EffectCell effect ->
+            Just (produceEffectAttribute effect)
 
-                _ ->
-                    JsonD.fail ("incorrect code: " ++ String.fromInt c)
+        ContentCell _ ->
+            Nothing
+
+
+produceEffectAttribute : Effect a -> Attribute (Msg a)
+produceEffectAttribute effect =
+    case effect of
+        OnInputEffect _ ->
+            effectAttributeFromInput (OnInput effect)
+
+        OnEnterEffect _ ->
+            effectAttributeFromKey "Enter" (OnEnter effect)
+
+
+effectAttributeFromInput : (String -> Msg a) -> Attribute (Msg a)
+effectAttributeFromInput handler =
+    HtmlE.onInput handler
+
+
+effectAttributeFromKey : String -> Msg a -> Attribute (Msg a)
+effectAttributeFromKey key msg =
+    let
+        canHandle k =
+            if k == key then
+                JsonD.succeed msg
+            else
+                JsonD.fail ("incorrect code: " ++ k)
     in
-        HtmlE.on "keydown" (JsonD.andThen canHandle HtmlE.keyCode)
+        HtmlE.on "keydown" <|
+            JsonD.andThen canHandle <|
+                JsonD.field "key" JsonD.string
+
+
+isasUnderCustom : String -> Node a -> List a
+isasUnderCustom featureKey parent =
+    let
+        mbChildren =
+            if featureKey == "" then
+                getUnderDefault parent
+            else
+                getUnderCustom featureKey parent
+    in
+        mbChildren
+            |> Maybe.andThen
+                (\children ->
+                    Just (List.map isaOf children)
+                )
+            |> Maybe.withDefault []
