@@ -50,7 +50,7 @@ view : Model a -> Html (Msg a)
 view model =
     let
         cellRoot =
-            model.xform (model.domainModel |> Debug.log "model") |> updatePaths |> Debug.log "cell"
+            model.xform model.domainModel |> updatePaths --|> Debug.log "cell"
     in
         Html.map (\editorMsg -> EditorMsg editorMsg) (viewEditor cellRoot)
 

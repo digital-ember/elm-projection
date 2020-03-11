@@ -19,13 +19,12 @@ module Editor
         )
 
 import Structure exposing (..)
+import Dict as Dict
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as JsonD
-
-
---import Browser.Dom as Dom
+import Browser.Dom as Dom
 
 
 type Cell a
@@ -50,6 +49,15 @@ type Effect a
         { effectInput : ( Node a, Path, String )
         , effectHandler : ( Node a, Path, String ) -> String -> Node a
         }
+    | NavSelectionEffect
+        { dir : Dir
+        , pathSelected : Path
+        }
+
+
+type EffectGroup a
+    = InputEffectGroup (List (Effect a))
+    | KeyboardEffectGroup (List (Effect a))
 
 
 type Orientation
@@ -61,8 +69,16 @@ type Msg a
     = -- will be needed for selection update
       NoOp
     | Swallow String
+    | NavSelection (Effect a)
     | OnEnter (Effect a)
     | OnInput (Effect a) String
+
+
+type Dir
+    = U
+    | D
+    | L
+    | R
 
 
 createRootCell : Node (Cell a)
@@ -140,6 +156,64 @@ onInputEffect effectInput effectHandler =
         }
 
 
+navEffects : Node (Cell a) -> List (Cell a)
+navEffects cell =
+    [ navEffect U cell
+    , navEffect D cell
+    , navEffect L cell
+    , navEffect R cell
+    ]
+
+
+navEffect : Dir -> Node (Cell a) -> Cell a
+navEffect dir cell =
+    EffectCell <| NavSelectionEffect { dir = dir, pathSelected = pathOf cell }
+
+
+grouped : List (Cell a) -> List (EffectGroup a)
+grouped effectCells =
+    let
+        updateGroup effect mbEffectList =
+            case mbEffectList of
+                Nothing ->
+                    Just [effect]
+            
+                Just effectList ->
+                    Just <| effect :: effectList
+
+        toDict effectCell groupDict =
+            case effectCell of
+                ContentCell _ ->
+                    groupDict
+
+                EffectCell effect ->
+                    case effect of
+                        OnInputEffect _ ->
+                            Dict.update "input" (updateGroup effect) groupDict
+
+                        OnEnterEffect _ ->
+                            Dict.update "keyboard" (updateGroup effect) groupDict
+
+                        NavSelectionEffect _ ->
+                            Dict.update "keyboard" (updateGroup effect) groupDict
+
+        dictGrouped =
+            List.foldl toDict Dict.empty effectCells
+
+        toEffectGroupList k v effectGroupList =
+            case k of
+                "input" ->
+                    InputEffectGroup v :: effectGroupList
+
+                "keyboard" ->
+                    KeyboardEffectGroup v :: effectGroupList
+
+                _ ->
+                    effectGroupList
+    in
+        Dict.foldl toEffectGroupList [] dictGrouped
+
+
 
 -- BEHAVIOR
 
@@ -168,6 +242,10 @@ updateEditor msg domainModel =
 
                 _ ->
                     ( domainModel, Cmd.none )
+
+        NavSelection effect ->
+            
+                ( domainModel, Cmd.none )
 
 
 
@@ -276,8 +354,8 @@ viewConstantCell : Node (Cell a) -> Html (Msg a)
 viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div [ HtmlA.style "display" "flex" ] 
-                [ label 
+            div [ ]
+                [ label
                     [ HtmlA.style "margin" "0px 3px 0px 0px" ]
                     [ text (textOf "constant" cell) ]
                 ]
@@ -290,29 +368,20 @@ viewInputCell : Node (Cell a) -> Html (Msg a)
 viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
-            let
-                effects =
-                    isasUnderCustom "effects" cell
-
-                effectAttributes =
-                    List.map toEffectAttribute effects
-                        |> List.filterMap identity
-            in
-                div 
-                    [ HtmlA.style "display" "flex"
-                    , HtmlA.style "margin" "0px 3px 0px 0px" 
-                    ]
-                    [ input
-                        ([ HtmlA.style "border-width" "0px"
-                         , HtmlA.style "border" "none"
-                         , HtmlA.style "outline" "none"
-                         , HtmlA.placeholder "<no value>"
-                         , HtmlA.value (textOf "input" cell)
-                         ]
-                            ++ effectAttributes
-                        )
-                        []
-                    ]
+            div
+                [ HtmlA.style "margin" "0px 3px 0px 0px"
+                ]
+                [ input
+                    ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "border" "none"
+                     , HtmlA.style "outline" "none"
+                     , HtmlA.placeholder "<no value>"
+                     , HtmlA.value (textOf "input" cell)
+                     ]
+                        ++ createInputCellAttributes cell
+                    )
+                    []
+                ]
 
         EffectCell _ ->
             text ""
@@ -322,51 +391,67 @@ viewPlaceholderCell : Node (Cell a) -> Html (Msg a)
 viewPlaceholderCell cell =
     case isaOf cell of
         ContentCell _ ->
-            let
-                effects =
-                    isasUnderCustom "effects" cell
-
-                effectAttributes =
-                    List.map toEffectAttribute effects
-                        |> List.filterMap identity
-            in
-                div []
-                    [ input
-                        ([ HtmlA.style "border-width" "0px"
-                         , HtmlA.style "border" "none"
-                         , HtmlA.style "outline" "none"
-                         , HtmlA.style "color" "#888888"
-                         , HtmlA.style "font-style" "italic"
-                         , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
-                         , HtmlE.onInput Swallow
-                         ]
-                            ++ effectAttributes
-                        )
-                        []
-                    ]
+            div []
+                [ input
+                    ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "border" "none"
+                     , HtmlA.style "outline" "none"
+                     , HtmlA.style "color" "#888888"
+                     , HtmlA.style "font-style" "italic"
+                     , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
+                     , HtmlE.onInput Swallow
+                     ]
+                        ++ createInputCellAttributes cell
+                    )
+                    []
+                ]
 
         EffectCell _ ->
             text ""
 
 
-toEffectAttribute : Cell a -> Maybe (Attribute (Msg a))
-toEffectAttribute cell =
-    case cell of
-        EffectCell effect ->
-            Just (produceEffectAttribute effect)
+createInputCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
+createInputCellAttributes cell =
+    let
+        effectGroups =
+            grouped <|
+                isasUnderCustom "effects" cell
+                    ++ navEffects cell
+                  
+    in
+        List.map attributeFromEffectGroup effectGroups
+            |> List.filterMap identity
 
-        ContentCell _ ->
-            Nothing
+
+attributeFromEffectGroup : EffectGroup a -> Maybe (Attribute (Msg a))
+attributeFromEffectGroup effectGroup =
+    case effectGroup of
+        InputEffectGroup effects ->
+            case effects of
+                effect :: [] ->
+                    Just (effectAttributeFromInput (OnInput effect))
+
+                _ ->
+                    Nothing
+
+        KeyboardEffectGroup effects ->
+            Just (effectAttributeFromKey (inputEffectMap effects))
 
 
-produceEffectAttribute : Effect a -> Attribute (Msg a)
-produceEffectAttribute effect =
-    case effect of
-        OnInputEffect _ ->
-            effectAttributeFromInput (OnInput effect)
+keyFromDir : Dir -> String
+keyFromDir dir =
+    case dir of
+        U ->
+            "ArrowUp"
 
-        OnEnterEffect _ ->
-            effectAttributeFromKey "Enter" (OnEnter effect)
+        D ->
+            "ArrowDown"
+
+        L ->
+            "ArrowLeft"
+
+        R ->
+            "ArrowRight"
 
 
 effectAttributeFromInput : (String -> Msg a) -> Attribute (Msg a)
@@ -374,14 +459,38 @@ effectAttributeFromInput handler =
     HtmlE.onInput handler
 
 
-effectAttributeFromKey : String -> Msg a -> Attribute (Msg a)
-effectAttributeFromKey key msg =
+inputEffectMap : List (Effect a) -> Dict.Dict String (Msg a)
+inputEffectMap effects =
+    List.foldl
+        (\effect dict ->
+            case effect of
+                OnEnterEffect _ ->
+                    Dict.insert "Enter" (OnEnter effect) dict
+
+                NavSelectionEffect { dir } ->
+                    Dict.insert (keyFromDir dir) (NavSelection effect) dict
+
+                OnInputEffect _ ->
+                    dict
+        )
+        Dict.empty
+        effects
+
+
+effectAttributeFromKey : Dict.Dict String (Msg a) -> Attribute (Msg a)
+effectAttributeFromKey dictKeyToMsg =
     let
         canHandle k =
-            if k == key then
-                JsonD.succeed msg
-            else
-                JsonD.fail ("incorrect code: " ++ k)
+            let
+                mbMsg =
+                    Dict.get k dictKeyToMsg
+            in
+                case mbMsg of
+                    Nothing ->
+                        JsonD.fail ("incorrect code: " ++ k)
+
+                    Just msg ->
+                        JsonD.succeed msg
     in
         HtmlE.on "keydown" <|
             JsonD.andThen canHandle <|

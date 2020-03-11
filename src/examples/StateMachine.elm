@@ -1,15 +1,17 @@
-module StateMachine exposing(main)
+module StateMachine exposing (main)
 
 import Structure exposing (..)
 import Editor exposing (..)
 import Runtime exposing (..)
 
-{-| We need to define a custom domain type. 
+
+{-| We need to define a custom domain type.
 It contains constructors for each "domain concept" to tag Node_s with via API.
 -}
 type Domain
     = StateMachine
     | Event
+
 
 {-| Program is created by the Runtime.program function.
 It requires:
@@ -53,7 +55,7 @@ editorStateMachine sm =
   * with a constant cell containing "name:"
   * with an input cell containing the "name" property of the state machine
       * input has an onInputEffect node
-        Carries the input parameters and the update function itself to be evaluated in the editor update 
+        Carries the input parameters and the update function itself to be evaluated in the editor update
 -}
 editorStateMachineName : Node Domain -> Node (Cell Domain)
 editorStateMachineName sm =
@@ -63,6 +65,7 @@ editorStateMachineName sm =
             (inputCell (textOf "name" sm)
                 |> withEffect (onInputEffect ( sm, pathOf sm, "name" ) updateStringProperty)
             )
+
 
 {-| If our statemachine does not contain any events, we put a placeholder cell to allow the user to add events
 Otherwise, we map over all events and create editor cells for them.
@@ -131,7 +134,7 @@ insertNewEvent event sm =
 
 {-| This pattern allows to update nested records.
 Input:
-  * Tuple of 
+  * Tuple of
       ** domain root (state machine)
       ** path to the node we want to update
       ** key of the property
@@ -141,7 +144,4 @@ The actual update can be defered to the Structure module, since it knows the str
 -}
 updateStringProperty : ( Node Domain, Path, String ) -> String -> Node Domain
 updateStringProperty ( sm, path, key ) newValue =
-    updatePropertyByPath sm path (stringProperty (key, newValue))
-
-
-
+    updatePropertyByPath sm path (stringProperty ( key, newValue ))
