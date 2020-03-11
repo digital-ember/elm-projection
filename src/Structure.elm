@@ -28,7 +28,6 @@ module Structure
         , getUnderCustom
         )
 
-import Array exposing(..)
 import Dict exposing (..)
 import Maybe exposing (..)
 
@@ -46,8 +45,9 @@ type Node a
 type Path
     = Path (List PathSegment)
 
+
 type alias PathSegment =
-    { feature : String 
+    { feature : String
     , index : Int
     }
 
@@ -132,9 +132,11 @@ propertiesOf : Node a -> Dict String Primitive
 propertiesOf (Node { properties }) =
     properties
 
-stringProperty : (String, String) -> Property
-stringProperty (k, v) =
-    (k, PString v)
+
+stringProperty : ( String, String ) -> Property
+stringProperty ( k, v ) =
+    ( k, PString v )
+
 
 
 {- featuresOf : Node a -> List Feature
@@ -298,119 +300,71 @@ updatePropertyByPath root (Path segments) property =
 
 updatePropertyRec : Node a -> List PathSegment -> Property -> Node a
 updatePropertyRec parent segments property =
-    let
-        t = Debug.log "rec" segments
-    in
-    
     case segments of
-        segment :: [] -> --lastSegment
-            updatePropertyUnder parent segment property
+        -- reached end of path => update property for that node!
+        [] ->
+            updateProperty parent property
 
-        ({feature} as segment) :: tail ->
+        ({ feature } as segment) :: tail ->
             case feature of
+                -- special handling for root node which has no parent => we skip its segment
                 "root" ->
-                    updatePropertyRec parent tail property -- we just skip the "root" segment
-            
+                    updatePropertyRec parent tail property
+
+                
                 _ ->
                     updateChildrenUnder parent segment tail property
-        
-        _ -> parent
+
 
 updateChildrenUnder : Node a -> PathSegment -> List PathSegment -> Property -> Node a
-updateChildrenUnder (Node ({ features } as data) as parent) {feature, index} tailSegments property =
-    let
-        t = Debug.log "ucu" tailSegments
+updateChildrenUnder parent ({ feature } as segment) tailSegments property =
+    if feature == "default" then
+        updateChildrenUnderDefault parent segment tailSegments property
+    else
+        updateChildrenUnderCustom parent segment tailSegments property
 
-        mbChildren = 
-            if feature == "default" then
-                getUnderDefault parent
-            else
-                getUnderCustom feature parent
 
-        mbChildrenNew = 
-            mbChildren 
-                |> Maybe.andThen
-                      (\children ->
-                          Just <|
-                              List.indexedMap 
-                                (\i child ->
-                                    if i == index then
-                                      updatePropertyRec child tailSegments property
-                                    else
-                                      child
-                                )
-                                children
-                      ) 
+
+updateChildrenUnderDefault : Node a -> PathSegment -> List PathSegment -> Property -> Node a
+updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } tailSegments property =
+  let
+        mbChildrenNew =
+            getUnderDefault parent
+                |> Maybe.andThen (updateChildren index tailSegments property)
 
         featuresNew =
-            if feature == "default" then
-                { features | default = mbChildrenNew }
-            else
-                { features | custom = Dict.update feature (\_ -> mbChildren ) features.custom }
-                
-    
-    in 
-      Node { data | features = featuresNew }
-   
-    
-
-updatePropertyUnder : Node a -> PathSegment -> Property -> Node a
-updatePropertyUnder (Node ({ features } as data) as parent) {feature, index} property =
-    if feature == "root" then
-        updateProperty parent property
-    else 
-    
-        let
-            t = Debug.log "upu" (feature, index)
-
-            mbChildren =
-                if feature == "default" then
-                    getUnderDefault parent
-                else
-                    getUnderCustom feature parent
-        
-            mbChildrenNew = 
-                mbChildren 
-                    |> Maybe.andThen
-                          (\children ->
-                              Just <|
-                                  List.indexedMap 
-                                    (\i child ->
-                                        if i == index then
-                                          updateProperty child property
-                                        else
-                                          child
-                                    )
-                                    children
-                          ) 
-
-                |> Debug.log ("created new children for " ++ feature)
-
-            featuresNew =
-                if feature == "default" then
-                    { features | default = mbChildrenNew }
-                else
-                    { features | custom = Dict.update feature (\_ -> mbChildrenNew ) features.custom }
-                    
-        
-        in 
-          Node { data | features = featuresNew }
-                
-                
-updateProperty : Node a -> Property -> Node a
-updateProperty ((Node data) as node) (key, primitiveNew) =
-    let
-        t = Debug.log "up" primitiveNew
-
-        mbProperty = Dict.get key data.properties |> Debug.log "mbProperty"
+            { features | default = mbChildrenNew }
     in
-        case mbProperty of
-            Nothing ->
-                node |> Debug.log "nothing"
+        Node { data | features = featuresNew }
 
-            Just _ ->
-                (Node { data | properties = Dict.update key (\_ -> Just primitiveNew) data.properties }) |> Debug.log "just"
+updateChildrenUnderCustom : Node a -> PathSegment -> List PathSegment -> Property -> Node a
+updateChildrenUnderCustom ((Node ({ features } as data)) as parent) { feature, index } tailSegments property =
+  let
+        mbChildrenNew =
+            getUnderCustom feature parent
+                |> Maybe.andThen (updateChildren index tailSegments property)
 
+        featuresNew =
+            { features | custom = Dict.update feature (\_ -> mbChildrenNew) features.custom }
+    in
+        Node { data | features = featuresNew }
+
+updateChildren : Int -> List PathSegment -> Property -> List (Node a) -> Maybe (List (Node a))
+updateChildren index tailSegments property children =
+    let
+        updateAt i child =
+            if i == index then
+                updatePropertyRec child tailSegments property
+            else
+                child
+    in
+        Just <| 
+            List.indexedMap updateAt children
+
+
+updateProperty : Node a -> Property -> Node a
+updateProperty (Node data) (key, primitiveNew) =
+    Node { data | properties = Dict.update key (\_ -> Just primitiveNew) data.properties }
 
 
 updatePaths : Node a -> Node a
@@ -439,8 +393,9 @@ addPath : Path -> String -> Int -> Node a -> Node a
 addPath (Path parentSegments) feature index (Node data) =
     let
         pathNew =
-            Path
-                <| List.reverse 
-                    <| { feature = feature, index = index } :: List.reverse parentSegments
+            Path <|
+                List.reverse <|
+                    { feature = feature, index = index }
+                        :: List.reverse parentSegments
     in
         Node { data | path = pathNew, features = addFeaturePath pathNew data.features }

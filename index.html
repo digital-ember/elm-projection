@@ -5377,7 +5377,8 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 								A2(elm$html$Html$Attributes$style, 'border-width', '0px'),
 								A2(elm$html$Html$Attributes$style, 'border', 'none'),
 								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
-								elm$html$Html$Attributes$placeholder(''),
+								A2(elm$html$Html$Attributes$style, 'color', '#888888'),
+								A2(elm$html$Html$Attributes$style, 'font-style', 'italic'),
 								elm$html$Html$Attributes$value(
 								'<' + (A2(author$project$Structure$textOf, 'placeholder', cell) + '>')),
 								elm$html$Html$Events$onInput(author$project$Editor$Swallow)
@@ -6510,118 +6511,75 @@ var author$project$Structure$stringProperty = function (_n0) {
 		author$project$Structure$PString(v));
 };
 var author$project$Structure$updateProperty = F2(
-	function (node, _n0) {
-		var data = node.a;
-		var key = _n0.a;
-		var primitiveNew = _n0.b;
-		var t = A2(elm$core$Debug$log, 'up', primitiveNew);
-		var mbProperty = A2(
-			elm$core$Debug$log,
-			'mbProperty',
-			A2(elm$core$Dict$get, key, data.properties));
-		if (mbProperty.$ === 'Nothing') {
-			return A2(elm$core$Debug$log, 'nothing', node);
-		} else {
-			return A2(
-				elm$core$Debug$log,
-				'just',
-				author$project$Structure$Node(
-					_Utils_update(
-						data,
-						{
-							properties: A3(
-								elm$core$Dict$update,
-								key,
-								function (_n2) {
-									return elm$core$Maybe$Just(primitiveNew);
-								},
-								data.properties)
-						})));
-		}
-	});
-var author$project$Structure$updatePropertyUnder = F3(
-	function (parent, _n0, property) {
-		var data = parent.a;
-		var features = data.features;
-		var feature = _n0.feature;
-		var index = _n0.index;
-		if (feature === 'root') {
-			return A2(author$project$Structure$updateProperty, parent, property);
-		} else {
-			var t = A2(
-				elm$core$Debug$log,
-				'upu',
-				_Utils_Tuple2(feature, index));
-			var mbChildren = (feature === 'default') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, feature, parent);
-			var mbChildrenNew = A2(
-				elm$core$Debug$log,
-				'created new children for ' + feature,
-				A2(
-					elm$core$Maybe$andThen,
-					function (children) {
-						return elm$core$Maybe$Just(
-							A2(
-								elm$core$List$indexedMap,
-								F2(
-									function (i, child) {
-										return _Utils_eq(i, index) ? A2(author$project$Structure$updateProperty, child, property) : child;
-									}),
-								children));
-					},
-					mbChildren));
-			var featuresNew = (feature === 'default') ? _Utils_update(
-				features,
-				{_default: mbChildrenNew}) : _Utils_update(
-				features,
+	function (_n0, _n1) {
+		var data = _n0.a;
+		var key = _n1.a;
+		var primitiveNew = _n1.b;
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
 				{
-					custom: A3(
+					properties: A3(
 						elm$core$Dict$update,
-						feature,
-						function (_n1) {
-							return mbChildrenNew;
+						key,
+						function (_n2) {
+							return elm$core$Maybe$Just(primitiveNew);
 						},
-						features.custom)
-				});
-			return author$project$Structure$Node(
-				_Utils_update(
-					data,
-					{features: featuresNew}));
-		}
+						data.properties)
+				}));
+	});
+var author$project$Structure$updateChildren = F4(
+	function (index, tailSegments, property, children) {
+		var updateAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, child, tailSegments, property) : child;
+			});
+		return elm$core$Maybe$Just(
+			A2(elm$core$List$indexedMap, updateAt, children));
 	});
 var author$project$Structure$updateChildrenUnder = F4(
-	function (parent, _n2, tailSegments, property) {
+	function (parent, segment, tailSegments, property) {
+		var feature = segment.feature;
+		return (feature === 'default') ? A4(author$project$Structure$updateChildrenUnderDefault, parent, segment, tailSegments, property) : A4(author$project$Structure$updateChildrenUnderCustom, parent, segment, tailSegments, property);
+	});
+var author$project$Structure$updateChildrenUnderCustom = F4(
+	function (parent, _n3, tailSegments, property) {
 		var data = parent.a;
 		var features = data.features;
-		var feature = _n2.feature;
-		var index = _n2.index;
-		var t = A2(elm$core$Debug$log, 'ucu', tailSegments);
-		var mbChildren = (feature === 'default') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, feature, parent);
+		var feature = _n3.feature;
+		var index = _n3.index;
 		var mbChildrenNew = A2(
 			elm$core$Maybe$andThen,
-			function (children) {
-				return elm$core$Maybe$Just(
-					A2(
-						elm$core$List$indexedMap,
-						F2(
-							function (i, child) {
-								return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, child, tailSegments, property) : child;
-							}),
-						children));
-			},
-			mbChildren);
-		var featuresNew = (feature === 'default') ? _Utils_update(
-			features,
-			{_default: mbChildrenNew}) : _Utils_update(
+			A3(author$project$Structure$updateChildren, index, tailSegments, property),
+			A2(author$project$Structure$getUnderCustom, feature, parent));
+		var featuresNew = _Utils_update(
 			features,
 			{
 				custom: A3(
 					elm$core$Dict$update,
 					feature,
-					function (_n3) {
-						return mbChildren;
+					function (_n4) {
+						return mbChildrenNew;
 					},
 					features.custom)
 			});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$updateChildrenUnderDefault = F4(
+	function (parent, _n2, tailSegments, property) {
+		var data = parent.a;
+		var features = data.features;
+		var index = _n2.index;
+		var mbChildrenNew = A2(
+			elm$core$Maybe$andThen,
+			A3(author$project$Structure$updateChildren, index, tailSegments, property),
+			author$project$Structure$getUnderDefault(parent));
+		var featuresNew = _Utils_update(
+			features,
+			{_default: mbChildrenNew});
 		return author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -6631,29 +6589,23 @@ var author$project$Structure$updatePropertyRec = F3(
 	function (parent, segments, property) {
 		updatePropertyRec:
 		while (true) {
-			var t = A2(elm$core$Debug$log, 'rec', segments);
-			if (segments.b) {
-				if (!segments.b.b) {
-					var segment = segments.a;
-					return A3(author$project$Structure$updatePropertyUnder, parent, segment, property);
-				} else {
-					var segment = segments.a;
-					var feature = segment.feature;
-					var tail = segments.b;
-					if (feature === 'root') {
-						var $temp$parent = parent,
-							$temp$segments = tail,
-							$temp$property = property;
-						parent = $temp$parent;
-						segments = $temp$segments;
-						property = $temp$property;
-						continue updatePropertyRec;
-					} else {
-						return A4(author$project$Structure$updateChildrenUnder, parent, segment, tail, property);
-					}
-				}
+			if (!segments.b) {
+				return A2(author$project$Structure$updateProperty, parent, property);
 			} else {
-				return parent;
+				var segment = segments.a;
+				var feature = segment.feature;
+				var tail = segments.b;
+				if (feature === 'root') {
+					var $temp$parent = parent,
+						$temp$segments = tail,
+						$temp$property = property;
+					parent = $temp$parent;
+					segments = $temp$segments;
+					property = $temp$property;
+					continue updatePropertyRec;
+				} else {
+					return A4(author$project$Structure$updateChildrenUnder, parent, segment, tail, property);
+				}
 			}
 		}
 	});
@@ -6786,11 +6738,7 @@ var author$project$StateMachine$editor = function (sm) {
 		author$project$Editor$createRootCell);
 };
 var author$project$StateMachine$StateMachine = {$: 'StateMachine'};
-var author$project$StateMachine$stateMachine = A3(
-	author$project$Structure$addText,
-	'name',
-	'My StateMachine',
-	author$project$Structure$createRoot(author$project$StateMachine$StateMachine));
+var author$project$StateMachine$stateMachine = author$project$Structure$createRoot(author$project$StateMachine$StateMachine);
 var author$project$StateMachine$main = A2(author$project$Runtime$program, author$project$StateMachine$stateMachine, author$project$StateMachine$editor);
 _Platform_export({'StateMachine':{'init':author$project$StateMachine$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));

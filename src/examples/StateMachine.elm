@@ -1,37 +1,37 @@
-module StateMachine exposing (..)
+module StateMachine exposing(main)
 
 import Structure exposing (..)
 import Editor exposing (..)
 import Runtime exposing (..)
 
-
+{-| We need to define a custom domain type. 
+It contains constructors for each "domain concept" to tag Node_s with via API.
+-}
 type Domain
     = StateMachine
     | Event
+    | State
+
+{-| Program is created by the Runtime.program function.
+It requires:
+- initial root node (stateMachine)
+- editor (top-level function to transform a domain model to a cell model)
+-}
+main : Program () (Model Domain) (Runtime.Msg Domain)
+main =
+    program stateMachine editor
 
 
+{-| Initial root node to start the program with.
+Just an root node of variant StateMachine.
+-}
 stateMachine : Node Domain
 stateMachine =
     createRoot StateMachine
-        |> addText "name" "My StateMachine"
 
 
-
-{- |> addText "name" "MyStateMachine"
-      |> addInt "maxNumOfStates" 0
-      |> addToCustom "events"
-             (createNode Event
-                 |> addText "name" "doorClosed"
-             )
-         |> addToCustom "events"
-             (createNode Event
-                 |> addText "name" "doorOpened"
-             )
-   |>
-       Debug.log "stateMachine"
+{-| Declarative way of building a "state machine editor" using the Editor-API
 -}
-
-
 editor : Node Domain -> Node (Cell Domain)
 editor sm =
     createRootCell
@@ -116,9 +116,5 @@ updateName : ( Node Domain, Path ) -> String -> Node Domain
 updateName ( sm, path ) newName =
     updatePropertyByPath sm path (stringProperty ("name", newName))
 
-
-main : Program () (Model Domain) (Runtime.Msg Domain)
-main =
-    program stateMachine editor
 
 

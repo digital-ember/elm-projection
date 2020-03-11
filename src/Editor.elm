@@ -330,9 +330,9 @@ viewPlaceholderCell cell =
                         ([ HtmlA.style "border-width" "0px"
                          , HtmlA.style "border" "none"
                          , HtmlA.style "outline" "none"
-                         , HtmlA.placeholder ""
+                         , HtmlA.style "color" "#888888"
+                         , HtmlA.style "font-style" "italic"
                          , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
-                           --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
                          , HtmlE.onInput Swallow
                          ]
                             ++ effectAttributes
