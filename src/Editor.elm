@@ -42,8 +42,8 @@ type ContentCell
 
 type Effect a
     = OnEnterEffect
-        { effectInput : Node a
-        , effectHandler : Node a -> Node a
+        { effectInput : (Node a, Maybe (Node a))
+        , effectHandler : (Node a, Maybe (Node a)) -> Node a
         }
     | OnInputEffect
         { effectInput : ( Node a, Path, String )
@@ -140,7 +140,7 @@ withEffect effect =
             EffectCell effect
 
 
-onEnterEffect : Node a -> (Node a -> Node a) -> Effect a
+onEnterEffect : (Node a, Maybe (Node a)) -> ((Node a, Maybe (Node a)) -> Node a) -> Effect a
 onEnterEffect effectInput effectHandler =
     OnEnterEffect
         { effectInput = effectInput
@@ -176,8 +176,8 @@ grouped effectCells =
         updateGroup effect mbEffectList =
             case mbEffectList of
                 Nothing ->
-                    Just [effect]
-            
+                    Just [ effect ]
+
                 Just effectList ->
                     Just <| effect :: effectList
 
@@ -243,9 +243,8 @@ updateEditor msg domainModel =
                 _ ->
                     ( domainModel, Cmd.none )
 
-        NavSelection effect ->
-            
-                ( domainModel, Cmd.none )
+        NavSelection _ ->
+            ( domainModel, Cmd.none )
 
 
 
@@ -269,7 +268,7 @@ viewCell cell =
         ContentCell _ ->
             case getUnderDefault cell of
                 Nothing ->
-                    [ text "editor empty" ]
+                    [ text "" ]
 
                 Just content ->
                     List.foldl viewContent [] content
@@ -332,7 +331,11 @@ viewVertStackCell cell =
                     else
                         HtmlA.style "margin" "0px"
             in
-                div [ indent ] <|
+                div
+                    [ indent
+                    , HtmlA.id (pathAsId cell)
+                    ]
+                <|
                     viewCell cell
 
         EffectCell _ ->
@@ -343,7 +346,11 @@ viewHorizStackCell : Node (Cell a) -> Html (Msg a)
 viewHorizStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div [ HtmlA.style "display" "flex" ] <|
+            div
+                [ HtmlA.style "display" "flex"
+                , HtmlA.id (pathAsId cell)
+                ]
+            <|
                 viewCell cell
 
         EffectCell _ ->
@@ -354,9 +361,11 @@ viewConstantCell : Node (Cell a) -> Html (Msg a)
 viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div [ ]
+            div []
                 [ label
-                    [ HtmlA.style "margin" "0px 3px 0px 0px" ]
+                    [ HtmlA.style "margin" "0px 3px 0px 0px"
+                    , HtmlA.id (pathAsId cell)
+                    ]
                     [ text (textOf "constant" cell) ]
                 ]
 
@@ -377,6 +386,7 @@ viewInputCell cell =
                      , HtmlA.style "outline" "none"
                      , HtmlA.placeholder "<no value>"
                      , HtmlA.value (textOf "input" cell)
+                     , HtmlA.id (pathAsId cell)
                      ]
                         ++ createInputCellAttributes cell
                     )
@@ -400,6 +410,7 @@ viewPlaceholderCell cell =
                      , HtmlA.style "font-style" "italic"
                      , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
                      , HtmlE.onInput Swallow
+                     , HtmlA.id (pathAsId cell)
                      ]
                         ++ createInputCellAttributes cell
                     )
@@ -417,7 +428,6 @@ createInputCellAttributes cell =
             grouped <|
                 isasUnderCustom "effects" cell
                     ++ navEffects cell
-                  
     in
         List.map attributeFromEffectGroup effectGroups
             |> List.filterMap identity
@@ -490,7 +500,7 @@ effectAttributeFromKey dictKeyToMsg =
                         JsonD.fail ("incorrect code: " ++ k)
 
                     Just msg ->
-                        JsonD.succeed msg
+                        JsonD.succeed msg         
     in
         HtmlE.on "keydown" <|
             JsonD.andThen canHandle <|

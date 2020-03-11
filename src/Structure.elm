@@ -5,6 +5,7 @@ module Structure
         , Path(..)
         , isaOf
         , pathOf
+        , pathAsId
         , updatePaths
         , propertiesOf
         , stringProperty
@@ -77,6 +78,16 @@ pathOf : Node a -> Path
 pathOf (Node { path }) =
     path
 
+pathAsId : Node a -> String
+pathAsId (Node {path}) = 
+    let
+       (Path segments) = path
+    in
+       List.foldl pathSegmentAsId "" segments
+  
+pathSegmentAsId : PathSegment -> String -> String
+pathSegmentAsId {feature, index} idPart =
+    idPart ++ (if idPart=="" then "" else "-") ++ feature ++ String.fromInt index
 
 valueOf : String -> Node a -> Maybe Primitive
 valueOf key (Node { properties }) =

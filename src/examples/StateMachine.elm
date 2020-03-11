@@ -97,39 +97,40 @@ editorEvents sm =
 editorEvent : Node Domain -> Node Domain -> Node (Cell Domain)
 editorEvent sm event =
     inputCell (textOf "name" event)
-        |> withEffect (onEnterEffect sm (insertNewEvent event))
+        |> withEffect (onEnterEffect ( sm, Just event ) addNewEvent)
         |> withEffect (onInputEffect ( sm, pathOf event, "name" ) updateStringProperty)
 
 
 editorEventPlaceholder : Node Domain -> List (Node (Cell Domain))
 editorEventPlaceholder sm =
     [ placeholderCell "no events"
-        |> withEffect (onEnterEffect sm addDefaultEvent)
+        |> withEffect (onEnterEffect ( sm, Nothing ) addNewEvent)
     ]
 
 
 {-| This can be considered the "constructor" of a default Event.
+We either add it to the list or insert it after the current Event.
 This method is passed via a Effect to the editor.
 Notice that these replace the need for a "update" method in our domain model (state machine).
 We use the Structure API to update our domain model, naturally.
 -}
-addDefaultEvent : Node Domain -> Node Domain
-addDefaultEvent sm =
-    addToCustom "events"
-        (createNode Event
-            |> addText "name" ""
-        )
-        sm
-
-
-insertNewEvent : Node Domain -> Node Domain -> Node Domain
-insertNewEvent event sm =
-    insertAfterUnderCustom "events"
-        (createNode Event
-            |> addText "name" ""
-        )
-        (pathOf event)
-        sm
+addNewEvent : (Node Domain, Maybe (Node Domain)) -> Node Domain
+addNewEvent (sm, mbEvent) =
+    case mbEvent of
+        Nothing ->
+            addToCustom "events"
+                (createNode Event
+                    |> addText "name" ""
+                )
+                sm
+    
+        Just event ->
+            insertAfterUnderCustom "events"
+                (createNode Event
+                    |> addText "name" ""
+                )
+                (pathOf event)
+                sm
 
 
 {-| This pattern allows to update nested records.

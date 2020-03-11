@@ -5003,6 +5003,24 @@ var author$project$Structure$isaOf = function (_n0) {
 	var isa = _n0.a.isa;
 	return isa;
 };
+var author$project$Structure$pathSegmentAsId = F2(
+	function (_n0, idPart) {
+		var feature = _n0.feature;
+		var index = _n0.index;
+		return _Utils_ap(
+			idPart,
+			_Utils_ap(
+				(idPart === '') ? '' : '-',
+				_Utils_ap(
+					feature,
+					elm$core$String$fromInt(index))));
+	});
+var author$project$Structure$pathAsId = function (_n0) {
+	var path = _n0.a.path;
+	var _n1 = path;
+	var segments = _n1.a;
+	return A3(elm$core$List$foldl, author$project$Structure$pathSegmentAsId, '', segments);
+};
 var elm$core$Basics$compare = _Utils_compare;
 var elm$core$Dict$get = F2(
 	function (targetKey, dict) {
@@ -5094,6 +5112,15 @@ var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$label = _VirtualDom_node('label');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var elm$json$Json$Encode$string = _Json_wrap;
+var elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			elm$json$Json$Encode$string(string));
+	});
+var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
 var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
 var author$project$Editor$viewConstantCell = function (cell) {
@@ -5108,7 +5135,9 @@ var author$project$Editor$viewConstantCell = function (cell) {
 					elm$html$Html$label,
 					_List_fromArray(
 						[
-							A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px')
+							A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px'),
+							elm$html$Html$Attributes$id(
+							author$project$Structure$pathAsId(cell))
 						]),
 					_List_fromArray(
 						[
@@ -5976,14 +6005,6 @@ var author$project$Editor$createInputCellAttributes = function (cell) {
 		A2(elm$core$List$map, author$project$Editor$attributeFromEffectGroup, effectGroups));
 };
 var elm$html$Html$input = _VirtualDom_node('input');
-var elm$json$Json$Encode$string = _Json_wrap;
-var elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			elm$json$Json$Encode$string(string));
-	});
 var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
 var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
 var author$project$Editor$viewInputCell = function (cell) {
@@ -6007,7 +6028,9 @@ var author$project$Editor$viewInputCell = function (cell) {
 								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
 								elm$html$Html$Attributes$placeholder('<no value>'),
 								elm$html$Html$Attributes$value(
-								A2(author$project$Structure$textOf, 'input', cell))
+								A2(author$project$Structure$textOf, 'input', cell)),
+								elm$html$Html$Attributes$id(
+								author$project$Structure$pathAsId(cell))
 							]),
 						author$project$Editor$createInputCellAttributes(cell)),
 					_List_Nil)
@@ -6039,7 +6062,9 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 								A2(elm$html$Html$Attributes$style, 'font-style', 'italic'),
 								elm$html$Html$Attributes$value(
 								'<' + (A2(author$project$Structure$textOf, 'placeholder', cell) + '>')),
-								elm$html$Html$Events$onInput(author$project$Editor$Swallow)
+								elm$html$Html$Events$onInput(author$project$Editor$Swallow),
+								elm$html$Html$Attributes$id(
+								author$project$Structure$pathAsId(cell))
 							]),
 						author$project$Editor$createInputCellAttributes(cell)),
 					_List_Nil)
@@ -6072,7 +6097,7 @@ var author$project$Editor$viewCell = function (cell) {
 		if (_n7.$ === 'Nothing') {
 			return _List_fromArray(
 				[
-					elm$html$Html$text('editor empty')
+					elm$html$Html$text('')
 				]);
 		} else {
 			var content = _n7.a;
@@ -6118,7 +6143,9 @@ var author$project$Editor$viewHorizStackCell = function (cell) {
 			elm$html$Html$div,
 			_List_fromArray(
 				[
-					A2(elm$html$Html$Attributes$style, 'display', 'flex')
+					A2(elm$html$Html$Attributes$style, 'display', 'flex'),
+					elm$html$Html$Attributes$id(
+					author$project$Structure$pathAsId(cell))
 				]),
 			author$project$Editor$viewCell(cell));
 	} else {
@@ -6145,7 +6172,11 @@ var author$project$Editor$viewVertStackCell = function (cell) {
 		return A2(
 			elm$html$Html$div,
 			_List_fromArray(
-				[indent]),
+				[
+					indent,
+					elm$html$Html$Attributes$id(
+					author$project$Structure$pathAsId(cell))
+				]),
 			author$project$Editor$viewCell(cell));
 	} else {
 		return elm$html$Html$text('');
@@ -6659,8 +6690,21 @@ var author$project$Structure$insertAfterUnderCustom = F4(
 				data,
 				{features: featuresNew}));
 	});
-var author$project$StateMachine$insertNewEvent = F2(
-	function (event, sm) {
+var author$project$StateMachine$addNewEvent = function (_n0) {
+	var sm = _n0.a;
+	var mbEvent = _n0.b;
+	if (mbEvent.$ === 'Nothing') {
+		return A3(
+			author$project$Structure$addToCustom,
+			'events',
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'',
+				author$project$Structure$createNode(author$project$StateMachine$Event)),
+			sm);
+	} else {
+		var event = mbEvent.a;
 		return A4(
 			author$project$Structure$insertAfterUnderCustom,
 			'events',
@@ -6671,7 +6715,8 @@ var author$project$StateMachine$insertNewEvent = F2(
 				author$project$Structure$createNode(author$project$StateMachine$Event)),
 			author$project$Structure$pathOf(event),
 			sm);
-	});
+	}
+};
 var author$project$Structure$stringProperty = function (_n0) {
 	var k = _n0.a;
 	var v = _n0.b;
@@ -6810,8 +6855,10 @@ var author$project$StateMachine$editorEvent = F2(
 				author$project$Editor$withEffect,
 				A2(
 					author$project$Editor$onEnterEffect,
-					sm,
-					author$project$StateMachine$insertNewEvent(event)),
+					_Utils_Tuple2(
+						sm,
+						elm$core$Maybe$Just(event)),
+					author$project$StateMachine$addNewEvent),
 				author$project$Editor$inputCell(
 					A2(author$project$Structure$textOf, 'name', event))));
 	});
@@ -6824,23 +6871,15 @@ var author$project$Editor$placeholderCell = function (text) {
 		author$project$Structure$createNode(
 			author$project$Editor$ContentCell(author$project$Editor$PlaceholderCell)));
 };
-var author$project$StateMachine$addDefaultEvent = function (sm) {
-	return A3(
-		author$project$Structure$addToCustom,
-		'events',
-		A3(
-			author$project$Structure$addText,
-			'name',
-			'',
-			author$project$Structure$createNode(author$project$StateMachine$Event)),
-		sm);
-};
 var author$project$StateMachine$editorEventPlaceholder = function (sm) {
 	return _List_fromArray(
 		[
 			A2(
 			author$project$Editor$withEffect,
-			A2(author$project$Editor$onEnterEffect, sm, author$project$StateMachine$addDefaultEvent),
+			A2(
+				author$project$Editor$onEnterEffect,
+				_Utils_Tuple2(sm, elm$core$Maybe$Nothing),
+				author$project$StateMachine$addNewEvent),
 			author$project$Editor$placeholderCell('no events'))
 		]);
 };
