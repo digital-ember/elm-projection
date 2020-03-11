@@ -5527,7 +5527,8 @@ var author$project$Runtime$view = function (model) {
 		elm$core$Debug$log,
 		'cell',
 		author$project$Structure$updatePaths(
-			model.xform(model.domainModel)));
+			model.xform(
+				A2(elm$core$Debug$log, 'model', model.domainModel))));
 	return A2(
 		elm$html$Html$map,
 		function (editorMsg) {

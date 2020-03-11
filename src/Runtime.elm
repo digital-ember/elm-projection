@@ -1,4 +1,4 @@
-module Runtime exposing (program)
+module Runtime exposing (program, Msg, Model)
 
 import Structure exposing (..)
 import Editor exposing (..)
@@ -50,359 +50,360 @@ view : Model a -> Html (Msg a)
 view model =
     let
         cellRoot =
-            model.xform model.domainModel |> updatePaths |> Debug.log "cell"
+            model.xform (model.domainModel |> Debug.log "model") |> updatePaths |> Debug.log "cell"
     in
         Html.map (\editorMsg -> EditorMsg editorMsg) (viewEditor cellRoot)
 
 
+
 {-
-cell =
-    Node
-        { features =
-            { custom = Dict.fromList []
-            , default =
-                Just
-                    [ Node
-                        { features =
-                            { custom = Dict.fromList []
-                            , default =
-                                Just
-                                    [ Node
-                                        { features =
-                                            { custom = Dict.fromList []
-                                            , default =
-                                                Just
-                                                    [ Node
-                                                        { features =
-                                                            { custom = Dict.fromList []
-                                                            , default = Nothing
-                                                            }
-                                                        , isa = ContentCell ConstantCell
-                                                        , name = ""
-                                                        , path =
-                                                            Path
-                                                                [ { feature = "root"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                ]
-                                                        , properties = Dict.fromList [ ( "constant", PString "name:" ) ]
-                                                        }
-                                                    , Node
-                                                        { features =
-                                                            { custom =
-                                                                Dict.fromList
-                                                                    [ ( "effects"
-                                                                      , [ Node
-                                                                            { features =
-                                                                                { custom = Dict.fromList []
-                                                                                , default = Nothing
-                                                                                }
-                                                                            , isa =
-                                                                                EffectCell
-                                                                                    (OnInputEffect
-                                                                                        { effectHandler = "<function>"
-                                                                                        , effectInput =
-                                                                                            ( Node
-                                                                                                { features =
-                                                                                                    { custom = Dict.fromList []
-                                                                                                    , default = Nothing
-                                                                                                    }
-                                                                                                , isa = StateMachine
-                                                                                                , name = "root"
-                                                                                                , path =
-                                                                                                    Path
-                                                                                                        [ { feature = "root"
-                                                                                                          , index = 0
-                                                                                                          }
-                                                                                                        ]
-                                                                                                , properties = Dict.fromList []
-                                                                                                }
-                                                                                            , Path
-                                                                                                [ { feature = "root"
-                                                                                                  , index = 0
-                                                                                                  }
-                                                                                                ]
-                                                                                            , "name"
-                                                                                            )
-                                                                                        }
-                                                                                    )
-                                                                            , name = ""
-                                                                            , path =
-                                                                                Path
-                                                                                    [ { feature = "root"
-                                                                                      , index = 0
-                                                                                      }
-                                                                                    , { feature = "default"
-                                                                                      , index = 0
-                                                                                      }
-                                                                                    , { feature = "default"
-                                                                                      , index = 0
-                                                                                      }
-                                                                                    , { feature = "default"
-                                                                                      , index = 1
-                                                                                      }
-                                                                                    , { feature = "effects"
-                                                                                      , index = 0
-                                                                                      }
-                                                                                    ]
-                                                                            , properties = Dict.fromList []
-                                                                            }
-                                                                        ]
-                                                                      )
-                                                                    ]
-                                                            , default = Nothing
-                                                            }
-                                                        , isa = ContentCell InputCell
-                                                        , name = ""
-                                                        , path =
-                                                            Path
-                                                                [ { feature = "root"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 1
-                                                                  }
-                                                                ]
-                                                        , properties = Dict.fromList [ ( "input", PString "" ) ]
-                                                        }
-                                                    ]
-                                            }
-                                        , isa = ContentCell (StackCell Horiz)
-                                        , name = ""
-                                        , path =
-                                            Path
-                                                [ { feature = "root"
-                                                  , index = 0
-                                                  }
-                                                , { feature = "default"
-                                                  , index = 0
-                                                  }
-                                                , { feature = "default"
-                                                  , index = 0
-                                                  }
-                                                ]
-                                        , properties = Dict.fromList []
-                                        }
-                                    , Node
-                                        { features =
-                                            { custom = Dict.fromList []
-                                            , default =
-                                                Just
-                                                    [ Node
-                                                        { features =
-                                                            { custom = Dict.fromList []
-                                                            , default = Nothing
-                                                            }
-                                                        , isa = ContentCell ConstantCell
-                                                        , name = ""
-                                                        , path =
-                                                            Path
-                                                                [ { feature = "root"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 1
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                ]
-                                                        , properties = Dict.fromList [ ( "constant", PString "events" ) ]
-                                                        }
-                                                    , Node
-                                                        { features =
-                                                            { custom = Dict.fromList []
-                                                            , default =
-                                                                Just
-                                                                    [ Node
-                                                                        { features =
-                                                                            { custom =
-                                                                                Dict.fromList
-                                                                                    [ ( "effects"
-                                                                                      , [ Node
-                                                                                            { features =
-                                                                                                { custom = Dict.fromList []
-                                                                                                , default = Nothing
-                                                                                                }
-                                                                                            , isa =
-                                                                                                EffectCell
-                                                                                                    (OnEnterEffect
-                                                                                                        { effectHandler = "<function>"
-                                                                                                        , effectInput =
-                                                                                                            Node
-                                                                                                                { features =
-                                                                                                                    { custom = Dict.fromList []
-                                                                                                                    , default = Nothing
-                                                                                                                    }
-                                                                                                                , isa = StateMachine
-                                                                                                                , name = "root"
-                                                                                                                , path =
-                                                                                                                    Path
-                                                                                                                        [ { feature = "root"
-                                                                                                                          , index = 0
-                                                                                                                          }
-                                                                                                                        ]
-                                                                                                                , properties = Dict.fromList []
-                                                                                                                }
-                                                                                                        }
-                                                                                                    )
-                                                                                            , name = ""
-                                                                                            , path =
-                                                                                                Path
-                                                                                                    [ { feature = "root"
-                                                                                                      , index = 0
-                                                                                                      }
-                                                                                                    , { feature = "default"
-                                                                                                      , index = 0
-                                                                                                      }
-                                                                                                    , { feature = "default"
-                                                                                                      , index = 1
-                                                                                                      }
-                                                                                                    , { feature = "default"
-                                                                                                      , index = 1
-                                                                                                      }
-                                                                                                    , { feature = "default"
-                                                                                                      , index = 0
-                                                                                                      }
-                                                                                                    , { feature = "effects"
-                                                                                                      , index = 0
-                                                                                                      }
-                                                                                                    ]
-                                                                                            , properties = Dict.fromList []
-                                                                                            }
-                                                                                        ]
-                                                                                      )
-                                                                                    ]
-                                                                            , default = Nothing
-                                                                            }
-                                                                        , isa = ContentCell PlaceholderCell
-                                                                        , name = ""
-                                                                        , path =
-                                                                            Path
-                                                                                [ { feature = "root"
-                                                                                  , index = 0
-                                                                                  }
-                                                                                , { feature = "default"
-                                                                                  , index = 0
-                                                                                  }
-                                                                                , { feature = "default"
-                                                                                  , index = 1
-                                                                                  }
-                                                                                , { feature = "default"
-                                                                                  , index = 1
-                                                                                  }
-                                                                                , { feature = "default"
-                                                                                  , index = 0
-                                                                                  }
-                                                                                ]
-                                                                        , properties = Dict.fromList [ ( "placeholder", PString "no events" ) ]
-                                                                        }
-                                                                    ]
-                                                            }
-                                                        , isa = ContentCell (StackCell Vert)
-                                                        , name = ""
-                                                        , path =
-                                                            Path
-                                                                [ { feature = "root"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 1
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 1
-                                                                  }
-                                                                ]
-                                                        , properties = Dict.fromList [ ( "indent", PBool True ) ]
-                                                        }
-                                                    , Node
-                                                        { features =
-                                                            { custom = Dict.fromList []
-                                                            , default = Nothing
-                                                            }
-                                                        , isa = ContentCell ConstantCell
-                                                        , name = ""
-                                                        , path =
-                                                            Path
-                                                                [ { feature = "root"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 0
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 1
-                                                                  }
-                                                                , { feature = "default"
-                                                                  , index = 2
-                                                                  }
-                                                                ]
-                                                        , properties = Dict.fromList [ ( "constant", PString "end" ) ]
-                                                        }
-                                                    ]
-                                            }
-                                        , isa = ContentCell (StackCell Vert)
-                                        , name = ""
-                                        , path =
-                                            Path
-                                                [ { feature = "root"
-                                                  , index = 0
-                                                  }
-                                                , { feature = "default"
-                                                  , index = 0
-                                                  }
-                                                , { feature = "default"
-                                                  , index = 1
-                                                  }
-                                                ]
-                                        , properties = Dict.fromList []
-                                        }
-                                    ]
-                            }
-                        , isa = ContentCell (StackCell Vert)
-                        , name = ""
-                        , path =
-                            Path
-                                [ { feature = "root"
-                                  , index = 0
-                                  }
-                                , { feature = "default"
-                                  , index = 0
-                                  }
-                                ]
-                        , properties = Dict.fromList []
-                        }
-                    ]
-            }
-        , isa = ContentCell RootCell
-        , name = "root"
-        , path =
-            Path
-                [ { feature = "root"
-                  , index = 0
-                  }
-                ]
-        , properties = Dict.fromList []
-        }
+   cell =
+       Node
+           { features =
+               { custom = Dict.fromList []
+               , default =
+                   Just
+                       [ Node
+                           { features =
+                               { custom = Dict.fromList []
+                               , default =
+                                   Just
+                                       [ Node
+                                           { features =
+                                               { custom = Dict.fromList []
+                                               , default =
+                                                   Just
+                                                       [ Node
+                                                           { features =
+                                                               { custom = Dict.fromList []
+                                                               , default = Nothing
+                                                               }
+                                                           , isa = ContentCell ConstantCell
+                                                           , name = ""
+                                                           , path =
+                                                               Path
+                                                                   [ { feature = "root"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   ]
+                                                           , properties = Dict.fromList [ ( "constant", PString "name:" ) ]
+                                                           }
+                                                       , Node
+                                                           { features =
+                                                               { custom =
+                                                                   Dict.fromList
+                                                                       [ ( "effects"
+                                                                         , [ Node
+                                                                               { features =
+                                                                                   { custom = Dict.fromList []
+                                                                                   , default = Nothing
+                                                                                   }
+                                                                               , isa =
+                                                                                   EffectCell
+                                                                                       (OnInputEffect
+                                                                                           { effectHandler = "<function>"
+                                                                                           , effectInput =
+                                                                                               ( Node
+                                                                                                   { features =
+                                                                                                       { custom = Dict.fromList []
+                                                                                                       , default = Nothing
+                                                                                                       }
+                                                                                                   , isa = StateMachine
+                                                                                                   , name = "root"
+                                                                                                   , path =
+                                                                                                       Path
+                                                                                                           [ { feature = "root"
+                                                                                                             , index = 0
+                                                                                                             }
+                                                                                                           ]
+                                                                                                   , properties = Dict.fromList []
+                                                                                                   }
+                                                                                               , Path
+                                                                                                   [ { feature = "root"
+                                                                                                     , index = 0
+                                                                                                     }
+                                                                                                   ]
+                                                                                               , "name"
+                                                                                               )
+                                                                                           }
+                                                                                       )
+                                                                               , name = ""
+                                                                               , path =
+                                                                                   Path
+                                                                                       [ { feature = "root"
+                                                                                         , index = 0
+                                                                                         }
+                                                                                       , { feature = "default"
+                                                                                         , index = 0
+                                                                                         }
+                                                                                       , { feature = "default"
+                                                                                         , index = 0
+                                                                                         }
+                                                                                       , { feature = "default"
+                                                                                         , index = 1
+                                                                                         }
+                                                                                       , { feature = "effects"
+                                                                                         , index = 0
+                                                                                         }
+                                                                                       ]
+                                                                               , properties = Dict.fromList []
+                                                                               }
+                                                                           ]
+                                                                         )
+                                                                       ]
+                                                               , default = Nothing
+                                                               }
+                                                           , isa = ContentCell InputCell
+                                                           , name = ""
+                                                           , path =
+                                                               Path
+                                                                   [ { feature = "root"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 1
+                                                                     }
+                                                                   ]
+                                                           , properties = Dict.fromList [ ( "input", PString "" ) ]
+                                                           }
+                                                       ]
+                                               }
+                                           , isa = ContentCell (StackCell Horiz)
+                                           , name = ""
+                                           , path =
+                                               Path
+                                                   [ { feature = "root"
+                                                     , index = 0
+                                                     }
+                                                   , { feature = "default"
+                                                     , index = 0
+                                                     }
+                                                   , { feature = "default"
+                                                     , index = 0
+                                                     }
+                                                   ]
+                                           , properties = Dict.fromList []
+                                           }
+                                       , Node
+                                           { features =
+                                               { custom = Dict.fromList []
+                                               , default =
+                                                   Just
+                                                       [ Node
+                                                           { features =
+                                                               { custom = Dict.fromList []
+                                                               , default = Nothing
+                                                               }
+                                                           , isa = ContentCell ConstantCell
+                                                           , name = ""
+                                                           , path =
+                                                               Path
+                                                                   [ { feature = "root"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 1
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   ]
+                                                           , properties = Dict.fromList [ ( "constant", PString "events" ) ]
+                                                           }
+                                                       , Node
+                                                           { features =
+                                                               { custom = Dict.fromList []
+                                                               , default =
+                                                                   Just
+                                                                       [ Node
+                                                                           { features =
+                                                                               { custom =
+                                                                                   Dict.fromList
+                                                                                       [ ( "effects"
+                                                                                         , [ Node
+                                                                                               { features =
+                                                                                                   { custom = Dict.fromList []
+                                                                                                   , default = Nothing
+                                                                                                   }
+                                                                                               , isa =
+                                                                                                   EffectCell
+                                                                                                       (OnEnterEffect
+                                                                                                           { effectHandler = "<function>"
+                                                                                                           , effectInput =
+                                                                                                               Node
+                                                                                                                   { features =
+                                                                                                                       { custom = Dict.fromList []
+                                                                                                                       , default = Nothing
+                                                                                                                       }
+                                                                                                                   , isa = StateMachine
+                                                                                                                   , name = "root"
+                                                                                                                   , path =
+                                                                                                                       Path
+                                                                                                                           [ { feature = "root"
+                                                                                                                             , index = 0
+                                                                                                                             }
+                                                                                                                           ]
+                                                                                                                   , properties = Dict.fromList []
+                                                                                                                   }
+                                                                                                           }
+                                                                                                       )
+                                                                                               , name = ""
+                                                                                               , path =
+                                                                                                   Path
+                                                                                                       [ { feature = "root"
+                                                                                                         , index = 0
+                                                                                                         }
+                                                                                                       , { feature = "default"
+                                                                                                         , index = 0
+                                                                                                         }
+                                                                                                       , { feature = "default"
+                                                                                                         , index = 1
+                                                                                                         }
+                                                                                                       , { feature = "default"
+                                                                                                         , index = 1
+                                                                                                         }
+                                                                                                       , { feature = "default"
+                                                                                                         , index = 0
+                                                                                                         }
+                                                                                                       , { feature = "effects"
+                                                                                                         , index = 0
+                                                                                                         }
+                                                                                                       ]
+                                                                                               , properties = Dict.fromList []
+                                                                                               }
+                                                                                           ]
+                                                                                         )
+                                                                                       ]
+                                                                               , default = Nothing
+                                                                               }
+                                                                           , isa = ContentCell PlaceholderCell
+                                                                           , name = ""
+                                                                           , path =
+                                                                               Path
+                                                                                   [ { feature = "root"
+                                                                                     , index = 0
+                                                                                     }
+                                                                                   , { feature = "default"
+                                                                                     , index = 0
+                                                                                     }
+                                                                                   , { feature = "default"
+                                                                                     , index = 1
+                                                                                     }
+                                                                                   , { feature = "default"
+                                                                                     , index = 1
+                                                                                     }
+                                                                                   , { feature = "default"
+                                                                                     , index = 0
+                                                                                     }
+                                                                                   ]
+                                                                           , properties = Dict.fromList [ ( "placeholder", PString "no events" ) ]
+                                                                           }
+                                                                       ]
+                                                               }
+                                                           , isa = ContentCell (StackCell Vert)
+                                                           , name = ""
+                                                           , path =
+                                                               Path
+                                                                   [ { feature = "root"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 1
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 1
+                                                                     }
+                                                                   ]
+                                                           , properties = Dict.fromList [ ( "indent", PBool True ) ]
+                                                           }
+                                                       , Node
+                                                           { features =
+                                                               { custom = Dict.fromList []
+                                                               , default = Nothing
+                                                               }
+                                                           , isa = ContentCell ConstantCell
+                                                           , name = ""
+                                                           , path =
+                                                               Path
+                                                                   [ { feature = "root"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 0
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 1
+                                                                     }
+                                                                   , { feature = "default"
+                                                                     , index = 2
+                                                                     }
+                                                                   ]
+                                                           , properties = Dict.fromList [ ( "constant", PString "end" ) ]
+                                                           }
+                                                       ]
+                                               }
+                                           , isa = ContentCell (StackCell Vert)
+                                           , name = ""
+                                           , path =
+                                               Path
+                                                   [ { feature = "root"
+                                                     , index = 0
+                                                     }
+                                                   , { feature = "default"
+                                                     , index = 0
+                                                     }
+                                                   , { feature = "default"
+                                                     , index = 1
+                                                     }
+                                                   ]
+                                           , properties = Dict.fromList []
+                                           }
+                                       ]
+                               }
+                           , isa = ContentCell (StackCell Vert)
+                           , name = ""
+                           , path =
+                               Path
+                                   [ { feature = "root"
+                                     , index = 0
+                                     }
+                                   , { feature = "default"
+                                     , index = 0
+                                     }
+                                   ]
+                           , properties = Dict.fromList []
+                           }
+                       ]
+               }
+           , isa = ContentCell RootCell
+           , name = "root"
+           , path =
+               Path
+                   [ { feature = "root"
+                     , index = 0
+                     }
+                   ]
+           , properties = Dict.fromList []
+           }
 -}
