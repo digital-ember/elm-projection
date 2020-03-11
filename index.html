@@ -5087,7 +5087,8 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
-var elm$html$Html$span = _VirtualDom_node('span');
+var elm$html$Html$div = _VirtualDom_node('div');
+var elm$html$Html$label = _VirtualDom_node('label');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
 var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
@@ -5096,15 +5097,24 @@ var author$project$Editor$viewConstantCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
 		return A2(
-			elm$html$Html$span,
+			elm$html$Html$div,
 			_List_fromArray(
 				[
-					A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px')
+					A2(elm$html$Html$Attributes$style, 'display', 'flex')
 				]),
 			_List_fromArray(
 				[
-					elm$html$Html$text(
-					A2(author$project$Structure$textOf, 'constant', cell))
+					A2(
+					elm$html$Html$label,
+					_List_fromArray(
+						[
+							A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px')
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text(
+							A2(author$project$Structure$textOf, 'constant', cell))
+						]))
 				]));
 	} else {
 		return elm$html$Html$text('');
@@ -5309,7 +5319,6 @@ var elm$core$List$filterMap = F2(
 			_List_Nil,
 			xs);
 	});
-var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$input = _VirtualDom_node('input');
 var elm$json$Json$Encode$string = _Json_wrap;
 var elm$html$Html$Attributes$stringProperty = F2(
@@ -5331,7 +5340,11 @@ var author$project$Editor$viewInputCell = function (cell) {
 			A2(elm$core$List$map, author$project$Editor$toEffectAttribute, effects));
 		return A2(
 			elm$html$Html$div,
-			_List_Nil,
+			_List_fromArray(
+				[
+					A2(elm$html$Html$Attributes$style, 'display', 'flex'),
+					A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px')
+				]),
 			_List_fromArray(
 				[
 					A2(
@@ -6614,16 +6627,17 @@ var author$project$Structure$updatePropertyByPath = F3(
 		var segments = _n0.a;
 		return A3(author$project$Structure$updatePropertyRec, root, segments, property);
 	});
-var author$project$StateMachine$updateName = F2(
-	function (_n0, newName) {
+var author$project$StateMachine$updateStringProperty = F2(
+	function (_n0, newValue) {
 		var sm = _n0.a;
 		var path = _n0.b;
+		var key = _n0.c;
 		return A3(
 			author$project$Structure$updatePropertyByPath,
 			sm,
 			path,
 			author$project$Structure$stringProperty(
-				_Utils_Tuple2('name', newName)));
+				_Utils_Tuple2(key, newValue)));
 	});
 var author$project$StateMachine$editorEvent = F2(
 	function (sm, event) {
@@ -6631,10 +6645,11 @@ var author$project$StateMachine$editorEvent = F2(
 			author$project$Editor$withEffect,
 			A2(
 				author$project$Editor$onInputEffect,
-				_Utils_Tuple2(
+				_Utils_Tuple3(
 					sm,
-					author$project$Structure$pathOf(event)),
-				author$project$StateMachine$updateName),
+					author$project$Structure$pathOf(event),
+					'name'),
+				author$project$StateMachine$updateStringProperty),
 			A2(
 				author$project$Editor$withEffect,
 				A2(
@@ -6711,10 +6726,11 @@ var author$project$StateMachine$editorStateMachineName = function (sm) {
 			author$project$Editor$withEffect,
 			A2(
 				author$project$Editor$onInputEffect,
-				_Utils_Tuple2(
+				_Utils_Tuple3(
 					sm,
-					author$project$Structure$pathOf(sm)),
-				author$project$StateMachine$updateName),
+					author$project$Structure$pathOf(sm),
+					'name'),
+				author$project$StateMachine$updateStringProperty),
 			author$project$Editor$inputCell(
 				A2(author$project$Structure$textOf, 'name', sm))),
 		A2(

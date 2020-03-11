@@ -47,8 +47,8 @@ type Effect a
         , effectHandler : Node a -> Node a
         }
     | OnInputEffect
-        { effectInput : ( Node a, Path )
-        , effectHandler : ( Node a, Path ) -> String -> Node a
+        { effectInput : ( Node a, Path, String )
+        , effectHandler : ( Node a, Path, String ) -> String -> Node a
         }
 
 
@@ -132,7 +132,7 @@ onEnterEffect effectInput effectHandler =
         }
 
 
-onInputEffect : ( Node a, Path ) -> (( Node a, Path ) -> String -> Node a) -> Effect a
+onInputEffect : ( Node a, Path, String ) -> (( Node a, Path, String ) -> String -> Node a) -> Effect a
 onInputEffect effectInput effectHandler =
     OnInputEffect
         { effectInput = effectInput
@@ -276,7 +276,11 @@ viewConstantCell : Node (Cell a) -> Html (Msg a)
 viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
-            span [ HtmlA.style "margin" "0px 3px 0px 0px" ] [ text (textOf "constant" cell) ]
+            div [ HtmlA.style "display" "flex" ] 
+                [ label 
+                    [ HtmlA.style "margin" "0px 3px 0px 0px" ]
+                    [ text (textOf "constant" cell) ]
+                ]
 
         EffectCell _ ->
             text ""
@@ -294,15 +298,16 @@ viewInputCell cell =
                     List.map toEffectAttribute effects
                         |> List.filterMap identity
             in
-                div []
+                div 
+                    [ HtmlA.style "display" "flex"
+                    , HtmlA.style "margin" "0px 3px 0px 0px" 
+                    ]
                     [ input
                         ([ HtmlA.style "border-width" "0px"
                          , HtmlA.style "border" "none"
                          , HtmlA.style "outline" "none"
-                           --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (produceKeyboardMsg cell)
                          , HtmlA.placeholder "<no value>"
                          , HtmlA.value (textOf "input" cell)
-                           --, HtmlA.map (\cellMsg -> PipeMsg cellMsg) (HtmlE.onInput (Input cell))
                          ]
                             ++ effectAttributes
                         )
