@@ -64,7 +64,7 @@ editorStateMachineName sm =
         |> with (constantCell "name:")
         |> with
             (inputCell (textOf "name" sm)
-                |> withEffect (onInputEffect ( sm, pathOf sm, "name" ) updateStringProperty)
+                |> withEffect (onInputEffect ( pathOf sm, "name" ) updateStringProperty)
             )
 
 
@@ -78,10 +78,10 @@ editorEvents sm =
         editorEventsResult =
             case getUnderCustom "events" sm of
                 Nothing ->
-                    editorEventPlaceholder sm
+                    editorEventPlaceholder
 
                 Just events ->
-                    List.map (editorEvent sm) events
+                    List.map editorEvent events 
     in
         vertStackCell
             |> with
@@ -95,17 +95,18 @@ editorEvents sm =
                 (constantCell "end")
 
 
-editorEvent : Node Domain -> Node Domain -> Node (Cell Domain)
-editorEvent sm event =
+editorEvent : Node Domain -> Node (Cell Domain)
+editorEvent event =
     inputCell (textOf "name" event)
-        |> withEffect (onEnterEffect ( sm, Just event ) addNewEvent)
-        |> withEffect (onInputEffect ( sm, pathOf event, "name" ) updateStringProperty)
+        |> withEffect (onEnterEffect (Just event) addNewEvent)
+        |> withEffect (onDeleteEffect event deleteEvent)   
+        |> withEffect (onInputEffect ( pathOf event, "name" ) updateStringProperty)
 
 
-editorEventPlaceholder : Node Domain -> List (Node (Cell Domain))
-editorEventPlaceholder sm =
+editorEventPlaceholder : List (Node (Cell Domain))
+editorEventPlaceholder =
     [ placeholderCell "no events"
-        |> withEffect (onEnterEffect ( sm, Nothing ) addNewEvent)
+        |> withEffect (onEnterEffect Nothing addNewEvent)
     ]
 
 
@@ -115,8 +116,8 @@ This method is passed via a Effect to the editor.
 Notice that these replace the need for a "update" method in our domain model (state machine).
 We use the Structure API to update our domain model, naturally.
 -}
-addNewEvent : (Node Domain, Maybe (Node Domain)) -> Node Domain
-addNewEvent (sm, mbEvent) =
+addNewEvent : Node Domain -> Maybe (Node Domain) -> Node Domain
+addNewEvent sm mbEvent =
     case mbEvent of
         Nothing ->
             addToCustom "events"
@@ -133,6 +134,26 @@ addNewEvent (sm, mbEvent) =
                 (pathOf event)
                 sm
 
+deleteEvent : Node Domain -> Node Domain -> Node Domain
+deleteEvent sm event =
+    let
+        delete children =
+            Just <|
+                List.filter (\e -> pathOf e /= pathOf event) children
+
+        mbEventsNew = 
+            getUnderCustom "events" sm
+                |> Maybe.andThen delete |> Debug.log "delete"
+    in
+        case mbEventsNew of
+            Nothing ->
+                sm
+        
+            Just eventsNew ->
+                replaceUnderCustom "events" eventsNew sm 
+        
+    
+
 
 {-| This pattern allows to update nested records.
 Input:
@@ -144,6 +165,6 @@ Input:
 
 The actual update can be defered to the Structure module, since it knows the structure (duh!)
 -}
-updateStringProperty : ( Node Domain, Path, String ) -> String -> Node Domain
-updateStringProperty ( sm, path, key ) newValue =
+updateStringProperty : Node Domain ->  ( Path, String ) -> String -> Node Domain
+updateStringProperty sm ( path, key ) newValue =
     updatePropertyByPath sm path (stringProperty ( key, newValue ))

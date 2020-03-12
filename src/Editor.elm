@@ -13,6 +13,7 @@ module Editor
         , addIndent
         , withEffect
         , onEnterEffect
+        , onDeleteEffect
         , onInputEffect
         , updateEditor
         , viewEditor
@@ -43,12 +44,17 @@ type ContentCell
 
 type Effect a
     = OnEnterEffect
-        { effectInput : ( Node a, Maybe (Node a) )
-        , effectHandler : ( Node a, Maybe (Node a) ) -> Node a
+        { effectInput : Maybe (Node a)
+        , effectHandler : Node a -> Maybe (Node a) -> Node a
+        }
+    | OnDeleteEffect
+        { effectInput : Node a
+        , effectHandler : Node a -> Node a -> Node a
+        , selection : Selection
         }
     | OnInputEffect
-        { effectInput : ( Node a, Path, String )
-        , effectHandler : ( Node a, Path, String ) -> String -> Node a
+        { effectInput : ( Path, String )
+        , effectHandler : Node a -> ( Path, String ) -> String -> Node a
         }
     | NavSelectionEffect
         { dir : Dir
@@ -80,6 +86,8 @@ type Msg a
     | Swallow String
     | NavSelection (Effect a)
     | OnEnter (Effect a) (Node (Cell a))
+    | OnBackspace (Effect a) (Node (Cell a))
+    | OnDelete (Effect a) (Node (Cell a))
     | OnInput (Effect a) String
 
 
@@ -149,7 +157,7 @@ withEffect effect =
             EffectCell effect
 
 
-onEnterEffect : ( Node a, Maybe (Node a) ) -> (( Node a, Maybe (Node a) ) -> Node a) -> Effect a
+onEnterEffect : Maybe (Node a) -> (Node a -> Maybe (Node a) -> Node a) -> Effect a
 onEnterEffect effectInput effectHandler =
     OnEnterEffect
         { effectInput = effectInput
@@ -157,7 +165,16 @@ onEnterEffect effectInput effectHandler =
         }
 
 
-onInputEffect : ( Node a, Path, String ) -> (( Node a, Path, String ) -> String -> Node a) -> Effect a
+onDeleteEffect : Node a -> (Node a -> Node a -> Node a) -> Effect a
+onDeleteEffect effectInput effectHandler =
+    OnDeleteEffect
+        { effectInput = effectInput
+        , effectHandler = effectHandler
+        , selection = { start = -1, end = -1, dir = "" }
+        }
+
+
+onInputEffect : ( Path, String ) -> (Node a -> ( Path, String ) -> String -> Node a) -> Effect a
 onInputEffect effectInput effectHandler =
     OnInputEffect
         { effectInput = effectInput
@@ -176,7 +193,16 @@ navEffects cell =
 
 navEffect : Dir -> Node (Cell a) -> Cell a
 navEffect dir cell =
-    EffectCell <| NavSelectionEffect { dir = dir, cellSelected = cell, selection = { start = -1, end = -1, dir = "" } }
+    EffectCell <|
+        NavSelectionEffect
+            { dir = dir
+            , cellSelected = cell
+            , selection =
+                { start = -1
+                , end = -1
+                , dir = ""
+                }
+            }
 
 
 grouped : List (Cell a) -> List (EffectGroup a)
@@ -201,6 +227,9 @@ grouped effectCells =
                             Dict.update "input" (updateGroup effect) groupDict
 
                         OnEnterEffect _ ->
+                            Dict.update "keyboard" (updateGroup effect) groupDict
+
+                        OnDeleteEffect _ ->
                             Dict.update "keyboard" (updateGroup effect) groupDict
 
                         NavSelectionEffect _ ->
@@ -239,16 +268,25 @@ updateEditor msg editorModel domainModel =
         OnEnter effect cellContext ->
             case effect of
                 OnEnterEffect { effectInput, effectHandler } ->
-                    let
-                        dmNew = effectHandler effectInput |> updatePaths
-                     
-                        navData = 
-                          { dir = D
-                          , cellSelected = cellContext
-                          , selection = { start = 0, end = 0, dir = "" }
-                          }
-                    in
-                        ( dmNew , updateSelectionByOrientation editorModel domainModel navData Vert )
+                    ( effectHandler domainModel effectInput |> updatePaths
+                    , updateSelectionOnEnter editorModel domainModel cellContext
+                    )
+
+                _ ->
+                    ( domainModel, Cmd.none )
+
+        OnDelete effect cellContext ->
+            case effect of
+                OnDeleteEffect effectData ->
+                    ( tryDeleteRight domainModel effectData (textOf "input" cellContext |> String.length), Cmd.none )
+
+                _ ->
+                    ( domainModel, Cmd.none )
+
+        OnBackspace effect cellContext ->
+            case effect of
+                OnDeleteEffect effectData ->
+                    ( tryDeleteLeft domainModel effectData (textOf "input" cellContext |> String.length), Cmd.none )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -256,7 +294,7 @@ updateEditor msg editorModel domainModel =
         OnInput effect value ->
             case effect of
                 OnInputEffect { effectInput, effectHandler } ->
-                    ( effectHandler effectInput value |> updatePaths, Cmd.none )
+                    ( effectHandler domainModel effectInput value |> updatePaths, Cmd.none )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -268,6 +306,57 @@ updateEditor msg editorModel domainModel =
 
                 _ ->
                     ( domainModel, Cmd.none )
+
+
+tryDeleteLeft : Node a -> {effectInput:Node a, effectHandler:Node a -> Node a -> Node a, selection:Selection} -> Int -> Node a 
+tryDeleteLeft domainModel {effectInput, effectHandler, selection} textLength =
+    if textLength == 0 then
+        effectHandler domainModel effectInput |> updatePaths
+    else if selection.start == 0 then
+        let
+            mbPrev = previousSibling domainModel (pathOf effectInput)
+            
+        in
+            case mbPrev of
+                Nothing ->
+                    domainModel
+            
+                Just prev ->
+                    effectHandler domainModel prev |> updatePaths
+    else
+        domainModel
+
+
+tryDeleteRight : Node a -> {effectInput:Node a, effectHandler:Node a -> Node a -> Node a, selection:Selection} -> Int -> Node a 
+tryDeleteRight domainModel {effectInput, effectHandler, selection} textLength =
+    if textLength == 0 then
+        effectHandler domainModel effectInput |> updatePaths
+    else if selection.start == textLength then
+        let
+            mbNext = nextSibling domainModel (pathOf effectInput)
+            
+        in
+            case mbNext of
+                Nothing ->
+                    domainModel
+            
+                Just next ->
+                    effectHandler domainModel next |> updatePaths
+    else
+        domainModel
+
+    
+updateSelectionOnEnter : Node (Cell a) -> Node a -> Node (Cell a) -> Cmd (Msg a)
+updateSelectionOnEnter editorModel domainModel cellContext =
+    let
+        navData =
+            { dir = D
+            , cellSelected = cellContext
+            , selection = { start = 0, end = 0, dir = "" }
+            }
+    in
+        updateSelectionByOrientation editorModel domainModel navData Vert
+
 
 updateSelection : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
 updateSelection editorModel domainModel navData =
@@ -281,6 +370,7 @@ updateSelection editorModel domainModel navData =
 
             Just orientation ->
                 updateSelectionByOrientation editorModel domainModel navData orientation
+
 
 updateSelectionByOrientation : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
 updateSelectionByOrientation editorModel domainModel { dir, cellSelected, selection } orientation =
@@ -569,6 +659,10 @@ inputEffectMap cell effects =
                 OnEnterEffect _ ->
                     Dict.insert "Enter" (OnEnter effect cell) dict
 
+                OnDeleteEffect _ ->
+                    Dict.insert "Delete" (OnDelete effect cell) <|
+                        Dict.insert "Backspace" (OnBackspace effect cell) dict
+
                 NavSelectionEffect { dir } ->
                     Dict.insert (keyFromDir dir) (NavSelection effect) dict
 
@@ -589,16 +683,41 @@ effectAttributeFromKey dictKeyToMsg =
             in
                 case mbMsg of
                     Nothing ->
-                        JsonD.fail ("incorrect code: " ++ k)
+                        JsonD.fail ("incorrect code: " ++ k |> Debug.log "incorrect")
 
                     Just msg ->
                         case msg of
                             NavSelection effect ->
                                 case effect of
                                     NavSelectionEffect navData ->
-                                        JsonD.map 
+                                        JsonD.map
                                             (\sel ->
-                                              NavSelection <| NavSelectionEffect { navData | selection = sel }
+                                                NavSelection <| NavSelectionEffect { navData | selection = sel }
+                                            )
+                                            (JsonD.field "target" decodeSelection)
+
+                                    _ ->
+                                        JsonD.succeed msg
+
+                            OnDelete effect cellContext ->
+                                case effect of
+                                    OnDeleteEffect effectData ->
+                                        JsonD.map
+                                            (\sel ->
+                                                OnDelete (OnDeleteEffect { effectData | selection = sel }) cellContext
+                                            )
+                                            (JsonD.field "target" decodeSelection)
+
+                                    _ ->
+                                        JsonD.succeed msg
+
+
+                            OnBackspace effect cellContext ->
+                                case effect of
+                                    OnDeleteEffect effectData ->
+                                        JsonD.map
+                                            (\sel ->
+                                                OnBackspace (OnDeleteEffect { effectData | selection = sel }) cellContext
                                             )
                                             (JsonD.field "target" decodeSelection)
 
@@ -648,12 +767,13 @@ orientationOf root cell =
 
 decodeSelection : JsonD.Decoder Selection
 decodeSelection =
-    JsonD.map3 
+    JsonD.map3
         (\s e d ->
-          { start = s 
-          , end = e
-          , dir = d
-        })
+            { start = s
+            , end = e
+            , dir = d
+            }
+        )
         (JsonD.field "selectionStart" JsonD.int)
         (JsonD.field "selectionEnd" JsonD.int)
         (JsonD.field "selectionDirection" JsonD.string)

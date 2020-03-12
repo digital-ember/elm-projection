@@ -28,10 +28,14 @@ module Structure
         , addToDefaultRange
         , insertAfterUnderDefault
         , insertAfterUnderCustom
+        , replaceUnderDefault
+        , replaceUnderCustom
         , updatePropertyByPath
         , getUnderDefault
         , getUnderCustom
         , parentOf
+        , previousSibling
+        , nextSibling
         )
 
 import Dict exposing (..)
@@ -263,6 +267,24 @@ addToCustom key child (Node ({ features } as data)) =
         Node { data | features = featuresNew }
 
 
+replaceUnderDefault : Maybe (List (Node a)) -> Node a -> Node a
+replaceUnderDefault children (Node ({ features } as data)) =
+    let
+        featuresNew = { features | default = children }
+
+    in
+        Node { data | features = featuresNew }
+
+replaceUnderCustom : String -> List (Node a) -> Node a -> Node a
+replaceUnderCustom key children (Node ({ features } as data)) =
+    let
+        featuresNew = { features | custom = Dict.insert key children features.custom }
+
+    in
+        Node { data | features = featuresNew }
+  
+
+
 insertAfterUnderDefault : Node a -> Path -> Node a -> Node a
 insertAfterUnderDefault child pathAfter (Node ({ features } as data)) =
     let
@@ -468,6 +490,35 @@ parentOf root path =
                 |> Maybe.andThen (\t -> Just (List.reverse t))
                 |> Maybe.andThen (nodeAt root)
 
+
+previousSibling : Node a -> Path -> Maybe (Node a)
+previousSibling root path =
+    sibling root path (-)
+
+
+nextSibling : Node a -> Path -> Maybe (Node a)
+nextSibling root path =
+    sibling root path (+)
+
+sibling : Node a -> Path -> (Int -> Int -> Int) -> Maybe (Node a)
+sibling root path op =
+    let
+        (Path segmentsNoRoot) = dropRootSegment path    
+        split = splitLastPathSegment (Path segmentsNoRoot) 
+    in
+        case split of
+            (Nothing, _) -> Nothing
+
+            (_, Nothing) -> Nothing
+
+            (Just last, Just (Path parentSegments)) ->
+                let
+                    lastNew = 
+                        { feature = last.feature
+                        , index = op last.index 1
+                        }
+                in
+                    nodeAt root (parentSegments ++ [lastNew])
 
 
 nodeAt : Node a -> List PathSegment -> Maybe (Node a)
