@@ -53,7 +53,15 @@ type Effect a
     | NavSelectionEffect
         { dir : Dir
         , cellSelected : Node (Cell a)
+        , selection : Selection
         }
+
+
+type alias Selection =
+    { start : Int
+    , end : Int
+    , dir : String
+    }
 
 
 type EffectGroup a
@@ -168,7 +176,7 @@ navEffects cell =
 
 navEffect : Dir -> Node (Cell a) -> Cell a
 navEffect dir cell =
-    EffectCell <| NavSelectionEffect { dir = dir, cellSelected = cell }
+    EffectCell <| NavSelectionEffect { dir = dir, cellSelected = cell, selection = { start = -1, end = -1, dir = "" } }
 
 
 grouped : List (Cell a) -> List (EffectGroup a)
@@ -253,21 +261,25 @@ updateEditor msg editorModel domainModel =
                     ( domainModel, Cmd.none )
 
 
-updateSelection : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a) } -> Cmd (Msg a)
-updateSelection editorModel domainModel { dir, cellSelected } =
+updateSelection : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
+updateSelection editorModel domainModel { dir, cellSelected, selection } =
     let
         mbOrientation =
             orientationOf editorModel cellSelected
 
         mover op =
             move editorModel domainModel cellSelected op
+
+        l = textOf "input" cellSelected |> String.length |> Debug.log "length"
+
+        s = selection.start |> Debug.log "start"
     in
         case mbOrientation of
             Nothing ->
                 Cmd.none
 
             Just orientation ->
-                case ( dir, orientation ) of
+                case ( dir, orientation ) |> Debug.log "dir,orientation" of
                     ( U, Vert ) ->
                         mover (-)
 
@@ -275,10 +287,16 @@ updateSelection editorModel domainModel { dir, cellSelected } =
                         mover (+)
 
                     ( L, Horiz ) ->
-                        mover (-)
+                        if selection.start == 0 |> Debug.log "equal to  0" then
+                            mover (-)
+                        else
+                            Cmd.none
 
                     ( R, Horiz ) ->
-                        mover (+)
+                        if selection.start >= (textOf "input" cellSelected |> String.length) then
+                            mover (+)
+                        else
+                            Cmd.none
 
                     _ ->
                         Cmd.none
@@ -565,7 +583,21 @@ effectAttributeFromKey dictKeyToMsg =
                         JsonD.fail ("incorrect code: " ++ k)
 
                     Just msg ->
-                        JsonD.succeed msg
+                        case msg of
+                            NavSelection effect ->
+                                case effect of
+                                    NavSelectionEffect navData ->
+                                        JsonD.map 
+                                            (\sel ->
+                                              NavSelection <| NavSelectionEffect { navData | selection = sel }
+                                            )
+                                            (JsonD.field "target" decodeSelection)
+
+                                    _ ->
+                                        JsonD.succeed msg
+
+                            _ ->
+                                JsonD.succeed msg
     in
         HtmlE.on "keydown" <|
             JsonD.andThen canHandle <|
@@ -603,3 +635,16 @@ orientationOf root cell =
 
         _ ->
             Nothing
+
+
+decodeSelection : JsonD.Decoder Selection
+decodeSelection =
+    JsonD.map3 
+        (\s e d ->
+          { start = s 
+          , end = e
+          , dir = d
+        })
+        (JsonD.field "selectionStart" JsonD.int)
+        (JsonD.field "selectionEnd" JsonD.int)
+        (JsonD.field "selectionDirection" JsonD.string)

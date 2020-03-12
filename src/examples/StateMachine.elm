@@ -86,7 +86,7 @@ editorEvents sm =
             |> with
                 (constantCell "events")
             |> with
-                (vertStackCell
+                (horizStackCell
                     |> addIndent
                     |> withRange editorEventsResult
                 )

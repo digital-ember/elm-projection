@@ -5289,12 +5289,12 @@ var elm$core$Task$attempt = F2(
 	});
 var author$project$Editor$move = F4(
 	function (editorModel, domainModel, cellSelected, op) {
-		var upPathAsId = F3(
+		var pathSelected = author$project$Structure$pathOf(cellSelected);
+		var nextPathAsId = F3(
 			function (parentPath, feature, index) {
 				return author$project$Structure$pathAsId(parentPath) + ('-' + (feature + elm$core$String$fromInt(
 					A2(op, index, 1))));
 			});
-		var pathSelected = author$project$Structure$pathOf(cellSelected);
 		if (author$project$Structure$lengthOf(pathSelected) === 1) {
 			return elm$core$Platform$Cmd$none;
 		} else {
@@ -5316,7 +5316,7 @@ var author$project$Editor$move = F4(
 							return author$project$Editor$NoOp;
 						},
 						elm$browser$Browser$Dom$focus(
-							A3(upPathAsId, parentPath, feature, index)));
+							A3(nextPathAsId, parentPath, feature, index)));
 				}
 			}
 		}
@@ -5528,19 +5528,61 @@ var author$project$Editor$orientationOf = F2(
 			return elm$core$Maybe$Nothing;
 		}
 	});
+var author$project$Structure$valueOf = F2(
+	function (key, _n0) {
+		var properties = _n0.a.properties;
+		return A2(elm$core$Dict$get, key, properties);
+	});
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var author$project$Structure$textOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$withDefault,
+			'',
+			A2(
+				elm$core$Maybe$andThen,
+				function (prop) {
+					if (prop.$ === 'PString') {
+						var v = prop.a;
+						return elm$core$Maybe$Just(v);
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				A2(author$project$Structure$valueOf, key, node)));
+	});
+var elm$core$Debug$log = _Debug_log;
 var author$project$Editor$updateSelection = F3(
 	function (editorModel, domainModel, _n0) {
 		var dir = _n0.dir;
 		var cellSelected = _n0.cellSelected;
+		var selection = _n0.selection;
+		var s = A2(elm$core$Debug$log, 'start', selection.start);
 		var mover = function (op) {
 			return A4(author$project$Editor$move, editorModel, domainModel, cellSelected, op);
 		};
 		var mbOrientation = A2(author$project$Editor$orientationOf, editorModel, cellSelected);
+		var l = A2(
+			elm$core$Debug$log,
+			'length',
+			elm$core$String$length(
+				A2(author$project$Structure$textOf, 'input', cellSelected)));
 		if (mbOrientation.$ === 'Nothing') {
 			return elm$core$Platform$Cmd$none;
 		} else {
 			var orientation = mbOrientation.a;
-			var _n2 = _Utils_Tuple2(dir, orientation);
+			var _n2 = A2(
+				elm$core$Debug$log,
+				'dir,orientation',
+				_Utils_Tuple2(dir, orientation));
 			_n2$4:
 			while (true) {
 				if (_n2.b.$ === 'Vert') {
@@ -5561,11 +5603,14 @@ var author$project$Editor$updateSelection = F3(
 						case 'L':
 							var _n7 = _n2.a;
 							var _n8 = _n2.b;
-							return mover(elm$core$Basics$sub);
+							return A2(elm$core$Debug$log, 'equal to  0', !selection.start) ? mover(elm$core$Basics$sub) : elm$core$Platform$Cmd$none;
 						case 'R':
 							var _n9 = _n2.a;
 							var _n10 = _n2.b;
-							return mover(elm$core$Basics$add);
+							return (_Utils_cmp(
+								selection.start,
+								elm$core$String$length(
+									A2(author$project$Structure$textOf, 'input', cellSelected))) > -1) ? mover(elm$core$Basics$add) : elm$core$Platform$Cmd$none;
 						default:
 							break _n2$4;
 					}
@@ -5738,37 +5783,6 @@ var author$project$Structure$pathAsIdFromNode = function (_n0) {
 	var path = _n0.a.path;
 	return author$project$Structure$pathAsId(path);
 };
-var author$project$Structure$valueOf = F2(
-	function (key, _n0) {
-		var properties = _n0.a.properties;
-		return A2(elm$core$Dict$get, key, properties);
-	});
-var elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
-var author$project$Structure$textOf = F2(
-	function (key, node) {
-		return A2(
-			elm$core$Maybe$withDefault,
-			'',
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PString') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
-	});
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$label = _VirtualDom_node('label');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
@@ -5851,6 +5865,23 @@ var elm$html$Html$Events$onInput = function (tagger) {
 var author$project$Editor$effectAttributeFromInput = function (handler) {
 	return elm$html$Html$Events$onInput(handler);
 };
+var author$project$Editor$NavSelection = function (a) {
+	return {$: 'NavSelection', a: a};
+};
+var author$project$Editor$NavSelectionEffect = function (a) {
+	return {$: 'NavSelectionEffect', a: a};
+};
+var elm$json$Json$Decode$int = _Json_decodeInt;
+var elm$json$Json$Decode$map3 = _Json_map3;
+var author$project$Editor$decodeSelection = A4(
+	elm$json$Json$Decode$map3,
+	F3(
+		function (s, e, d) {
+			return {dir: d, end: e, start: s};
+		}),
+	A2(elm$json$Json$Decode$field, 'selectionStart', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'selectionEnd', elm$json$Json$Decode$int),
+	A2(elm$json$Json$Decode$field, 'selectionDirection', elm$json$Json$Decode$string));
 var elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -5870,7 +5901,26 @@ var author$project$Editor$effectAttributeFromKey = function (dictKeyToMsg) {
 			return elm$json$Json$Decode$fail('incorrect code: ' + k);
 		} else {
 			var msg = mbMsg.a;
-			return elm$json$Json$Decode$succeed(msg);
+			if (msg.$ === 'NavSelection') {
+				var effect = msg.a;
+				if (effect.$ === 'NavSelectionEffect') {
+					var navData = effect.a;
+					return A2(
+						elm$json$Json$Decode$map,
+						function (sel) {
+							return author$project$Editor$NavSelection(
+								author$project$Editor$NavSelectionEffect(
+									_Utils_update(
+										navData,
+										{selection: sel})));
+						},
+						A2(elm$json$Json$Decode$field, 'target', author$project$Editor$decodeSelection));
+				} else {
+					return elm$json$Json$Decode$succeed(msg);
+				}
+			} else {
+				return elm$json$Json$Decode$succeed(msg);
+			}
 		}
 	};
 	return A2(
@@ -5880,9 +5930,6 @@ var author$project$Editor$effectAttributeFromKey = function (dictKeyToMsg) {
 			elm$json$Json$Decode$andThen,
 			canHandle,
 			A2(elm$json$Json$Decode$field, 'key', elm$json$Json$Decode$string)));
-};
-var author$project$Editor$NavSelection = function (a) {
-	return {$: 'NavSelection', a: a};
 };
 var author$project$Editor$OnEnter = function (a) {
 	return {$: 'OnEnter', a: a};
@@ -6534,14 +6581,18 @@ var author$project$Editor$U = {$: 'U'};
 var author$project$Editor$EffectCell = function (a) {
 	return {$: 'EffectCell', a: a};
 };
-var author$project$Editor$NavSelectionEffect = function (a) {
-	return {$: 'NavSelectionEffect', a: a};
+var elm$core$Basics$negate = function (n) {
+	return -n;
 };
 var author$project$Editor$navEffect = F2(
 	function (dir, cell) {
 		return author$project$Editor$EffectCell(
 			author$project$Editor$NavSelectionEffect(
-				{cellSelected: cell, dir: dir}));
+				{
+					cellSelected: cell,
+					dir: dir,
+					selection: {dir: '', end: -1, start: -1}
+				}));
 	});
 var author$project$Editor$navEffects = function (cell) {
 	return _List_fromArray(
@@ -6924,6 +6975,10 @@ var author$project$Editor$constantCell = function (text) {
 		author$project$Structure$createNode(
 			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
 };
+var author$project$Editor$Horiz = {$: 'Horiz'};
+var author$project$Editor$horizStackCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(
+		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$Structure$addToDefaultRange = F2(
 	function (children, parent) {
 		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
@@ -7254,16 +7309,12 @@ var author$project$StateMachine$editorEvents = function (sm) {
 			A2(
 				author$project$Editor$withRange,
 				editorEventsResult,
-				author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
+				author$project$Editor$addIndent(author$project$Editor$horizStackCell)),
 			A2(
 				author$project$Editor$with,
 				author$project$Editor$constantCell('events'),
 				author$project$Editor$vertStackCell)));
 };
-var author$project$Editor$Horiz = {$: 'Horiz'};
-var author$project$Editor$horizStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$StateMachine$editorStateMachineName = function (sm) {
 	return A2(
 		author$project$Editor$with,
