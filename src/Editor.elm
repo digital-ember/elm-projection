@@ -25,6 +25,7 @@ import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as JsonD
 import Browser.Dom as Dom
+import Task as Task
 
 
 type Cell a
@@ -42,8 +43,8 @@ type ContentCell
 
 type Effect a
     = OnEnterEffect
-        { effectInput : (Node a, Maybe (Node a))
-        , effectHandler : (Node a, Maybe (Node a)) -> Node a
+        { effectInput : ( Node a, Maybe (Node a) )
+        , effectHandler : ( Node a, Maybe (Node a) ) -> Node a
         }
     | OnInputEffect
         { effectInput : ( Node a, Path, String )
@@ -51,7 +52,7 @@ type Effect a
         }
     | NavSelectionEffect
         { dir : Dir
-        , pathSelected : Path
+        , cellSelected : Node (Cell a)
         }
 
 
@@ -140,7 +141,7 @@ withEffect effect =
             EffectCell effect
 
 
-onEnterEffect : (Node a, Maybe (Node a)) -> ((Node a, Maybe (Node a)) -> Node a) -> Effect a
+onEnterEffect : ( Node a, Maybe (Node a) ) -> (( Node a, Maybe (Node a) ) -> Node a) -> Effect a
 onEnterEffect effectInput effectHandler =
     OnEnterEffect
         { effectInput = effectInput
@@ -167,7 +168,7 @@ navEffects cell =
 
 navEffect : Dir -> Node (Cell a) -> Cell a
 navEffect dir cell =
-    EffectCell <| NavSelectionEffect { dir = dir, pathSelected = pathOf cell }
+    EffectCell <| NavSelectionEffect { dir = dir, cellSelected = cell }
 
 
 grouped : List (Cell a) -> List (EffectGroup a)
@@ -218,8 +219,8 @@ grouped effectCells =
 -- BEHAVIOR
 
 
-updateEditor : Msg a -> Node a -> ( Node a, Cmd (Msg a) )
-updateEditor msg domainModel =
+updateEditor : Msg a -> Node (Cell a) -> Node a -> ( Node a, Cmd (Msg a) )
+updateEditor msg editorModel domainModel =
     case msg of
         NoOp ->
             ( domainModel, Cmd.none )
@@ -243,9 +244,74 @@ updateEditor msg domainModel =
                 _ ->
                     ( domainModel, Cmd.none )
 
-        NavSelection _ ->
-            ( domainModel, Cmd.none )
+        NavSelection effect ->
+            case effect of
+                NavSelectionEffect navData ->
+                    ( domainModel, updateSelection editorModel domainModel navData )
+            
+                _ ->
+                    ( domainModel, Cmd.none )
+        
+            
+updateSelection : Node (Cell a) -> Node a -> { dir:Dir, cellSelected:Node (Cell a)} -> Cmd (Msg a)
+updateSelection editorModel domainModel { dir , cellSelected } =
+    let
+        mbOrientation = orientationOf editorModel cellSelected |> Debug.log "orientation"
 
+        mover op = 
+            move editorModel domainModel cellSelected op
+    in
+      case mbOrientation of
+          Nothing ->
+              Cmd.none
+      
+          Just orientation ->    
+              case (dir, orientation) of
+                  (U, Vert) ->
+                      mover (-)
+
+                  (D, Vert) ->
+                      mover (+)
+                      
+                  (L, Horiz) ->
+                      mover (-) 
+                      --moveLeft editorModel domainModel cellSelected
+
+                  (R, Horiz) ->
+                      mover (+) 
+                      --moveRight editorModel domainModel cellSelected
+    
+                  _ ->
+                      Cmd.none
+
+
+move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a) 
+move editorModel domainModel cellSelected op =
+    let
+        upPathAsId parentPath feature index =
+            pathAsId parentPath ++ "-" ++ feature ++ String.fromInt (op index 1)
+
+        pathSelected = pathOf cellSelected
+    in
+      if lengthOf pathSelected == 1 then --root or error
+          Cmd.none 
+      else
+          let
+              split =  splitLastPathSegment pathSelected
+          in
+              
+              case split of
+                  (Nothing, _) ->
+                      Cmd.none
+
+                  (_, Nothing) -> 
+                      Cmd.none
+              
+                  (Just {feature, index}, Just parentPath) ->
+                      Task.attempt (\_ -> NoOp) (Dom.focus <| upPathAsId parentPath feature index)
+
+
+            
 
 
 -- EDITOR
@@ -333,7 +399,7 @@ viewVertStackCell cell =
             in
                 div
                     [ indent
-                    , HtmlA.id (pathAsId cell)
+                    , HtmlA.id (pathAsIdFromNode cell)
                     ]
                 <|
                     viewCell cell
@@ -348,7 +414,7 @@ viewHorizStackCell cell =
         ContentCell _ ->
             div
                 [ HtmlA.style "display" "flex"
-                , HtmlA.id (pathAsId cell)
+                , HtmlA.id (pathAsIdFromNode cell)
                 ]
             <|
                 viewCell cell
@@ -364,7 +430,7 @@ viewConstantCell cell =
             div []
                 [ label
                     [ HtmlA.style "margin" "0px 3px 0px 0px"
-                    , HtmlA.id (pathAsId cell)
+                    , HtmlA.id (pathAsIdFromNode cell)
                     ]
                     [ text (textOf "constant" cell) ]
                 ]
@@ -386,7 +452,7 @@ viewInputCell cell =
                      , HtmlA.style "outline" "none"
                      , HtmlA.placeholder "<no value>"
                      , HtmlA.value (textOf "input" cell)
-                     , HtmlA.id (pathAsId cell)
+                     , HtmlA.id (pathAsIdFromNode cell)
                      ]
                         ++ createInputCellAttributes cell
                     )
@@ -410,7 +476,7 @@ viewPlaceholderCell cell =
                      , HtmlA.style "font-style" "italic"
                      , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
                      , HtmlE.onInput Swallow
-                     , HtmlA.id (pathAsId cell)
+                     , HtmlA.id (pathAsIdFromNode cell)
                      ]
                         ++ createInputCellAttributes cell
                     )
@@ -500,7 +566,7 @@ effectAttributeFromKey dictKeyToMsg =
                         JsonD.fail ("incorrect code: " ++ k)
 
                     Just msg ->
-                        JsonD.succeed msg         
+                        JsonD.succeed msg
     in
         HtmlE.on "keydown" <|
             JsonD.andThen canHandle <|
@@ -522,3 +588,19 @@ isasUnderCustom featureKey parent =
                     Just (List.map isaOf children)
                 )
             |> Maybe.withDefault []
+
+
+{-| Defaults to Vert in case of EffectCell, root or unexpected behavior
+-}
+orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation
+orientationOf root cell =
+    case isaOf cell of
+        ContentCell (StackCell o) ->
+            Just o
+
+        ContentCell _ ->
+            parentOf root (pathOf cell)
+                |> Maybe.andThen (orientationOf root) 
+
+        _ -> 
+          Nothing

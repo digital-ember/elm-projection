@@ -3,9 +3,13 @@ module Structure
         ( Node
         , Property
         , Path(..)
+        , PathSegment
         , isaOf
         , pathOf
+        , lengthOf
         , pathAsId
+        , pathAsIdFromNode
+        , splitLastPathSegment
         , updatePaths
         , propertiesOf
         , stringProperty
@@ -27,10 +31,12 @@ module Structure
         , updatePropertyByPath
         , getUnderDefault
         , getUnderCustom
+        , parentOf
         )
 
 import Dict exposing (..)
 import Maybe exposing (..)
+import Array exposing(..)
 
 
 type Node a
@@ -69,6 +75,10 @@ type Primitive
     | PBool Bool
 
 
+strDefault : String
+strDefault =
+    "default"
+
 isaOf : Node a -> a
 isaOf (Node { isa }) =
     isa
@@ -78,8 +88,18 @@ pathOf : Node a -> Path
 pathOf (Node { path }) =
     path
 
-pathAsId : Node a -> String
-pathAsId (Node {path}) = 
+
+lengthOf : Path -> Int
+lengthOf (Path segments) = 
+    List.length segments
+
+
+pathAsIdFromNode : Node a -> String
+pathAsIdFromNode (Node {path}) = 
+    pathAsId path
+
+pathAsId : Path -> String
+pathAsId path = 
     let
        (Path segments) = path
     in
@@ -147,13 +167,6 @@ propertiesOf (Node { properties }) =
 stringProperty : ( String, String ) -> Property
 stringProperty ( k, v ) =
     ( k, PString v )
-
-
-
-{- featuresOf : Node a -> List Feature
-   featuresOf (Node (NodeI _ _ _ feats)) =
-     feats
--}
 
 
 emptyFeatures : Features a
@@ -294,6 +307,13 @@ insertAfter pathAfter child candidate result =
         result ++ [ candidate ]
 
 
+getUnder : String -> Node a -> Maybe (List (Node a))
+getUnder feature node =
+    if feature == strDefault then
+        getUnderDefault node 
+    else
+        getUnderCustom feature node
+
 getUnderDefault : Node a -> Maybe (List (Node a))
 getUnderDefault (Node { features }) =
     features.default
@@ -329,7 +349,7 @@ updatePropertyRec parent segments property =
 
 updateChildrenUnder : Node a -> PathSegment -> List PathSegment -> Property -> Node a
 updateChildrenUnder parent ({ feature } as segment) tailSegments property =
-    if feature == "default" then
+    if feature == strDefault then
         updateChildrenUnderDefault parent segment tailSegments property
     else
         updateChildrenUnderCustom parent segment tailSegments property
@@ -390,7 +410,7 @@ addFeaturePath parentPath { default, custom } =
             List.indexedMap (addPath parentPath feature)
 
         defaultNew =
-            Maybe.map (\children -> indexUpdater "default" children) default
+            Maybe.map (\children -> indexUpdater strDefault children) default
 
         customNew =
             Dict.map (\key children -> indexUpdater key children) custom
@@ -410,3 +430,68 @@ addPath (Path parentSegments) feature index (Node data) =
                         :: List.reverse parentSegments
     in
         Node { data | path = pathNew, features = addFeaturePath pathNew data.features }
+
+
+splitLastPathSegment : Path -> (Maybe PathSegment, Maybe Path)
+splitLastPathSegment (Path segments) =
+    let
+        reversed = List.reverse segments
+
+    in
+        (List.head reversed, List.tail reversed |> Maybe.andThen (\t -> Just (Path (List.reverse t)))) 
+
+
+
+-- TREE NAVIGATION
+
+dropRootSegment : Path -> Path
+dropRootSegment ((Path segments) as path) =
+  case segments of
+      {feature} :: tail ->
+        if feature == "root" then
+            Path tail
+        else 
+            path
+  
+      _ ->
+        path
+          
+  
+
+parentOf : Node a -> Path -> Maybe (Node a)
+parentOf root path =
+    let
+        (Path segmentsNoRoot) = dropRootSegment path     
+    in
+        List.reverse segmentsNoRoot 
+            |> List.tail
+                |> Maybe.andThen (\t -> Just (List.reverse t))
+                |> Maybe.andThen (nodeAt root)
+
+
+
+nodeAt : Node a -> List PathSegment -> Maybe (Node a)
+nodeAt parent segments =
+    case segments of
+        {feature, index} :: tail ->
+            let
+                getAt i children =
+                    Array.fromList children 
+                        |> Array.get i
+
+                mbNextChild = 
+                    getUnder feature parent
+                        |> Maybe.andThen (getAt index)
+
+            in
+                case mbNextChild of 
+                    Nothing -> Nothing
+
+                    Just child ->
+                        nodeAt child tail 
+            
+    
+        [] -> Just parent
+            
+  
+    

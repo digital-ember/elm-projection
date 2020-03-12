@@ -15,7 +15,7 @@ type alias Model a =
 
 type Msg a
     = NoOp
-    | EditorMsg (Editor.Msg a)
+    | EditorMsg (Node (Cell a)) (Editor.Msg a)
 
 
 program : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
@@ -38,21 +38,21 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        EditorMsg eMsg ->
+        EditorMsg cellModel eMsg ->
             let
                 ( domainModelNew, editorCmd ) =
-                    updateEditor eMsg model.domainModel
+                    updateEditor eMsg cellModel model.domainModel
             in
-                ( { model | domainModel = domainModelNew }, Cmd.map (\editorMsg -> EditorMsg editorMsg) editorCmd )
+                ( { model | domainModel = domainModelNew }, Cmd.map (\editorMsg -> EditorMsg cellModel editorMsg) editorCmd )
 
 
 view : Model a -> Html (Msg a)
 view model =
     let
-        cellRoot =
+        cellModel =
             model.xform model.domainModel |> updatePaths --|> Debug.log "cell"
     in
-        Html.map (\editorMsg -> EditorMsg editorMsg) (viewEditor cellRoot)
+        Html.map (\editorMsg -> EditorMsg cellModel editorMsg) (viewEditor cellModel)
 
 
 
