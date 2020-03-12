@@ -248,70 +248,69 @@ updateEditor msg editorModel domainModel =
             case effect of
                 NavSelectionEffect navData ->
                     ( domainModel, updateSelection editorModel domainModel navData )
-            
+
                 _ ->
                     ( domainModel, Cmd.none )
-        
-            
-updateSelection : Node (Cell a) -> Node a -> { dir:Dir, cellSelected:Node (Cell a)} -> Cmd (Msg a)
-updateSelection editorModel domainModel { dir , cellSelected } =
-    let
-        mbOrientation = orientationOf editorModel cellSelected |> Debug.log "orientation"
 
-        mover op = 
+
+updateSelection : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a) } -> Cmd (Msg a)
+updateSelection editorModel domainModel { dir, cellSelected } =
+    let
+        mbOrientation =
+            orientationOf editorModel cellSelected
+
+        mover op =
             move editorModel domainModel cellSelected op
     in
-      case mbOrientation of
-          Nothing ->
-              Cmd.none
-      
-          Just orientation ->    
-              case (dir, orientation) of
-                  (U, Vert) ->
-                      mover (-)
+        case mbOrientation of
+            Nothing ->
+                Cmd.none
 
-                  (D, Vert) ->
-                      mover (+)
-                      
-                  (L, Horiz) ->
-                      mover (-) 
-                      --moveLeft editorModel domainModel cellSelected
+            Just orientation ->
+                case ( dir, orientation ) of
+                    ( U, Vert ) ->
+                        mover (-)
 
-                  (R, Horiz) ->
-                      mover (+) 
-                      --moveRight editorModel domainModel cellSelected
-    
-                  _ ->
-                      Cmd.none
+                    ( D, Vert ) ->
+                        mover (+)
+
+                    ( L, Horiz ) ->
+                        mover (-)
+
+                    ( R, Horiz ) ->
+                        mover (+)
+
+                    _ ->
+                        Cmd.none
 
 
-move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a) 
+move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a)
 move editorModel domainModel cellSelected op =
     let
-        upPathAsId parentPath feature index =
+        nextPathAsId parentPath feature index =
             pathAsId parentPath ++ "-" ++ feature ++ String.fromInt (op index 1)
 
-        pathSelected = pathOf cellSelected
+        pathSelected =
+            pathOf cellSelected
     in
-      if lengthOf pathSelected == 1 then --root or error
-          Cmd.none 
-      else
-          let
-              split =  splitLastPathSegment pathSelected
-          in
-              
-              case split of
-                  (Nothing, _) ->
-                      Cmd.none
+        if lengthOf pathSelected == 1 then
+            --root or error
+            Cmd.none
+        else
+            let
+                split =
+                    splitLastPathSegment pathSelected
+            in
+                case split of
+                    ( Nothing, _ ) ->
+                        Cmd.none
 
-                  (_, Nothing) -> 
-                      Cmd.none
-              
-                  (Just {feature, index}, Just parentPath) ->
-                      Task.attempt (\_ -> NoOp) (Dom.focus <| upPathAsId parentPath feature index)
+                    ( _, Nothing ) ->
+                        Cmd.none
 
+                    ( Just { feature, index }, Just parentPath ) ->
+                        Task.attempt (\_ -> NoOp) (Dom.focus <| nextPathAsId parentPath feature index)
 
-            
 
 
 -- EDITOR
@@ -600,7 +599,7 @@ orientationOf root cell =
 
         ContentCell _ ->
             parentOf root (pathOf cell)
-                |> Maybe.andThen (orientationOf root) 
+                |> Maybe.andThen (orientationOf root)
 
-        _ -> 
-          Nothing
+        _ ->
+            Nothing

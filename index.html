@@ -5528,7 +5528,6 @@ var author$project$Editor$orientationOf = F2(
 			return elm$core$Maybe$Nothing;
 		}
 	});
-var elm$core$Debug$log = _Debug_log;
 var author$project$Editor$updateSelection = F3(
 	function (editorModel, domainModel, _n0) {
 		var dir = _n0.dir;
@@ -5536,10 +5535,7 @@ var author$project$Editor$updateSelection = F3(
 		var mover = function (op) {
 			return A4(author$project$Editor$move, editorModel, domainModel, cellSelected, op);
 		};
-		var mbOrientation = A2(
-			elm$core$Debug$log,
-			'orientation',
-			A2(author$project$Editor$orientationOf, editorModel, cellSelected));
+		var mbOrientation = A2(author$project$Editor$orientationOf, editorModel, cellSelected);
 		if (mbOrientation.$ === 'Nothing') {
 			return elm$core$Platform$Cmd$none;
 		} else {
@@ -6928,10 +6924,6 @@ var author$project$Editor$constantCell = function (text) {
 		author$project$Structure$createNode(
 			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
 };
-var author$project$Editor$Horiz = {$: 'Horiz'};
-var author$project$Editor$horizStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$Structure$addToDefaultRange = F2(
 	function (children, parent) {
 		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
@@ -7262,12 +7254,16 @@ var author$project$StateMachine$editorEvents = function (sm) {
 			A2(
 				author$project$Editor$withRange,
 				editorEventsResult,
-				author$project$Editor$addIndent(author$project$Editor$horizStackCell)),
+				author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
 			A2(
 				author$project$Editor$with,
 				author$project$Editor$constantCell('events'),
 				author$project$Editor$vertStackCell)));
 };
+var author$project$Editor$Horiz = {$: 'Horiz'};
+var author$project$Editor$horizStackCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(
+		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$StateMachine$editorStateMachineName = function (sm) {
 	return A2(
 		author$project$Editor$with,
