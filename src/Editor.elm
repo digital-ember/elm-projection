@@ -79,7 +79,7 @@ type Msg a
       NoOp
     | Swallow String
     | NavSelection (Effect a)
-    | OnEnter (Effect a)
+    | OnEnter (Effect a) (Node (Cell a))
     | OnInput (Effect a) String
 
 
@@ -236,10 +236,19 @@ updateEditor msg editorModel domainModel =
         Swallow _ ->
             ( domainModel, Cmd.none )
 
-        OnEnter effect ->
+        OnEnter effect cellContext ->
             case effect of
                 OnEnterEffect { effectInput, effectHandler } ->
-                    ( effectHandler effectInput |> updatePaths, Cmd.none )
+                    let
+                        dmNew = effectHandler effectInput |> updatePaths
+                     
+                        navData = 
+                          { dir = D
+                          , cellSelected = cellContext
+                          , selection = { start = 0, end = 0, dir = "" }
+                          }
+                    in
+                        ( dmNew , updateSelectionByOrientation editorModel domainModel navData Vert )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -260,46 +269,46 @@ updateEditor msg editorModel domainModel =
                 _ ->
                     ( domainModel, Cmd.none )
 
-
 updateSelection : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
-updateSelection editorModel domainModel { dir, cellSelected, selection } =
+updateSelection editorModel domainModel navData =
     let
         mbOrientation =
-            orientationOf editorModel cellSelected
-
-        mover op =
-            move editorModel domainModel cellSelected op
-
-        l = textOf "input" cellSelected |> String.length |> Debug.log "length"
-
-        s = selection.start |> Debug.log "start"
+            orientationOf editorModel navData.cellSelected
     in
         case mbOrientation of
             Nothing ->
                 Cmd.none
 
             Just orientation ->
-                case ( dir, orientation ) |> Debug.log "dir,orientation" of
-                    ( U, Vert ) ->
-                        mover (-)
+                updateSelectionByOrientation editorModel domainModel navData orientation
 
-                    ( D, Vert ) ->
-                        mover (+)
+updateSelectionByOrientation : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
+updateSelectionByOrientation editorModel domainModel { dir, cellSelected, selection } orientation =
+    let
+        mover op =
+            move editorModel domainModel cellSelected op
+    in
+        case ( dir, orientation ) of
+            ( U, Vert ) ->
+                mover (-)
 
-                    ( L, Horiz ) ->
-                        if selection.start == 0 |> Debug.log "equal to  0" then
-                            mover (-)
-                        else
-                            Cmd.none
+            ( D, Vert ) ->
+                mover (+)
 
-                    ( R, Horiz ) ->
-                        if selection.start >= (textOf "input" cellSelected |> String.length) then
-                            mover (+)
-                        else
-                            Cmd.none
+            ( L, Horiz ) ->
+                if selection.start == 0 then
+                    mover (-)
+                else
+                    Cmd.none
 
-                    _ ->
-                        Cmd.none
+            ( R, Horiz ) ->
+                if selection.start >= (textOf "input" cellSelected |> String.length) then
+                    mover (+)
+                else
+                    Cmd.none
+
+            _ ->
+                Cmd.none
 
 
 move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a)
@@ -512,12 +521,12 @@ createInputCellAttributes cell =
                 isasUnderCustom "effects" cell
                     ++ navEffects cell
     in
-        List.map attributeFromEffectGroup effectGroups
+        List.map (attributeFromEffectGroup cell) effectGroups
             |> List.filterMap identity
 
 
-attributeFromEffectGroup : EffectGroup a -> Maybe (Attribute (Msg a))
-attributeFromEffectGroup effectGroup =
+attributeFromEffectGroup : Node (Cell a) -> EffectGroup a -> Maybe (Attribute (Msg a))
+attributeFromEffectGroup cell effectGroup =
     case effectGroup of
         InputEffectGroup effects ->
             case effects of
@@ -528,7 +537,7 @@ attributeFromEffectGroup effectGroup =
                     Nothing
 
         KeyboardEffectGroup effects ->
-            Just (effectAttributeFromKey (inputEffectMap effects))
+            Just (effectAttributeFromKey (inputEffectMap cell effects))
 
 
 keyFromDir : Dir -> String
@@ -552,13 +561,13 @@ effectAttributeFromInput handler =
     HtmlE.onInput handler
 
 
-inputEffectMap : List (Effect a) -> Dict.Dict String (Msg a)
-inputEffectMap effects =
+inputEffectMap : Node (Cell a) -> List (Effect a) -> Dict.Dict String (Msg a)
+inputEffectMap cell effects =
     List.foldl
         (\effect dict ->
             case effect of
                 OnEnterEffect _ ->
-                    Dict.insert "Enter" (OnEnter effect) dict
+                    Dict.insert "Enter" (OnEnter effect cell) dict
 
                 NavSelectionEffect { dir } ->
                     Dict.insert (keyFromDir dir) (NavSelection effect) dict

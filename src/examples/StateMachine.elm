@@ -11,6 +11,7 @@ It contains constructors for each "domain concept" to tag Node_s with via API.
 type Domain
     = StateMachine
     | Event
+    | State
 
 
 {-| Program is created by the Runtime.program function.
@@ -86,7 +87,7 @@ editorEvents sm =
             |> with
                 (constantCell "events")
             |> with
-                (horizStackCell
+                (vertStackCell
                     |> addIndent
                     |> withRange editorEventsResult
                 )
