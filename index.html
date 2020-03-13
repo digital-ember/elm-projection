@@ -5100,6 +5100,106 @@ var author$project$Editor$orientationOf = F2(
 		}
 	});
 var author$project$Editor$NoOp = {$: 'NoOp'};
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var author$project$Editor$findFirstInputCellRec = F2(
+	function (root, candidates) {
+		findFirstInputCellRec:
+		while (true) {
+			if (!candidates.b) {
+				return elm$core$Maybe$Nothing;
+			} else {
+				var head = candidates.a;
+				var tail = candidates.b;
+				var mbFirst = A2(author$project$Editor$findNextInputCellRec, root, head);
+				if (mbFirst.$ === 'Nothing') {
+					var $temp$root = root,
+						$temp$candidates = tail;
+					root = $temp$root;
+					candidates = $temp$candidates;
+					continue findFirstInputCellRec;
+				} else {
+					var first = mbFirst.a;
+					return elm$core$Maybe$Just(first);
+				}
+			}
+		}
+	});
+var author$project$Editor$findNextInputCell = F2(
+	function (root, current) {
+		findNextInputCell:
+		while (true) {
+			var mbNext = A2(
+				author$project$Structure$nextSibling,
+				root,
+				author$project$Structure$pathOf(current));
+			if (mbNext.$ === 'Just') {
+				var next = mbNext.a;
+				return A2(
+					elm$core$Maybe$withDefault,
+					current,
+					A2(author$project$Editor$findNextInputCellRec, root, next));
+			} else {
+				var mbParent = A2(
+					author$project$Structure$parentOf,
+					root,
+					author$project$Structure$pathOf(current));
+				if (mbParent.$ === 'Nothing') {
+					return current;
+				} else {
+					var parent = mbParent.a;
+					var $temp$root = root,
+						$temp$current = parent;
+					root = $temp$root;
+					current = $temp$current;
+					continue findNextInputCell;
+				}
+			}
+		}
+	});
+var author$project$Editor$findNextInputCellRec = F2(
+	function (root, next) {
+		var _n0 = author$project$Structure$isaOf(next);
+		_n0$2:
+		while (true) {
+			if (_n0.$ === 'ContentCell') {
+				switch (_n0.a.$) {
+					case 'InputCell':
+						var _n1 = _n0.a;
+						return elm$core$Maybe$Just(next);
+					case 'StackCell':
+						var mbChildren = author$project$Structure$getUnderDefault(next);
+						if (mbChildren.$ === 'Just') {
+							var children = mbChildren.a;
+							var mbFirst = A2(author$project$Editor$findFirstInputCellRec, root, children);
+							if (mbFirst.$ === 'Nothing') {
+								return elm$core$Maybe$Just(
+									A2(author$project$Editor$findNextInputCell, root, next));
+							} else {
+								var first = mbFirst.a;
+								return elm$core$Maybe$Just(first);
+							}
+						} else {
+							return elm$core$Maybe$Just(
+								A2(author$project$Editor$findNextInputCell, root, next));
+						}
+					default:
+						break _n0$2;
+				}
+			} else {
+				break _n0$2;
+			}
+		}
+		return elm$core$Maybe$Just(
+			A2(author$project$Editor$findNextInputCell, root, next));
+	});
 var author$project$Structure$lengthOf = function (_n0) {
 	var segments = _n0.a;
 	return elm$core$List$length(segments);
@@ -5121,6 +5221,10 @@ var author$project$Structure$pathAsId = function (path) {
 	var _n0 = path;
 	var segments = _n0.a;
 	return A3(elm$core$List$foldl, author$project$Structure$pathSegmentAsId, '', segments);
+};
+var author$project$Structure$pathAsIdFromNode = function (_n0) {
+	var path = _n0.a.path;
+	return author$project$Structure$pathAsId(path);
 };
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
@@ -5646,6 +5750,7 @@ var elm$url$Url$fromString = function (str) {
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$Dom$focus = _Browser_call('focus');
+var elm$core$Debug$log = _Debug_log;
 var elm$core$Platform$Cmd$batch = _Platform_batch;
 var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
 var elm$core$Basics$composeL = F3(
@@ -5677,9 +5782,14 @@ var author$project$Editor$move = F4(
 		var pathSelected = author$project$Structure$pathOf(cellSelected);
 		var nextPathAsId = F3(
 			function (parentPath, feature, index) {
-				return author$project$Structure$pathAsId(parentPath) + ('-' + (feature + elm$core$String$fromInt(
-					A2(op, index, 1))));
+				return author$project$Structure$pathAsIdFromNode(
+					A2(author$project$Editor$findNextInputCell, editorModel, cellSelected));
 			});
+		var d = A2(
+			elm$core$Debug$log,
+			'nid',
+			author$project$Structure$pathAsIdFromNode(
+				A2(author$project$Editor$findNextInputCell, editorModel, cellSelected)));
 		if (author$project$Structure$lengthOf(pathSelected) === 1) {
 			return elm$core$Platform$Cmd$none;
 		} else {
@@ -5710,15 +5820,6 @@ var author$project$Structure$valueOf = F2(
 	function (key, _n0) {
 		var properties = _n0.a.properties;
 		return A2(elm$core$Dict$get, key, properties);
-	});
-var elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
 	});
 var author$project$Structure$textOf = F2(
 	function (key, node) {
@@ -5783,7 +5884,10 @@ var author$project$Editor$updateSelectionByOrientation = F4(
 	});
 var author$project$Editor$updateSelection = F3(
 	function (editorModel, domainModel, navData) {
-		var mbOrientation = A2(author$project$Editor$orientationOf, editorModel, navData.cellSelected);
+		var mbOrientation = A2(
+			elm$core$Debug$log,
+			'orientation',
+			A2(author$project$Editor$orientationOf, editorModel, navData.cellSelected));
 		if (mbOrientation.$ === 'Nothing') {
 			return elm$core$Platform$Cmd$none;
 		} else {
@@ -6842,10 +6946,6 @@ var author$project$Runtime$update = F2(
 					editorCmd));
 		}
 	});
-var author$project$Structure$pathAsIdFromNode = function (_n0) {
-	var path = _n0.a.path;
-	return author$project$Structure$pathAsId(path);
-};
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$label = _VirtualDom_node('label');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
@@ -6956,7 +7056,6 @@ var author$project$Editor$decodeSelection = A4(
 	A2(elm$json$Json$Decode$field, 'selectionStart', elm$json$Json$Decode$int),
 	A2(elm$json$Json$Decode$field, 'selectionEnd', elm$json$Json$Decode$int),
 	A2(elm$json$Json$Decode$field, 'selectionDirection', elm$json$Json$Decode$string));
-var elm$core$Debug$log = _Debug_log;
 var elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -7597,6 +7696,10 @@ var author$project$Structure$addBool = F3(
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, 'indent', true, node);
 };
+var author$project$Editor$Horiz = {$: 'Horiz'};
+var author$project$Editor$horizStackCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(
+		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$Structure$addToDefaultRange = F2(
 	function (children, parent) {
 		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
@@ -7765,16 +7868,12 @@ var author$project$StateMachine$editorEvents = function (sm) {
 			A2(
 				author$project$Editor$withRange,
 				editorEventsResult,
-				author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
+				author$project$Editor$addIndent(author$project$Editor$horizStackCell)),
 			A2(
 				author$project$Editor$with,
 				author$project$Editor$constantCell('events'),
 				author$project$Editor$vertStackCell)));
 };
-var author$project$Editor$Horiz = {$: 'Horiz'};
-var author$project$Editor$horizStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$StateMachine$editorStateMachineName = function (sm) {
 	return A2(
 		author$project$Editor$with,

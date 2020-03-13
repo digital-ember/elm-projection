@@ -169,6 +169,7 @@ replacementEffect feature path nodeToInsert =
         , feature = feature
         }
 
+
 insertionEffect : Path -> Node a -> Effect a
 insertionEffect path nodeToInsert =
     InsertionEffect
@@ -283,12 +284,12 @@ updateEditor msg editorModel domainModel =
             case effect of
                 InsertionEffect { path, nodeToInsert, isReplace, feature } ->
                     ( if isReplace then
-                          if feature == "" || feature == "default" then
-                              addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
-                          else 
-                              addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+                        if feature == "" || feature == "default" then
+                            addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
+                        else
+                            addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
                       else
-                          insertChildAfterPath nodeToInsert path domainModel |> updatePaths
+                        insertChildAfterPath nodeToInsert path domainModel |> updatePaths
                     , updateSelectionOnEnter editorModel domainModel cellContext
                     )
 
@@ -314,7 +315,7 @@ updateEditor msg editorModel domainModel =
         OnInput effect value ->
             case effect of
                 OnInputEffect { path, key } ->
-                    ( updatePropertyByPath domainModel path (key, value) |> updatePaths, Cmd.none )
+                    ( updatePropertyByPath domainModel path ( key, value ) |> updatePaths, Cmd.none )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -328,44 +329,44 @@ updateEditor msg editorModel domainModel =
                     ( domainModel, Cmd.none )
 
 
-tryDeleteLeft : Node a -> {effectInput:Node a, effectHandler:Node a -> Node a -> Node a, selection:Selection} -> Int -> Node a 
-tryDeleteLeft domainModel {effectInput, effectHandler, selection} textLength =
+tryDeleteLeft : Node a -> { effectInput : Node a, effectHandler : Node a -> Node a -> Node a, selection : Selection } -> Int -> Node a
+tryDeleteLeft domainModel { effectInput, effectHandler, selection } textLength =
     if textLength == 0 then
         effectHandler domainModel effectInput |> updatePaths
     else if selection.start == 0 then
         let
-            mbPrev = previousSibling domainModel (pathOf effectInput)
-            
+            mbPrev =
+                previousSibling domainModel (pathOf effectInput)
         in
             case mbPrev of
                 Nothing ->
                     domainModel
-            
+
                 Just prev ->
                     effectHandler domainModel prev |> updatePaths
     else
         domainModel
 
 
-tryDeleteRight : Node a -> {effectInput:Node a, effectHandler:Node a -> Node a -> Node a, selection:Selection} -> Int -> Node a 
-tryDeleteRight domainModel {effectInput, effectHandler, selection} textLength =
+tryDeleteRight : Node a -> { effectInput : Node a, effectHandler : Node a -> Node a -> Node a, selection : Selection } -> Int -> Node a
+tryDeleteRight domainModel { effectInput, effectHandler, selection } textLength =
     if textLength == 0 then
         effectHandler domainModel effectInput |> updatePaths
     else if selection.start == textLength then
         let
-            mbNext = nextSibling domainModel (pathOf effectInput)
-            
+            mbNext =
+                nextSibling domainModel (pathOf effectInput)
         in
             case mbNext of
                 Nothing ->
                     domainModel
-            
+
                 Just next ->
                     effectHandler domainModel next |> updatePaths
     else
         domainModel
 
-    
+
 updateSelectionOnEnter : Node (Cell a) -> Node a -> Node (Cell a) -> Cmd (Msg a)
 updateSelectionOnEnter editorModel domainModel cellContext =
     let
@@ -422,10 +423,14 @@ updateSelectionByOrientation editorModel domainModel { dir, cellSelected, select
 
 
 move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a)
-move editorModel domainModel cellSelected op =
+move editorModel domainModel cellSelected op = 
     let
         nextPathAsId parentPath feature index =
+            --pathAsIdFromNode (findNextInputCell editorModel cellSelected)
             pathAsId parentPath ++ "-" ++ feature ++ String.fromInt (op index 1)
+
+        d = pathAsIdFromNode (findNextInputCell editorModel cellSelected) |> Debug.log "nid"
+        
 
         pathSelected =
             pathOf cellSelected
@@ -447,6 +452,81 @@ move editorModel domainModel cellSelected op =
 
                     ( Just { feature, index }, Just parentPath ) ->
                         Task.attempt (\_ -> NoOp) (Dom.focus <| nextPathAsId parentPath feature index)
+
+
+findNextInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+findNextInputCell root current =
+    let
+        mbNext =
+            nextSibling root (pathOf current)
+    in
+        case mbNext of
+            Just next ->
+                findNextInputCellRec root next
+                    |> Maybe.withDefault current
+
+            Nothing ->
+                let
+                    mbParent =
+                        parentOf root (pathOf current)
+                in
+                    case mbParent of
+                        Nothing ->
+                            current
+
+                        Just parent ->
+                            findNextInputCell root parent
+
+
+findNextInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
+findNextInputCellRec root next =
+    case isaOf next of
+        ContentCell InputCell ->
+            Just next
+
+        ContentCell (StackCell _) ->
+            -- down
+            let
+                mbChildren =
+                    getUnderDefault next
+            in
+                case mbChildren of
+                    Just children ->
+                        let
+                            mbFirst =
+                                findFirstInputCellRec root children
+                        in
+                            case mbFirst of
+                                Nothing ->
+                                    Just <| findNextInputCell root next
+
+                                Just first ->
+                                    Just first
+
+                    Nothing ->
+                        Just <| findNextInputCell root next
+
+        _ ->
+            Just <| findNextInputCell root next
+
+
+findFirstInputCellRec : Node (Cell a) -> List (Node (Cell a)) -> Maybe (Node (Cell a))
+findFirstInputCellRec root candidates =
+    case candidates of
+        [] ->
+            Nothing
+
+        head :: tail ->
+            let
+                mbFirst =
+                    findNextInputCellRec root head
+            in
+                case mbFirst of
+                    Nothing ->
+                        findFirstInputCellRec root tail
+
+                    Just first ->
+                        Just first
 
 
 
@@ -730,7 +810,6 @@ effectAttributeFromKey dictKeyToMsg =
 
                                     _ ->
                                         JsonD.succeed msg
-
 
                             OnBackspace effect cellContext ->
                                 case effect of
