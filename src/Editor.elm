@@ -10,6 +10,7 @@ module Editor
         , horizStackCell
         , vertStackCell
         , placeholderCell
+        , buttonCell
         , addIndent
         , withEffect
         , insertionEffect
@@ -41,6 +42,7 @@ type ContentCell
     | ConstantCell
     | InputCell
     | PlaceholderCell
+    | ButtonCell
 
 
 type Effect a
@@ -89,6 +91,7 @@ type Msg a
     | Swallow String
     | NavSelection (Effect a)
     | OnEnter (Effect a) (Node (Cell a))
+    | OnClick (Effect a) (Node (Cell a))
     | OnBackspace (Effect a) (Node (Cell a))
     | OnDelete (Effect a) (Node (Cell a))
     | OnInput (Effect a) String
@@ -104,16 +107,6 @@ type Dir
 createRootCell : Node (Cell a)
 createRootCell =
     createRoot (ContentCell RootCell)
-
-
-with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
-with node =
-    addToDefault node
-
-
-withRange : List (Node (Cell a)) -> Node (Cell a) -> Node (Cell a)
-withRange children =
-    addToDefaultRange children
 
 
 constantCell : String -> Node (Cell a)
@@ -142,6 +135,22 @@ placeholderCell : String -> Node (Cell a)
 placeholderCell text =
     createNode (ContentCell PlaceholderCell)
         |> addText "placeholder" text
+
+
+buttonCell : String -> Node (Cell a)
+buttonCell text =
+    createNode (ContentCell ButtonCell)
+        |> addText "text" text
+
+
+with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+with node =
+    addToDefault node
+
+
+withRange : List (Node (Cell a)) -> Node (Cell a) -> Node (Cell a)
+withRange children =
+    addToDefaultRange children
 
 
 addIndent : Node (Cell a) -> Node (Cell a)
@@ -296,6 +305,22 @@ updateEditor msg editorModel domainModel =
                 _ ->
                     ( domainModel, Cmd.none )
 
+        OnClick effect cellContext ->
+            case effect of
+                InsertionEffect { path, nodeToInsert, isReplace, feature } ->
+                    ( if isReplace then
+                        if feature == "" || feature == "default" then
+                            addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
+                        else
+                            addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+                      else
+                        insertChildAfterPath nodeToInsert path domainModel |> updatePaths
+                    , updateSelectionOnEnter editorModel domainModel cellContext
+                    )
+
+                _ ->
+                    ( domainModel, Cmd.none )
+
         OnDelete effect cellContext ->
             case effect of
                 OnDeleteEffect effectData ->
@@ -423,14 +448,14 @@ updateSelectionByOrientation editorModel domainModel { dir, cellSelected, select
 
 
 move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a)
-move editorModel domainModel cellSelected op = 
+move editorModel domainModel cellSelected op =
     let
         nextPathAsId parentPath feature index =
             --pathAsIdFromNode (findNextInputCell editorModel cellSelected)
             pathAsId parentPath ++ "-" ++ feature ++ String.fromInt (op index 1)
 
-        d = pathAsIdFromNode (findNextInputCell editorModel cellSelected) |> Debug.log "nid"
-        
+        d =
+            pathAsIdFromNode (findNextInputCell editorModel cellSelected) |> Debug.log "nid"
 
         pathSelected =
             pathOf cellSelected
@@ -535,7 +560,7 @@ findFirstInputCellRec root candidates =
 
 viewEditor : Node (Cell a) -> Html (Msg a)
 viewEditor root =
-    div [] <|
+    div [ HtmlA.style "font-family" "Consolas" ] <|
         case isaOf root of
             ContentCell _ ->
                 viewCell root
@@ -580,6 +605,9 @@ viewContent cell html =
 
                         PlaceholderCell ->
                             viewPlaceholderCell cell
+
+                        ButtonCell ->
+                            viewButtonCell cell
             in
                 htmlNew :: List.reverse html |> List.reverse
 
@@ -647,6 +675,8 @@ viewConstantCell cell =
                 [ label
                     [ HtmlA.style "margin" "0px 3px 0px 0px"
                     , HtmlA.id (pathAsIdFromNode cell)
+                    , HtmlA.style "font-weight" "bold"
+                    , HtmlA.style "color" "darkblue"
                     ]
                     [ text (textOf "constant" cell) ]
                 ]
@@ -660,10 +690,12 @@ viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
             div
-                [ HtmlA.style "margin" "0px 3px 0px 0px"
-                ]
+                [ ]
                 [ input
                     ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "margin" "0px 3px 0px 0px"
+                     , HtmlA.style "font-family" "Consolas"
+                     , HtmlA.style "font-size" "16px"
                      , HtmlA.style "border" "none"
                      , HtmlA.style "outline" "none"
                      , HtmlA.placeholder "<no value>"
@@ -686,6 +718,8 @@ viewPlaceholderCell cell =
             div []
                 [ input
                     ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "font-family" "Consolas"
+                     , HtmlA.style "font-size" "16px"
                      , HtmlA.style "border" "none"
                      , HtmlA.style "outline" "none"
                      , HtmlA.style "color" "#888888"
@@ -698,6 +732,31 @@ viewPlaceholderCell cell =
                     )
                     []
                 ]
+
+        EffectCell _ ->
+            text ""
+
+
+viewButtonCell : Node (Cell a) -> Html (Msg a)
+viewButtonCell cell =
+    case isaOf cell of
+        ContentCell _ ->
+            let
+                onClick =
+                    isasUnderCustom "effects" cell
+                        |> List.head
+                        |> Maybe.andThen
+                            (\e ->
+                                case e of
+                                    EffectCell effect ->
+                                        Just [ HtmlE.onClick (OnClick effect cell) ]
+
+                                    _ ->
+                                        Nothing
+                            )
+                        |> Maybe.withDefault []
+            in
+                button onClick [ text (textOf "text" cell) ]
 
         EffectCell _ ->
             text ""

@@ -5782,8 +5782,8 @@ var author$project$Editor$move = F4(
 		var pathSelected = author$project$Structure$pathOf(cellSelected);
 		var nextPathAsId = F3(
 			function (parentPath, feature, index) {
-				return author$project$Structure$pathAsIdFromNode(
-					A2(author$project$Editor$findNextInputCell, editorModel, cellSelected));
+				return author$project$Structure$pathAsId(parentPath) + ('-' + (feature + elm$core$String$fromInt(
+					A2(op, index, 1))));
 			});
 		var d = A2(
 			elm$core$Debug$log,
@@ -5884,10 +5884,7 @@ var author$project$Editor$updateSelectionByOrientation = F4(
 	});
 var author$project$Editor$updateSelection = F3(
 	function (editorModel, domainModel, navData) {
-		var mbOrientation = A2(
-			elm$core$Debug$log,
-			'orientation',
-			A2(author$project$Editor$orientationOf, editorModel, navData.cellSelected));
+		var mbOrientation = A2(author$project$Editor$orientationOf, editorModel, navData.cellSelected);
 		if (mbOrientation.$ === 'Nothing') {
 			return elm$core$Platform$Cmd$none;
 		} else {
@@ -6858,6 +6855,23 @@ var author$project$Editor$updateEditor = F3(
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
+			case 'OnClick':
+				var effect = msg.a;
+				var cellContext = msg.b;
+				if (effect.$ === 'InsertionEffect') {
+					var path = effect.a.path;
+					var nodeToInsert = effect.a.nodeToInsert;
+					var isReplace = effect.a.isReplace;
+					var feature = effect.a.feature;
+					return _Utils_Tuple2(
+						isReplace ? (((feature === '') || (feature === 'default')) ? author$project$Structure$updatePaths(
+							A3(author$project$Structure$addChildAtPathToDefault, nodeToInsert, path, domainModel)) : author$project$Structure$updatePaths(
+							A4(author$project$Structure$addChildAtPathToCustom, feature, nodeToInsert, path, domainModel))) : author$project$Structure$updatePaths(
+							A3(author$project$Structure$insertChildAfterPath, nodeToInsert, path, domainModel)),
+						A3(author$project$Editor$updateSelectionOnEnter, editorModel, domainModel, cellContext));
+				} else {
+					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
+				}
 			case 'OnDelete':
 				var effect = msg.a;
 				var cellContext = msg.b;
@@ -6946,10 +6960,81 @@ var author$project$Runtime$update = F2(
 					editorCmd));
 		}
 	});
-var elm$html$Html$div = _VirtualDom_node('div');
-var elm$html$Html$label = _VirtualDom_node('label');
+var author$project$Editor$OnClick = F2(
+	function (a, b) {
+		return {$: 'OnClick', a: a, b: b};
+	});
+var author$project$Editor$isasUnderCustom = F2(
+	function (featureKey, parent) {
+		var mbChildren = (featureKey === '') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, featureKey, parent);
+		return A2(
+			elm$core$Maybe$withDefault,
+			_List_Nil,
+			A2(
+				elm$core$Maybe$andThen,
+				function (children) {
+					return elm$core$Maybe$Just(
+						A2(elm$core$List$map, author$project$Structure$isaOf, children));
+				},
+				mbChildren));
+	});
+var elm$html$Html$button = _VirtualDom_node('button');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			elm$virtual_dom$VirtualDom$on,
+			event,
+			elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		elm$html$Html$Events$on,
+		'click',
+		elm$json$Json$Decode$succeed(msg));
+};
+var author$project$Editor$viewButtonCell = function (cell) {
+	var _n0 = author$project$Structure$isaOf(cell);
+	if (_n0.$ === 'ContentCell') {
+		var onClick = A2(
+			elm$core$Maybe$withDefault,
+			_List_Nil,
+			A2(
+				elm$core$Maybe$andThen,
+				function (e) {
+					if (e.$ === 'EffectCell') {
+						var effect = e.a;
+						return elm$core$Maybe$Just(
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onClick(
+									A2(author$project$Editor$OnClick, effect, cell))
+								]));
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				elm$core$List$head(
+					A2(author$project$Editor$isasUnderCustom, 'effects', cell))));
+		return A2(
+			elm$html$Html$button,
+			onClick,
+			_List_fromArray(
+				[
+					elm$html$Html$text(
+					A2(author$project$Structure$textOf, 'text', cell))
+				]));
+	} else {
+		return elm$html$Html$text('');
+	}
+};
+var elm$html$Html$div = _VirtualDom_node('div');
+var elm$html$Html$label = _VirtualDom_node('label');
 var elm$json$Json$Encode$string = _Json_wrap;
 var elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
@@ -6975,7 +7060,9 @@ var author$project$Editor$viewConstantCell = function (cell) {
 						[
 							A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px'),
 							elm$html$Html$Attributes$id(
-							author$project$Structure$pathAsIdFromNode(cell))
+							author$project$Structure$pathAsIdFromNode(cell)),
+							A2(elm$html$Html$Attributes$style, 'font-weight', 'bold'),
+							A2(elm$html$Html$Attributes$style, 'color', 'darkblue')
 						]),
 					_List_fromArray(
 						[
@@ -6997,7 +7084,6 @@ var elm$html$Html$Events$alwaysStop = function (x) {
 var elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
 	return {$: 'MayStopPropagation', a: a};
 };
-var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
 var elm$html$Html$Events$stopPropagationOn = F2(
 	function (event, decoder) {
 		return A2(
@@ -7056,16 +7142,6 @@ var author$project$Editor$decodeSelection = A4(
 	A2(elm$json$Json$Decode$field, 'selectionStart', elm$json$Json$Decode$int),
 	A2(elm$json$Json$Decode$field, 'selectionEnd', elm$json$Json$Decode$int),
 	A2(elm$json$Json$Decode$field, 'selectionDirection', elm$json$Json$Decode$string));
-var elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			elm$virtual_dom$VirtualDom$on,
-			event,
-			elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
 var elm$json$Json$Decode$andThen = _Json_andThen;
 var elm$json$Json$Decode$fail = _Json_fail;
 var author$project$Editor$effectAttributeFromKey = function (dictKeyToMsg) {
@@ -7318,20 +7394,6 @@ var author$project$Editor$grouped = function (effectCells) {
 	var dictGrouped = A3(elm$core$List$foldl, toDict, elm$core$Dict$empty, effectCells);
 	return A3(elm$core$Dict$foldl, toEffectGroupList, _List_Nil, dictGrouped);
 };
-var author$project$Editor$isasUnderCustom = F2(
-	function (featureKey, parent) {
-		var mbChildren = (featureKey === '') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, featureKey, parent);
-		return A2(
-			elm$core$Maybe$withDefault,
-			_List_Nil,
-			A2(
-				elm$core$Maybe$andThen,
-				function (children) {
-					return elm$core$Maybe$Just(
-						A2(elm$core$List$map, author$project$Structure$isaOf, children));
-				},
-				mbChildren));
-	});
 var author$project$Editor$L = {$: 'L'};
 var author$project$Editor$R = {$: 'R'};
 var author$project$Editor$U = {$: 'U'};
@@ -7399,10 +7461,7 @@ var author$project$Editor$viewInputCell = function (cell) {
 	if (_n0.$ === 'ContentCell') {
 		return A2(
 			elm$html$Html$div,
-			_List_fromArray(
-				[
-					A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px')
-				]),
+			_List_Nil,
 			_List_fromArray(
 				[
 					A2(
@@ -7411,6 +7470,9 @@ var author$project$Editor$viewInputCell = function (cell) {
 						_List_fromArray(
 							[
 								A2(elm$html$Html$Attributes$style, 'border-width', '0px'),
+								A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px'),
+								A2(elm$html$Html$Attributes$style, 'font-family', 'Consolas'),
+								A2(elm$html$Html$Attributes$style, 'font-size', '16px'),
 								A2(elm$html$Html$Attributes$style, 'border', 'none'),
 								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
 								elm$html$Html$Attributes$placeholder('<no value>'),
@@ -7443,6 +7505,8 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 						_List_fromArray(
 							[
 								A2(elm$html$Html$Attributes$style, 'border-width', '0px'),
+								A2(elm$html$Html$Attributes$style, 'font-family', 'Consolas'),
+								A2(elm$html$Html$Attributes$style, 'font-size', '16px'),
 								A2(elm$html$Html$Attributes$style, 'border', 'none'),
 								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
 								A2(elm$html$Html$Attributes$style, 'color', '#888888'),
@@ -7510,8 +7574,10 @@ var author$project$Editor$viewContent = F2(
 					case 'StackCell':
 						var orientation = ccell.a;
 						return A2(author$project$Editor$viewStackCell, cell, orientation);
-					default:
+					case 'PlaceholderCell':
 						return author$project$Editor$viewPlaceholderCell(cell);
+					default:
+						return author$project$Editor$viewButtonCell(cell);
 				}
 			}();
 			return elm$core$List$reverse(
@@ -7572,7 +7638,10 @@ var author$project$Editor$viewVertStackCell = function (cell) {
 var author$project$Editor$viewEditor = function (root) {
 	return A2(
 		elm$html$Html$div,
-		_List_Nil,
+		_List_fromArray(
+			[
+				A2(elm$html$Html$Attributes$style, 'font-family', 'Consolas')
+			]),
 		function () {
 			var _n0 = author$project$Structure$isaOf(root);
 			if (_n0.$ === 'ContentCell') {
@@ -7696,10 +7765,6 @@ var author$project$Structure$addBool = F3(
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, 'indent', true, node);
 };
-var author$project$Editor$Horiz = {$: 'Horiz'};
-var author$project$Editor$horizStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$Structure$addToDefaultRange = F2(
 	function (children, parent) {
 		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
@@ -7868,12 +7933,16 @@ var author$project$StateMachine$editorEvents = function (sm) {
 			A2(
 				author$project$Editor$withRange,
 				editorEventsResult,
-				author$project$Editor$addIndent(author$project$Editor$horizStackCell)),
+				author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
 			A2(
 				author$project$Editor$with,
 				author$project$Editor$constantCell('events'),
 				author$project$Editor$vertStackCell)));
 };
+var author$project$Editor$Horiz = {$: 'Horiz'};
+var author$project$Editor$horizStackCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(
+		author$project$Editor$StackCell(author$project$Editor$Horiz)));
 var author$project$StateMachine$editorStateMachineName = function (sm) {
 	return A2(
 		author$project$Editor$with,
@@ -7889,6 +7958,15 @@ var author$project$StateMachine$editorStateMachineName = function (sm) {
 			author$project$Editor$with,
 			author$project$Editor$constantCell('name:'),
 			author$project$Editor$horizStackCell));
+};
+var author$project$Editor$ButtonCell = {$: 'ButtonCell'};
+var author$project$Editor$buttonCell = function (text) {
+	return A3(
+		author$project$Structure$addText,
+		'text',
+		text,
+		author$project$Structure$createNode(
+			author$project$Editor$ContentCell(author$project$Editor$ButtonCell)));
 };
 var author$project$StateMachine$State = {$: 'State'};
 var author$project$StateMachine$ctorState = A3(
@@ -8000,7 +8078,7 @@ var author$project$StateMachine$editorState = function (state) {
 					author$project$Editor$insertionEffect,
 					author$project$Structure$pathOf(state),
 					author$project$StateMachine$ctorState),
-				author$project$Editor$placeholderCell('+')),
+				author$project$Editor$buttonCell('+')),
 			A2(
 				author$project$Editor$with,
 				author$project$Editor$constantCell('end'),

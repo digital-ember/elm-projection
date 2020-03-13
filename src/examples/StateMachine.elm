@@ -154,7 +154,7 @@ editorState state =
                 )
             |> with (constantCell "end")
             |> with
-                (placeholderCell "+"
+                (buttonCell "+"
                     |> withEffect (insertionEffect (pathOf state) ctorState)
                 )
             |> with (constantCell "")
