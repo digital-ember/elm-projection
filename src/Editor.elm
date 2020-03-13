@@ -690,7 +690,7 @@ viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
             div
-                [ ]
+                []
                 [ input
                     ([ HtmlA.style "border-width" "0px"
                      , HtmlA.style "margin" "0px 3px 0px 0px"

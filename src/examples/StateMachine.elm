@@ -17,19 +17,19 @@ type Domain
 
 {-| Program is created by the Runtime.program function.
 It requires:
-- initial root node (stateMachine)
+- initial root node (initStateMachine)
 - editor (top-level function to transform a domain model to a cell model)
 -}
 main : Program () (Model Domain) (Runtime.Msg Domain)
 main =
-    program stateMachine editor
+    program initStateMachine editor
 
 
 {-| Initial root node to start the program with.
 Just an root node of variant StateMachine.
 -}
-stateMachine : Node Domain
-stateMachine =
+initStateMachine : Node Domain
+initStateMachine =
     createRoot StateMachine
 
 
@@ -88,23 +88,21 @@ editorEvents sm =
                     List.map editorEvent events
     in
         vertStackCell
-            |> with
-                (constantCell "events")
+            |> with (constantCell "events")
             |> with
                 (vertStackCell
                     |> addIndent
                     |> withRange editorEventsResult
                 )
-            |> with
-                (constantCell "end")
- 
+            |> with (constantCell "end")
+
 
 editorEvent : Node Domain -> Node (Cell Domain)
 editorEvent event =
     inputCell (textOf "name" event)
         |> withEffect (insertionEffect (pathOf event) ctorEvent)
         |> withEffect (onDeleteEffect event deleteEvent)
-        |> withEffect (onInputEffect (pathOf event)  "name")
+        |> withEffect (onInputEffect (pathOf event) "name")
 
 
 editorEventPlaceholder : Node Domain -> Node (Cell Domain)
@@ -175,22 +173,23 @@ editorTransitionPlaceholder : Node Domain -> Node (Cell Domain)
 editorTransitionPlaceholder state =
     placeholderCell "no transitions"
         |> withEffect (replacementEffect "" (pathOf state) ctorTransition)
- 
+
 
 editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
             (inputCell (textOf "eventRef" transition)
-                |> withEffect (onInputEffect ( pathOf transition ) "eventRef" )
-                |> withEffect (insertionEffect ( pathOf transition ) ctorTransition)
+                |> withEffect (onInputEffect (pathOf transition) "eventRef")
+                |> withEffect (insertionEffect (pathOf transition) ctorTransition)
             )
         |> with (constantCell "⇒")
         |> with
             (inputCell (textOf "stateRef" transition)
-                |> withEffect (onInputEffect ( pathOf transition ) "stateRef" )
-                |> withEffect (insertionEffect ( pathOf transition ) ctorTransition)
+                |> withEffect (onInputEffect (pathOf transition) "stateRef")
+                |> withEffect (insertionEffect (pathOf transition) ctorTransition)
             )
+
 
 
 -- CTORs
@@ -200,7 +199,6 @@ ctorEvent : Node Domain
 ctorEvent =
     createNode Event
         |> addText "name" ""
-        
 
 
 ctorState : Node Domain
@@ -220,7 +218,6 @@ ctorTransition =
 -- DELETION
 
 
-
 deleteEvent : Node Domain -> Node Domain -> Node Domain
 deleteEvent sm event =
     let
@@ -238,4 +235,3 @@ deleteEvent sm event =
 
             Just eventsNew ->
                 replaceUnderCustom "events" eventsNew sm
-
