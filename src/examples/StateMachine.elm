@@ -80,7 +80,7 @@ editorEvents : Node Domain -> Node (Cell Domain)
 editorEvents sm =
     let
         editorEventsResult =
-            case getUnderCustom "events" sm of
+            case (getUnderCustom "events" sm) |> Debug.log "events"  of
                 Nothing ->
                     [ editorEventPlaceholder sm ]
 
@@ -97,12 +97,12 @@ editorEvents sm =
                 )
             |> with
                 (constantCell "end")
-
+ 
 
 editorEvent : Node Domain -> Node (Cell Domain)
 editorEvent event =
     inputCell (textOf "name" event)
-        |> withEffect (onEnterEffect (pathOf event) insertNewEventAfter)
+        |> withEffect (insertionEffect (pathOf event) ctorEvent)
         |> withEffect (onDeleteEffect event deleteEvent)
         |> withEffect (onInputEffect ( pathOf event, "name" ) updateStringProperty)
 
@@ -110,7 +110,7 @@ editorEvent event =
 editorEventPlaceholder : Node Domain -> Node (Cell Domain)
 editorEventPlaceholder sm =
     placeholderCell "no events"
-        |> withEffect (onEnterEffect (pathOf sm) addNewEvent)
+        |> withEffect (replacementEffect "events" (pathOf sm) ctorEvent)
 
 
 editorStates : Node Domain -> Node (Cell Domain)
@@ -131,7 +131,7 @@ editorStates sm =
 editorStatesPlaceholder : Node Domain -> Node (Cell Domain)
 editorStatesPlaceholder sm =
     placeholderCell "no states"
-        |> withEffect (onEnterEffect (pathOf sm) addNewState)
+        |> withEffect (replacementEffect "" (pathOf sm) ctorState)
 
 
 editorState : Node Domain -> Node (Cell Domain)
@@ -155,7 +155,7 @@ editorState state =
             |> with (constantCell "end")
             |> with
                 (placeholderCell "+"
-                    |> withEffect (onEnterEffect (pathOf state) insertNewStateAfter)
+                    |> withEffect (insertionEffect (pathOf state) ctorState)
                 )
             |> with (constantCell "")
 
@@ -167,15 +167,15 @@ editorStateHead state =
         |> with
             (inputCell (textOf "name" state)
                 |> withEffect (onInputEffect ( pathOf state, "name" ) updateStringProperty)
-                |> withEffect (onEnterEffect (pathOf state) insertNewStateAfter)
+                |> withEffect (insertionEffect (pathOf state) ctorState)
             )
 
 
 editorTransitionPlaceholder : Node Domain -> Node (Cell Domain)
 editorTransitionPlaceholder state =
     placeholderCell "no transitions"
-        |> withEffect (onEnterEffect (pathOf state) addNewTransition)
-
+        |> withEffect (replacementEffect "" (pathOf state) ctorTransition)
+ 
 
 editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
@@ -183,80 +183,42 @@ editorTransition transition =
         |> with
             (inputCell (textOf "eventRef" transition)
                 |> withEffect (onInputEffect ( pathOf transition, "eventRef" ) updateStringProperty)
-                |> withEffect (onEnterEffect (pathOf transition) insertNewTransitionAfter)
+                |> withEffect (insertionEffect ( pathOf transition ) ctorTransition)
             )
         |> with (constantCell "⇒")
         |> with
             (inputCell (textOf "stateRef" transition)
                 |> withEffect (onInputEffect ( pathOf transition, "stateRef" ) updateStringProperty)
-                |> withEffect (onEnterEffect (pathOf transition) insertNewTransitionAfter)
+                |> withEffect (insertionEffect ( pathOf transition ) ctorTransition)
             )
 
 
-{-| This can be considered the "constructor" of a default Event.
-We either add it to the list or insert it after the current Event.
-This method is passed via a Effect to the editor.
-Notice that these replace the need for a "update" method in our domain model (state machine).
-We use the Structure API to update our domain model, naturally.
--}
-addNewEvent : Node Domain -> Path -> Node Domain
-addNewEvent sm _ =
-    addToCustom "events"
-        (createNode Event
-            |> addText "name" ""
-        )
-        sm
+-- CTORs
 
 
-insertNewEventAfter : Node Domain -> Path -> Node Domain
-insertNewEventAfter sm pathOfEvent =
-    insertAfterUnderCustom "events"
-        (createNode Event
-            |> addText "name" ""
-        )
-        pathOfEvent
-        sm
+ctorEvent : Node Domain
+ctorEvent =
+    createNode Event
+        |> addText "name" ""
+        
 
 
-addNewState : Node Domain -> Path -> Node Domain
-addNewState sm _ =
-    addToDefault
-        (createNode State
-            |> addText "name" ""
-        )
-        sm
+ctorState : Node Domain
+ctorState =
+    createNode State
+        |> addText "name" ""
 
 
-insertNewStateAfter : Node Domain -> Path -> Node Domain
-insertNewStateAfter sm pathOfState =
-    insertAfterUnderDefault
-        (createNode State
-            |> addText "name" ""
-        )
-        pathOfState
-        sm
+ctorTransition : Node Domain
+ctorTransition =
+    createNode Transition
+        |> addText "eventRef" ""
+        |> addText "stateRef" ""
 
 
-addNewTransition : Node Domain -> Path -> Node Domain
-addNewTransition sm pathOfState =
-    addChildAtPathToDefault
-        (createNode Transition
-            |> addText "eventRef" ""
-            |> addText "stateRef" ""
-        )
-        pathOfState
-        sm
 
+-- DELETION
 
-insertNewTransitionAfter : Node Domain -> Path -> Node Domain
-insertNewTransitionAfter sm pathOfTransition =
-    insertChildAfterPath 
-        (createNode Transition
-            |> addText "eventRef" ""
-            |> addText "stateRef" ""
-        )
-        (pathOfTransition |> Debug.log "insert after")
-        sm
 
 
 deleteEvent : Node Domain -> Node Domain -> Node Domain

@@ -12,7 +12,8 @@ module Editor
         , placeholderCell
         , addIndent
         , withEffect
-        , onEnterEffect
+        , insertionEffect
+        , replacementEffect
         , onDeleteEffect
         , onInputEffect
         , updateEditor
@@ -43,9 +44,11 @@ type ContentCell
 
 
 type Effect a
-    = OnEnterEffect
-        { effectInput : Path
-        , effectHandler : Node a -> Path -> Node a
+    = InsertionEffect
+        { path : Path
+        , nodeToInsert : Node a
+        , isReplace : Bool
+        , feature : String
         }
     | OnDeleteEffect
         { effectInput : Node a
@@ -157,11 +160,22 @@ withEffect effect =
             EffectCell effect
 
 
-onEnterEffect : Path -> (Node a -> Path -> Node a) -> Effect a
-onEnterEffect effectInput effectHandler =
-    OnEnterEffect
-        { effectInput = effectInput
-        , effectHandler = effectHandler
+replacementEffect : String -> Path -> Node a -> Effect a
+replacementEffect feature path nodeToInsert =
+    InsertionEffect
+        { path = path
+        , nodeToInsert = nodeToInsert
+        , isReplace = True
+        , feature = feature
+        }
+
+insertionEffect : Path -> Node a -> Effect a
+insertionEffect path nodeToInsert =
+    InsertionEffect
+        { path = path
+        , nodeToInsert = nodeToInsert
+        , isReplace = False
+        , feature = ""
         }
 
 
@@ -226,7 +240,7 @@ grouped effectCells =
                         OnInputEffect _ ->
                             Dict.update "input" (updateGroup effect) groupDict
 
-                        OnEnterEffect _ ->
+                        InsertionEffect _ ->
                             Dict.update "keyboard" (updateGroup effect) groupDict
 
                         OnDeleteEffect _ ->
@@ -267,8 +281,14 @@ updateEditor msg editorModel domainModel =
 
         OnEnter effect cellContext ->
             case effect of
-                OnEnterEffect { effectInput, effectHandler } ->
-                    ( effectHandler domainModel effectInput |> updatePaths
+                InsertionEffect { path, nodeToInsert, isReplace, feature } ->
+                    ( if isReplace then
+                          if feature == "" || feature == "default" then
+                              addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
+                          else 
+                              addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+                      else
+                          insertChildAfterPath nodeToInsert path domainModel |> updatePaths
                     , updateSelectionOnEnter editorModel domainModel cellContext
                     )
 
@@ -656,7 +676,7 @@ inputEffectMap cell effects =
     List.foldl
         (\effect dict ->
             case effect of
-                OnEnterEffect _ ->
+                InsertionEffect _ ->
                     Dict.insert "Enter" (OnEnter effect cell) dict
 
                 OnDeleteEffect _ ->
