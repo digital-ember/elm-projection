@@ -6593,6 +6593,143 @@ var author$project$Structure$insertChildAfterPath = F3(
 		var segmentsNoRoot = _n0.a;
 		return A4(author$project$Structure$insertChildAfterPathRec, nodeNew, path, segmentsNoRoot, root);
 	});
+var author$project$Structure$PBool = function (a) {
+	return {$: 'PBool', a: a};
+};
+var author$project$Structure$PInt = function (a) {
+	return {$: 'PInt', a: a};
+};
+var author$project$Structure$PString = function (a) {
+	return {$: 'PString', a: a};
+};
+var elm$core$String$toLower = _String_toLower;
+var author$project$Structure$updateProperty = F2(
+	function (_n0, _n1) {
+		var data = _n0.a;
+		var key = _n1.a;
+		var value = _n1.b;
+		var primitiveOld = A2(
+			elm$core$Maybe$withDefault,
+			author$project$Structure$PString(''),
+			A2(elm$core$Dict$get, key, data.properties));
+		var primitiveNew = function () {
+			switch (primitiveOld.$) {
+				case 'PString':
+					return author$project$Structure$PString(value);
+				case 'PInt':
+					return A2(
+						elm$core$Maybe$withDefault,
+						primitiveOld,
+						A2(
+							elm$core$Maybe$andThen,
+							function (i) {
+								return elm$core$Maybe$Just(
+									author$project$Structure$PInt(i));
+							},
+							elm$core$String$toInt(value)));
+				default:
+					return (elm$core$String$toLower(value) === 'true') ? author$project$Structure$PBool(true) : ((elm$core$String$toLower(value) === 'false') ? author$project$Structure$PBool(false) : primitiveOld);
+			}
+		}();
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{
+					properties: A3(
+						elm$core$Dict$update,
+						key,
+						function (_n2) {
+							return elm$core$Maybe$Just(primitiveNew);
+						},
+						data.properties)
+				}));
+	});
+var author$project$Structure$updateChildren = F4(
+	function (index, tailSegments, kvp, children) {
+		var updateAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, child, tailSegments, kvp) : child;
+			});
+		return elm$core$Maybe$Just(
+			A2(elm$core$List$indexedMap, updateAt, children));
+	});
+var author$project$Structure$updateChildrenUnder = F4(
+	function (parent, segment, tailSegments, kvp) {
+		var feature = segment.feature;
+		return _Utils_eq(feature, author$project$Structure$strDefault) ? A4(author$project$Structure$updateChildrenUnderDefault, parent, segment, tailSegments, kvp) : A4(author$project$Structure$updateChildrenUnderCustom, parent, segment, tailSegments, kvp);
+	});
+var author$project$Structure$updateChildrenUnderCustom = F4(
+	function (parent, _n3, tailSegments, kvp) {
+		var data = parent.a;
+		var features = data.features;
+		var feature = _n3.feature;
+		var index = _n3.index;
+		var mbChildrenNew = A2(
+			elm$core$Maybe$andThen,
+			A3(author$project$Structure$updateChildren, index, tailSegments, kvp),
+			A2(author$project$Structure$getUnderCustom, feature, parent));
+		var featuresNew = _Utils_update(
+			features,
+			{
+				custom: A3(
+					elm$core$Dict$update,
+					feature,
+					function (_n4) {
+						return mbChildrenNew;
+					},
+					features.custom)
+			});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$updateChildrenUnderDefault = F4(
+	function (parent, _n2, tailSegments, kvp) {
+		var data = parent.a;
+		var features = data.features;
+		var index = _n2.index;
+		var mbChildrenNew = A2(
+			elm$core$Maybe$andThen,
+			A3(author$project$Structure$updateChildren, index, tailSegments, kvp),
+			author$project$Structure$getUnderDefault(parent));
+		var featuresNew = _Utils_update(
+			features,
+			{_default: mbChildrenNew});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$updatePropertyRec = F3(
+	function (parent, segments, kvp) {
+		updatePropertyRec:
+		while (true) {
+			if (!segments.b) {
+				return A2(author$project$Structure$updateProperty, parent, kvp);
+			} else {
+				var segment = segments.a;
+				var feature = segment.feature;
+				var tail = segments.b;
+				if (feature === 'root') {
+					var $temp$parent = parent,
+						$temp$segments = tail,
+						$temp$kvp = kvp;
+					parent = $temp$parent;
+					segments = $temp$segments;
+					kvp = $temp$kvp;
+					continue updatePropertyRec;
+				} else {
+					return A4(author$project$Structure$updateChildrenUnder, parent, segment, tail, kvp);
+				}
+			}
+		}
+	});
+var author$project$Structure$updatePropertyByPath = F3(
+	function (root, _n0, kvp) {
+		var segments = _n0.a;
+		return A3(author$project$Structure$updatePropertyRec, root, segments, kvp);
+	});
 var author$project$Editor$updateEditor = F3(
 	function (msg, editorModel, domainModel) {
 		switch (msg.$) {
@@ -6653,11 +6790,15 @@ var author$project$Editor$updateEditor = F3(
 				var effect = msg.a;
 				var value = msg.b;
 				if (effect.$ === 'OnInputEffect') {
-					var effectInput = effect.a.effectInput;
-					var effectHandler = effect.a.effectHandler;
+					var path = effect.a.path;
+					var key = effect.a.key;
 					return _Utils_Tuple2(
 						author$project$Structure$updatePaths(
-							A3(effectHandler, domainModel, effectInput, value)),
+							A3(
+								author$project$Structure$updatePropertyByPath,
+								domainModel,
+								path,
+								_Utils_Tuple2(key, value))),
 						elm$core$Platform$Cmd$none);
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
@@ -7406,9 +7547,6 @@ var author$project$Editor$with = function (node) {
 	return author$project$Structure$addToDefault(node);
 };
 var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
-var author$project$Structure$PString = function (a) {
-	return {$: 'PString', a: a};
-};
 var author$project$Structure$addProperty = F2(
 	function (_n0, _n1) {
 		var key = _n0.a;
@@ -7447,9 +7585,6 @@ var author$project$Editor$StackCell = function (a) {
 var author$project$Editor$vertStackCell = author$project$Structure$createNode(
 	author$project$Editor$ContentCell(
 		author$project$Editor$StackCell(author$project$Editor$Vert)));
-var author$project$Structure$PBool = function (a) {
-	return {$: 'PBool', a: a};
-};
 var author$project$Structure$addBool = F3(
 	function (key, value, node) {
 		return A2(
@@ -7499,9 +7634,9 @@ var author$project$Editor$OnInputEffect = function (a) {
 	return {$: 'OnInputEffect', a: a};
 };
 var author$project$Editor$onInputEffect = F2(
-	function (effectInput, effectHandler) {
+	function (path, key) {
 		return author$project$Editor$OnInputEffect(
-			{effectHandler: effectHandler, effectInput: effectInput});
+			{key: key, path: path});
 	});
 var author$project$Editor$withEffect = function (effect) {
 	return A2(
@@ -7566,137 +7701,13 @@ var author$project$StateMachine$deleteEvent = F2(
 			return A3(author$project$Structure$replaceUnderCustom, 'events', eventsNew, sm);
 		}
 	});
-var author$project$Structure$stringProperty = function (_n0) {
-	var k = _n0.a;
-	var v = _n0.b;
-	return _Utils_Tuple2(
-		k,
-		author$project$Structure$PString(v));
-};
-var author$project$Structure$updateProperty = F2(
-	function (_n0, _n1) {
-		var data = _n0.a;
-		var key = _n1.a;
-		var primitiveNew = _n1.b;
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{
-					properties: A3(
-						elm$core$Dict$update,
-						key,
-						function (_n2) {
-							return elm$core$Maybe$Just(primitiveNew);
-						},
-						data.properties)
-				}));
-	});
-var author$project$Structure$updateChildren = F4(
-	function (index, tailSegments, property, children) {
-		var updateAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, child, tailSegments, property) : child;
-			});
-		return elm$core$Maybe$Just(
-			A2(elm$core$List$indexedMap, updateAt, children));
-	});
-var author$project$Structure$updateChildrenUnder = F4(
-	function (parent, segment, tailSegments, property) {
-		var feature = segment.feature;
-		return _Utils_eq(feature, author$project$Structure$strDefault) ? A4(author$project$Structure$updateChildrenUnderDefault, parent, segment, tailSegments, property) : A4(author$project$Structure$updateChildrenUnderCustom, parent, segment, tailSegments, property);
-	});
-var author$project$Structure$updateChildrenUnderCustom = F4(
-	function (parent, _n3, tailSegments, property) {
-		var data = parent.a;
-		var features = data.features;
-		var feature = _n3.feature;
-		var index = _n3.index;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A3(author$project$Structure$updateChildren, index, tailSegments, property),
-			A2(author$project$Structure$getUnderCustom, feature, parent));
-		var featuresNew = _Utils_update(
-			features,
-			{
-				custom: A3(
-					elm$core$Dict$update,
-					feature,
-					function (_n4) {
-						return mbChildrenNew;
-					},
-					features.custom)
-			});
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{features: featuresNew}));
-	});
-var author$project$Structure$updateChildrenUnderDefault = F4(
-	function (parent, _n2, tailSegments, property) {
-		var data = parent.a;
-		var features = data.features;
-		var index = _n2.index;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A3(author$project$Structure$updateChildren, index, tailSegments, property),
-			author$project$Structure$getUnderDefault(parent));
-		var featuresNew = _Utils_update(
-			features,
-			{_default: mbChildrenNew});
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{features: featuresNew}));
-	});
-var author$project$Structure$updatePropertyRec = F3(
-	function (parent, segments, property) {
-		updatePropertyRec:
-		while (true) {
-			if (!segments.b) {
-				return A2(author$project$Structure$updateProperty, parent, property);
-			} else {
-				var segment = segments.a;
-				var feature = segment.feature;
-				var tail = segments.b;
-				if (feature === 'root') {
-					var $temp$parent = parent,
-						$temp$segments = tail,
-						$temp$property = property;
-					parent = $temp$parent;
-					segments = $temp$segments;
-					property = $temp$property;
-					continue updatePropertyRec;
-				} else {
-					return A4(author$project$Structure$updateChildrenUnder, parent, segment, tail, property);
-				}
-			}
-		}
-	});
-var author$project$Structure$updatePropertyByPath = F3(
-	function (root, _n0, property) {
-		var segments = _n0.a;
-		return A3(author$project$Structure$updatePropertyRec, root, segments, property);
-	});
-var author$project$StateMachine$updateStringProperty = F3(
-	function (sm, _n0, newValue) {
-		var path = _n0.a;
-		var key = _n0.b;
-		return A3(
-			author$project$Structure$updatePropertyByPath,
-			sm,
-			path,
-			author$project$Structure$stringProperty(
-				_Utils_Tuple2(key, newValue)));
-	});
 var author$project$StateMachine$editorEvent = function (event) {
 	return A2(
 		author$project$Editor$withEffect,
 		A2(
 			author$project$Editor$onInputEffect,
-			_Utils_Tuple2(
-				author$project$Structure$pathOf(event),
-				'name'),
-			author$project$StateMachine$updateStringProperty),
+			author$project$Structure$pathOf(event),
+			'name'),
 		A2(
 			author$project$Editor$withEffect,
 			A2(author$project$Editor$onDeleteEffect, event, author$project$StateMachine$deleteEvent),
@@ -7735,10 +7746,7 @@ var author$project$StateMachine$editorEventPlaceholder = function (sm) {
 };
 var author$project$StateMachine$editorEvents = function (sm) {
 	var editorEventsResult = function () {
-		var _n0 = A2(
-			elm$core$Debug$log,
-			'events',
-			A2(author$project$Structure$getUnderCustom, 'events', sm));
+		var _n0 = A2(author$project$Structure$getUnderCustom, 'events', sm);
 		if (_n0.$ === 'Nothing') {
 			return _List_fromArray(
 				[
@@ -7774,10 +7782,8 @@ var author$project$StateMachine$editorStateMachineName = function (sm) {
 			author$project$Editor$withEffect,
 			A2(
 				author$project$Editor$onInputEffect,
-				_Utils_Tuple2(
-					author$project$Structure$pathOf(sm),
-					'name'),
-				author$project$StateMachine$updateStringProperty),
+				author$project$Structure$pathOf(sm),
+				'name'),
 			author$project$Editor$inputCell(
 				A2(author$project$Structure$textOf, 'name', sm))),
 		A2(
@@ -7804,10 +7810,8 @@ var author$project$StateMachine$editorStateHead = function (state) {
 				author$project$Editor$withEffect,
 				A2(
 					author$project$Editor$onInputEffect,
-					_Utils_Tuple2(
-						author$project$Structure$pathOf(state),
-						'name'),
-					author$project$StateMachine$updateStringProperty),
+					author$project$Structure$pathOf(state),
+					'name'),
 				author$project$Editor$inputCell(
 					A2(author$project$Structure$textOf, 'name', state)))),
 		A2(
@@ -7838,10 +7842,8 @@ var author$project$StateMachine$editorTransition = function (transition) {
 				author$project$Editor$withEffect,
 				A2(
 					author$project$Editor$onInputEffect,
-					_Utils_Tuple2(
-						author$project$Structure$pathOf(transition),
-						'stateRef'),
-					author$project$StateMachine$updateStringProperty),
+					author$project$Structure$pathOf(transition),
+					'stateRef'),
 				author$project$Editor$inputCell(
 					A2(author$project$Structure$textOf, 'stateRef', transition)))),
 		A2(
@@ -7859,10 +7861,8 @@ var author$project$StateMachine$editorTransition = function (transition) {
 						author$project$Editor$withEffect,
 						A2(
 							author$project$Editor$onInputEffect,
-							_Utils_Tuple2(
-								author$project$Structure$pathOf(transition),
-								'eventRef'),
-							author$project$StateMachine$updateStringProperty),
+							author$project$Structure$pathOf(transition),
+							'eventRef'),
 						author$project$Editor$inputCell(
 							A2(author$project$Structure$textOf, 'eventRef', transition)))),
 				author$project$Editor$horizStackCell)));

@@ -56,8 +56,8 @@ type Effect a
         , selection : Selection
         }
     | OnInputEffect
-        { effectInput : ( Path, String )
-        , effectHandler : Node a -> ( Path, String ) -> String -> Node a
+        { path : Path
+        , key : String
         }
     | NavSelectionEffect
         { dir : Dir
@@ -188,11 +188,11 @@ onDeleteEffect effectInput effectHandler =
         }
 
 
-onInputEffect : ( Path, String ) -> (Node a -> ( Path, String ) -> String -> Node a) -> Effect a
-onInputEffect effectInput effectHandler =
+onInputEffect : Path -> String -> Effect a
+onInputEffect path key =
     OnInputEffect
-        { effectInput = effectInput
-        , effectHandler = effectHandler
+        { path = path
+        , key = key
         }
 
 
@@ -313,8 +313,8 @@ updateEditor msg editorModel domainModel =
 
         OnInput effect value ->
             case effect of
-                OnInputEffect { effectInput, effectHandler } ->
-                    ( effectHandler domainModel effectInput value |> updatePaths, Cmd.none )
+                OnInputEffect { path, key } ->
+                    ( updatePropertyByPath domainModel path (key, value) |> updatePaths, Cmd.none )
 
                 _ ->
                     ( domainModel, Cmd.none )

@@ -68,7 +68,7 @@ editorStateMachineName sm =
         |> with (constantCell "name:")
         |> with
             (inputCell (textOf "name" sm)
-                |> withEffect (onInputEffect ( pathOf sm, "name" ) updateStringProperty)
+                |> withEffect (onInputEffect (pathOf sm) "name")
             )
 
 
@@ -80,7 +80,7 @@ editorEvents : Node Domain -> Node (Cell Domain)
 editorEvents sm =
     let
         editorEventsResult =
-            case (getUnderCustom "events" sm) |> Debug.log "events"  of
+            case getUnderCustom "events" sm of
                 Nothing ->
                     [ editorEventPlaceholder sm ]
 
@@ -104,7 +104,7 @@ editorEvent event =
     inputCell (textOf "name" event)
         |> withEffect (insertionEffect (pathOf event) ctorEvent)
         |> withEffect (onDeleteEffect event deleteEvent)
-        |> withEffect (onInputEffect ( pathOf event, "name" ) updateStringProperty)
+        |> withEffect (onInputEffect (pathOf event)  "name")
 
 
 editorEventPlaceholder : Node Domain -> Node (Cell Domain)
@@ -166,7 +166,7 @@ editorStateHead state =
         |> with (constantCell "state")
         |> with
             (inputCell (textOf "name" state)
-                |> withEffect (onInputEffect ( pathOf state, "name" ) updateStringProperty)
+                |> withEffect (onInputEffect (pathOf state) "name")
                 |> withEffect (insertionEffect (pathOf state) ctorState)
             )
 
@@ -182,13 +182,13 @@ editorTransition transition =
     horizStackCell
         |> with
             (inputCell (textOf "eventRef" transition)
-                |> withEffect (onInputEffect ( pathOf transition, "eventRef" ) updateStringProperty)
+                |> withEffect (onInputEffect ( pathOf transition ) "eventRef" )
                 |> withEffect (insertionEffect ( pathOf transition ) ctorTransition)
             )
         |> with (constantCell "⇒")
         |> with
             (inputCell (textOf "stateRef" transition)
-                |> withEffect (onInputEffect ( pathOf transition, "stateRef" ) updateStringProperty)
+                |> withEffect (onInputEffect ( pathOf transition ) "stateRef" )
                 |> withEffect (insertionEffect ( pathOf transition ) ctorTransition)
             )
 
@@ -239,17 +239,3 @@ deleteEvent sm event =
             Just eventsNew ->
                 replaceUnderCustom "events" eventsNew sm
 
-
-{-| This pattern allows to update nested records.
-Input:
-  * Tuple of
-      ** domain root (state machine)
-      ** path to the node we want to update
-      ** key of the property
-  * New property value
-
-The actual update can be defered to the Structure module, since it knows the structure (duh!)
--}
-updateStringProperty : Node Domain -> ( Path, String ) -> String -> Node Domain
-updateStringProperty sm ( path, key ) newValue =
-    updatePropertyByPath sm path (stringProperty ( key, newValue ))

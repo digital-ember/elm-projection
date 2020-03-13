@@ -537,42 +537,42 @@ insertChildAfter nodeNew pathAfter {feature} parent =
         insertAfterUnderCustom feature nodeNew pathAfter parent
 
 
-updatePropertyByPath : Node a -> Path -> Property -> Node a
-updatePropertyByPath root (Path segments) property =
-    updatePropertyRec root segments property
+updatePropertyByPath : Node a -> Path -> (String, String) -> Node a
+updatePropertyByPath root (Path segments) kvp =
+    updatePropertyRec root segments kvp
 
 
-updatePropertyRec : Node a -> List PathSegment -> Property -> Node a
-updatePropertyRec parent segments property =
+updatePropertyRec : Node a -> List PathSegment -> (String, String) -> Node a
+updatePropertyRec parent segments kvp =
     case segments of
-        -- reached end of path => update property for that node!
+        -- reached end of path => update value for that node!
         [] ->
-            updateProperty parent property
+            updateProperty parent kvp
 
         ({ feature } as segment) :: tail ->
             case feature of
                 -- special handling for root node which has no parent => we skip its segment
                 "root" ->
-                    updatePropertyRec parent tail property
+                    updatePropertyRec parent tail kvp
 
                 _ ->
-                    updateChildrenUnder parent segment tail property
+                    updateChildrenUnder parent segment tail kvp
 
 
-updateChildrenUnder : Node a -> PathSegment -> List PathSegment -> Property -> Node a
-updateChildrenUnder parent ({ feature } as segment) tailSegments property =
+updateChildrenUnder : Node a -> PathSegment -> List PathSegment -> (String, String) -> Node a
+updateChildrenUnder parent ({ feature } as segment) tailSegments kvp =
     if feature == strDefault then
-        updateChildrenUnderDefault parent segment tailSegments property
+        updateChildrenUnderDefault parent segment tailSegments kvp
     else
-        updateChildrenUnderCustom parent segment tailSegments property
+        updateChildrenUnderCustom parent segment tailSegments kvp
 
 
-updateChildrenUnderDefault : Node a -> PathSegment -> List PathSegment -> Property -> Node a
-updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } tailSegments property =
+updateChildrenUnderDefault : Node a -> PathSegment -> List PathSegment -> (String, String) -> Node a
+updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } tailSegments kvp =
     let
         mbChildrenNew =
             getUnderDefault parent
-                |> Maybe.andThen (updateChildren index tailSegments property)
+                |> Maybe.andThen (updateChildren index tailSegments kvp)
 
         featuresNew =
             { features | default = mbChildrenNew }
@@ -580,12 +580,12 @@ updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } t
         Node { data | features = featuresNew }
 
 
-updateChildrenUnderCustom : Node a -> PathSegment -> List PathSegment -> Property -> Node a
-updateChildrenUnderCustom ((Node ({ features } as data)) as parent) { feature, index } tailSegments property =
+updateChildrenUnderCustom : Node a -> PathSegment -> List PathSegment -> (String, String) -> Node a
+updateChildrenUnderCustom ((Node ({ features } as data)) as parent) { feature, index } tailSegments kvp =
     let
         mbChildrenNew =
             getUnderCustom feature parent
-                |> Maybe.andThen (updateChildren index tailSegments property)
+                |> Maybe.andThen (updateChildren index tailSegments kvp)
 
         featuresNew =
             { features | custom = Dict.update feature (\_ -> mbChildrenNew) features.custom }
@@ -593,12 +593,12 @@ updateChildrenUnderCustom ((Node ({ features } as data)) as parent) { feature, i
         Node { data | features = featuresNew }
 
 
-updateChildren : Int -> List PathSegment -> Property -> List (Node a) -> Maybe (List (Node a))
-updateChildren index tailSegments property children =
+updateChildren : Int -> List PathSegment -> (String, String) -> List (Node a) -> Maybe (List (Node a))
+updateChildren index tailSegments kvp children =
     let
         updateAt i child =
             if i == index then
-                updatePropertyRec child tailSegments property
+                updatePropertyRec child tailSegments kvp
             else
                 child
     in
@@ -606,9 +606,33 @@ updateChildren index tailSegments property children =
             List.indexedMap updateAt children
 
 
-updateProperty : Node a -> Property -> Node a
-updateProperty (Node data) ( key, primitiveNew ) =
-    Node { data | properties = Dict.update key (\_ -> Just primitiveNew) data.properties }
+updateProperty : Node a -> (String, String) -> Node a
+updateProperty (Node data) ( key, value ) =
+    let
+        primitiveOld = 
+            Dict.get key data.properties 
+                |> Maybe.withDefault (PString "")
+
+        primitiveNew =
+            case primitiveOld of 
+                PString _ -> 
+                    PString value
+
+                PInt _ ->
+                    String.toInt value 
+                        |> Maybe.andThen (\i -> Just <| PInt i)
+                        |> Maybe.withDefault primitiveOld
+
+
+                PBool _ ->
+                    if String.toLower value == "true" then
+                        PBool True
+                    else if String.toLower value == "false" then
+                        PBool False
+                    else
+                        primitiveOld 
+    in
+        Node { data | properties = Dict.update key (\_ -> Just primitiveNew) data.properties }
 
 
 updatePaths : Node a -> Node a
