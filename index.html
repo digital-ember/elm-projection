@@ -7120,17 +7120,9 @@ var author$project$Structure$addToDefault = F2(
 var author$project$Editor$with = function (node) {
 	return author$project$Structure$addToDefault(node);
 };
-var author$project$Editor$StackCell = function (a) {
-	return {$: 'StackCell', a: a};
-};
-var author$project$Structure$createNode = function (isa) {
-	return A2(author$project$Structure$createNodeInternal, '', isa);
-};
-var author$project$Editor$vertStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Vert)));
-var author$project$Structure$PBool = function (a) {
-	return {$: 'PBool', a: a};
+var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
+var author$project$Structure$PString = function (a) {
+	return {$: 'PString', a: a};
 };
 var author$project$Structure$addProperty = F2(
 	function (_n0, _n1) {
@@ -7144,6 +7136,35 @@ var author$project$Structure$addProperty = F2(
 					properties: A3(elm$core$Dict$insert, key, value, data.properties)
 				}));
 	});
+var author$project$Structure$addText = F3(
+	function (key, text, node) {
+		return A2(
+			author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PString(text)),
+			node);
+	});
+var author$project$Structure$createNode = function (isa) {
+	return A2(author$project$Structure$createNodeInternal, '', isa);
+};
+var author$project$Editor$constantCell = function (text) {
+	return A3(
+		author$project$Structure$addText,
+		'constant',
+		text,
+		author$project$Structure$createNode(
+			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
+};
+var author$project$Editor$StackCell = function (a) {
+	return {$: 'StackCell', a: a};
+};
+var author$project$Editor$vertStackCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(
+		author$project$Editor$StackCell(author$project$Editor$Vert)));
+var author$project$Structure$PBool = function (a) {
+	return {$: 'PBool', a: a};
+};
 var author$project$Structure$addBool = F3(
 	function (key, value, node) {
 		return A2(
@@ -7155,27 +7176,6 @@ var author$project$Structure$addBool = F3(
 	});
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, 'indent', true, node);
-};
-var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
-var author$project$Structure$PString = function (a) {
-	return {$: 'PString', a: a};
-};
-var author$project$Structure$addText = F3(
-	function (key, text, node) {
-		return A2(
-			author$project$Structure$addProperty,
-			_Utils_Tuple2(
-				key,
-				author$project$Structure$PString(text)),
-			node);
-	});
-var author$project$Editor$constantCell = function (text) {
-	return A3(
-		author$project$Structure$addText,
-		'constant',
-		text,
-		author$project$Structure$createNode(
-			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
 };
 var author$project$Structure$addToDefaultRange = F2(
 	function (children, parent) {
@@ -7257,6 +7257,56 @@ var author$project$Editor$withEffect = function (effect) {
 		author$project$Structure$createNode(
 			author$project$Editor$EffectCell(effect)));
 };
+var author$project$Structure$replaceUnderCustom = F3(
+	function (key, children, _n0) {
+		var data = _n0.a;
+		var features = data.features;
+		var featuresNew = _Utils_update(
+			features,
+			{
+				custom: A3(elm$core$Dict$insert, key, children, features.custom)
+			});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var elm$core$Basics$neq = _Utils_notEqual;
+var elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2(elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var author$project$StateMachine$deleteEvent = F2(
+	function (sm, event) {
+		var _delete = function (children) {
+			return elm$core$Maybe$Just(
+				A2(
+					elm$core$List$filter,
+					function (e) {
+						return !_Utils_eq(
+							author$project$Structure$pathOf(e),
+							author$project$Structure$pathOf(event));
+					},
+					children));
+		};
+		var mbEventsNew = A2(
+			elm$core$Maybe$andThen,
+			_delete,
+			A2(author$project$Structure$getUnderCustom, 'events', sm));
+		if (mbEventsNew.$ === 'Nothing') {
+			return sm;
+		} else {
+			var eventsNew = mbEventsNew.a;
+			return A3(author$project$Structure$replaceUnderCustom, 'events', eventsNew, sm);
+		}
+	});
 var author$project$StateMachine$Event = {$: 'Event'};
 var author$project$Structure$insertAfter = F4(
 	function (pathAfter, child, candidate, result) {
@@ -7302,84 +7352,18 @@ var author$project$Structure$insertAfterUnderCustom = F4(
 				data,
 				{features: featuresNew}));
 	});
-var author$project$StateMachine$addNewEvent = F2(
-	function (sm, mbEvent) {
-		if (mbEvent.$ === 'Nothing') {
-			return A3(
-				author$project$Structure$addToCustom,
-				'events',
-				A3(
-					author$project$Structure$addText,
-					'name',
-					'',
-					author$project$Structure$createNode(author$project$StateMachine$Event)),
-				sm);
-		} else {
-			var event = mbEvent.a;
-			return A4(
-				author$project$Structure$insertAfterUnderCustom,
-				'events',
-				A3(
-					author$project$Structure$addText,
-					'name',
-					'',
-					author$project$Structure$createNode(author$project$StateMachine$Event)),
-				author$project$Structure$pathOf(event),
-				sm);
-		}
-	});
-var author$project$Structure$replaceUnderCustom = F3(
-	function (key, children, _n0) {
-		var data = _n0.a;
-		var features = data.features;
-		var featuresNew = _Utils_update(
-			features,
-			{
-				custom: A3(elm$core$Dict$insert, key, children, features.custom)
-			});
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{features: featuresNew}));
-	});
-var elm$core$Basics$neq = _Utils_notEqual;
-var elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2(elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var author$project$StateMachine$deleteEvent = F2(
-	function (sm, event) {
-		var _delete = function (children) {
-			return elm$core$Maybe$Just(
-				A2(
-					elm$core$List$filter,
-					function (e) {
-						return !_Utils_eq(
-							author$project$Structure$pathOf(e),
-							author$project$Structure$pathOf(event));
-					},
-					children));
-		};
-		var mbEventsNew = A2(
-			elm$core$Debug$log,
-			'delete',
-			A2(
-				elm$core$Maybe$andThen,
-				_delete,
-				A2(author$project$Structure$getUnderCustom, 'events', sm)));
-		if (mbEventsNew.$ === 'Nothing') {
-			return sm;
-		} else {
-			var eventsNew = mbEventsNew.a;
-			return A3(author$project$Structure$replaceUnderCustom, 'events', eventsNew, sm);
-		}
+var author$project$StateMachine$insertNewEventAfter = F2(
+	function (sm, pathOfEvent) {
+		return A4(
+			author$project$Structure$insertAfterUnderCustom,
+			'events',
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'',
+				author$project$Structure$createNode(author$project$StateMachine$Event)),
+			pathOfEvent,
+			sm);
 	});
 var author$project$Structure$stringProperty = function (_n0) {
 	var k = _n0.a;
@@ -7519,8 +7503,8 @@ var author$project$StateMachine$editorEvent = function (event) {
 				author$project$Editor$withEffect,
 				A2(
 					author$project$Editor$onEnterEffect,
-					elm$core$Maybe$Just(event),
-					author$project$StateMachine$addNewEvent),
+					author$project$Structure$pathOf(event),
+					author$project$StateMachine$insertNewEventAfter),
 				author$project$Editor$inputCell(
 					A2(author$project$Structure$textOf, 'name', event)))));
 };
@@ -7533,18 +7517,35 @@ var author$project$Editor$placeholderCell = function (text) {
 		author$project$Structure$createNode(
 			author$project$Editor$ContentCell(author$project$Editor$PlaceholderCell)));
 };
-var author$project$StateMachine$editorEventPlaceholder = _List_fromArray(
-	[
-		A2(
+var author$project$StateMachine$addNewEvent = F2(
+	function (sm, _n0) {
+		return A3(
+			author$project$Structure$addToCustom,
+			'events',
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'',
+				author$project$Structure$createNode(author$project$StateMachine$Event)),
+			sm);
+	});
+var author$project$StateMachine$editorEventPlaceholder = function (sm) {
+	return A2(
 		author$project$Editor$withEffect,
-		A2(author$project$Editor$onEnterEffect, elm$core$Maybe$Nothing, author$project$StateMachine$addNewEvent),
-		author$project$Editor$placeholderCell('no events'))
-	]);
+		A2(
+			author$project$Editor$onEnterEffect,
+			author$project$Structure$pathOf(sm),
+			author$project$StateMachine$addNewEvent),
+		author$project$Editor$placeholderCell('no events'));
+};
 var author$project$StateMachine$editorEvents = function (sm) {
 	var editorEventsResult = function () {
 		var _n0 = A2(author$project$Structure$getUnderCustom, 'events', sm);
 		if (_n0.$ === 'Nothing') {
-			return author$project$StateMachine$editorEventPlaceholder;
+			return _List_fromArray(
+				[
+					author$project$StateMachine$editorEventPlaceholder(sm)
+				]);
 		} else {
 			var events = _n0.a;
 			return A2(elm$core$List$map, author$project$StateMachine$editorEvent, events);
@@ -7586,14 +7587,377 @@ var author$project$StateMachine$editorStateMachineName = function (sm) {
 			author$project$Editor$constantCell('name:'),
 			author$project$Editor$horizStackCell));
 };
+var author$project$StateMachine$State = {$: 'State'};
+var author$project$Structure$insertAfterUnderDefault = F3(
+	function (child, pathAfter, _n0) {
+		var data = _n0.a;
+		var features = data.features;
+		var featuresNew = function () {
+			var _n1 = features._default;
+			if (_n1.$ === 'Nothing') {
+				return _Utils_update(
+					features,
+					{
+						_default: elm$core$Maybe$Just(
+							_List_fromArray(
+								[child]))
+					});
+			} else {
+				var children = _n1.a;
+				return _Utils_update(
+					features,
+					{
+						_default: elm$core$Maybe$Just(
+							A3(
+								elm$core$List$foldl,
+								A2(author$project$Structure$insertAfter, pathAfter, child),
+								_List_Nil,
+								children))
+					});
+			}
+		}();
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$StateMachine$insertNewStateAfter = F2(
+	function (sm, pathOfState) {
+		return A3(
+			author$project$Structure$insertAfterUnderDefault,
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'',
+				author$project$Structure$createNode(author$project$StateMachine$State)),
+			pathOfState,
+			sm);
+	});
+var author$project$StateMachine$editorStateHead = function (state) {
+	return A2(
+		author$project$Editor$with,
+		A2(
+			author$project$Editor$withEffect,
+			A2(
+				author$project$Editor$onEnterEffect,
+				author$project$Structure$pathOf(state),
+				author$project$StateMachine$insertNewStateAfter),
+			A2(
+				author$project$Editor$withEffect,
+				A2(
+					author$project$Editor$onInputEffect,
+					_Utils_Tuple2(
+						author$project$Structure$pathOf(state),
+						'name'),
+					author$project$StateMachine$updateStringProperty),
+				author$project$Editor$inputCell(
+					A2(author$project$Structure$textOf, 'name', state)))),
+		A2(
+			author$project$Editor$with,
+			author$project$Editor$constantCell('state'),
+			author$project$Editor$horizStackCell));
+};
+var author$project$StateMachine$Transition = {$: 'Transition'};
+var author$project$Structure$insertChildAfter = F4(
+	function (nodeNew, pathAfter, _n0, parent) {
+		var feature = _n0.feature;
+		return _Utils_eq(feature, author$project$Structure$strDefault) ? A3(author$project$Structure$insertAfterUnderDefault, nodeNew, pathAfter, parent) : A4(author$project$Structure$insertAfterUnderCustom, feature, nodeNew, pathAfter, parent);
+	});
+var author$project$Structure$getNewChildrenForRecInsert = F5(
+	function (nodeNew, pathAfter, segment, tailSegments, children) {
+		var insertAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A4(author$project$Structure$insertChildAfterPathRec, nodeNew, pathAfter, tailSegments, child) : child;
+			});
+		return elm$core$Maybe$Just(
+			A2(elm$core$List$indexedMap, insertAt, children));
+	});
+var author$project$Structure$insertChildAfterPathRec = F4(
+	function (nodeNew, pathAfter, segments, parent) {
+		if (segments.b) {
+			if (!segments.b.b) {
+				var segment = segments.a;
+				return A4(author$project$Structure$insertChildAfter, nodeNew, pathAfter, segment, parent);
+			} else {
+				var segment = segments.a;
+				var tail = segments.b;
+				return A5(author$project$Structure$insertChildrenUnder, nodeNew, pathAfter, segment, tail, parent);
+			}
+		} else {
+			return parent;
+		}
+	});
+var author$project$Structure$insertChildrenUnder = F5(
+	function (nodeNew, pathAfter, segment, tailSegments, parent) {
+		var feature = segment.feature;
+		return _Utils_eq(feature, author$project$Structure$strDefault) ? A5(author$project$Structure$insertChildrenUnderDefault, nodeNew, pathAfter, segment, tailSegments, parent) : A5(author$project$Structure$insertChildrenUnderCustom, nodeNew, pathAfter, segment, tailSegments, parent);
+	});
+var author$project$Structure$insertChildrenUnderCustom = F5(
+	function (nodeNew, pathAfter, segment, tailSegments, parent) {
+		var data = parent.a;
+		var features = data.features;
+		var mbChildrenNew = A2(
+			elm$core$Maybe$andThen,
+			A4(author$project$Structure$getNewChildrenForRecInsert, nodeNew, pathAfter, segment, tailSegments),
+			A2(author$project$Structure$getUnderCustom, segment.feature, parent));
+		var featuresNew = _Utils_update(
+			features,
+			{
+				custom: A3(
+					elm$core$Dict$update,
+					segment.feature,
+					function (_n0) {
+						return mbChildrenNew;
+					},
+					features.custom)
+			});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$insertChildrenUnderDefault = F5(
+	function (nodeNew, pathAfter, segment, tailSegments, parent) {
+		var data = parent.a;
+		var features = data.features;
+		var mbChildrenNew = A2(
+			elm$core$Maybe$andThen,
+			A4(author$project$Structure$getNewChildrenForRecInsert, nodeNew, pathAfter, segment, tailSegments),
+			author$project$Structure$getUnderDefault(parent));
+		var featuresNew = _Utils_update(
+			features,
+			{_default: mbChildrenNew});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$insertChildAfterPath = F3(
+	function (nodeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A4(author$project$Structure$insertChildAfterPathRec, nodeNew, path, segmentsNoRoot, root);
+	});
+var author$project$StateMachine$insertNewTransitionAfter = F2(
+	function (sm, pathOfTransition) {
+		return A3(
+			author$project$Structure$insertChildAfterPath,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'',
+					author$project$Structure$createNode(author$project$StateMachine$Transition))),
+			A2(elm$core$Debug$log, 'insert after', pathOfTransition),
+			sm);
+	});
+var author$project$StateMachine$editorTransition = function (transition) {
+	return A2(
+		author$project$Editor$with,
+		A2(
+			author$project$Editor$withEffect,
+			A2(
+				author$project$Editor$onEnterEffect,
+				author$project$Structure$pathOf(transition),
+				author$project$StateMachine$insertNewTransitionAfter),
+			A2(
+				author$project$Editor$withEffect,
+				A2(
+					author$project$Editor$onInputEffect,
+					_Utils_Tuple2(
+						author$project$Structure$pathOf(transition),
+						'stateRef'),
+					author$project$StateMachine$updateStringProperty),
+				author$project$Editor$inputCell(
+					A2(author$project$Structure$textOf, 'stateRef', transition)))),
+		A2(
+			author$project$Editor$with,
+			author$project$Editor$constantCell('⇒'),
+			A2(
+				author$project$Editor$with,
+				A2(
+					author$project$Editor$withEffect,
+					A2(
+						author$project$Editor$onEnterEffect,
+						author$project$Structure$pathOf(transition),
+						author$project$StateMachine$insertNewTransitionAfter),
+					A2(
+						author$project$Editor$withEffect,
+						A2(
+							author$project$Editor$onInputEffect,
+							_Utils_Tuple2(
+								author$project$Structure$pathOf(transition),
+								'eventRef'),
+							author$project$StateMachine$updateStringProperty),
+						author$project$Editor$inputCell(
+							A2(author$project$Structure$textOf, 'eventRef', transition)))),
+				author$project$Editor$horizStackCell)));
+};
+var author$project$Structure$addChildAtPathToDefaultRec = F3(
+	function (nodeNew, segments, parent) {
+		if (!segments.b) {
+			return A2(author$project$Structure$addToDefault, nodeNew, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A4(author$project$Structure$addChildrenDefault, nodeNew, segment, tail, parent);
+		}
+	});
+var author$project$Structure$addChildrenDefault = F4(
+	function (nodeNew, _n0, tailSegments, parent) {
+		var feature = _n0.feature;
+		var index = _n0.index;
+		var data = parent.a;
+		var features = data.features;
+		var mbChildrenNew = _Utils_eq(feature, author$project$Structure$strDefault) ? A2(
+			elm$core$Maybe$andThen,
+			A3(author$project$Structure$getNewChildrenForRecDefaultAdd, nodeNew, index, tailSegments),
+			author$project$Structure$getUnderDefault(parent)) : A2(
+			elm$core$Maybe$andThen,
+			A3(author$project$Structure$getNewChildrenForRecDefaultAdd, nodeNew, index, tailSegments),
+			A2(author$project$Structure$getUnderCustom, feature, parent));
+		var featuresNew = _Utils_update(
+			features,
+			{_default: mbChildrenNew});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$getNewChildrenForRecDefaultAdd = F4(
+	function (nodeNew, index, tailSegments, children) {
+		var insertAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, index) ? A3(author$project$Structure$addChildAtPathToDefaultRec, nodeNew, tailSegments, child) : child;
+			});
+		return elm$core$Maybe$Just(
+			A2(elm$core$List$indexedMap, insertAt, children));
+	});
+var author$project$Structure$addChildAtPathToDefault = F3(
+	function (nodeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A3(author$project$Structure$addChildAtPathToDefaultRec, nodeNew, segmentsNoRoot, root);
+	});
+var author$project$StateMachine$addNewTransition = F2(
+	function (sm, pathOfState) {
+		return A3(
+			author$project$Structure$addChildAtPathToDefault,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'',
+					author$project$Structure$createNode(author$project$StateMachine$Transition))),
+			pathOfState,
+			sm);
+	});
+var author$project$StateMachine$editorTransitionPlaceholder = function (state) {
+	return A2(
+		author$project$Editor$withEffect,
+		A2(
+			author$project$Editor$onEnterEffect,
+			author$project$Structure$pathOf(state),
+			author$project$StateMachine$addNewTransition),
+		author$project$Editor$placeholderCell('no transitions'));
+};
+var author$project$StateMachine$editorState = function (state) {
+	var editorTransitionsResult = function () {
+		var _n0 = author$project$Structure$getUnderDefault(state);
+		if (_n0.$ === 'Nothing') {
+			return _List_fromArray(
+				[
+					author$project$StateMachine$editorTransitionPlaceholder(state)
+				]);
+		} else {
+			var transitions = _n0.a;
+			return A2(elm$core$List$map, author$project$StateMachine$editorTransition, transitions);
+		}
+	}();
+	return A2(
+		author$project$Editor$with,
+		author$project$Editor$constantCell(''),
+		A2(
+			author$project$Editor$with,
+			A2(
+				author$project$Editor$withEffect,
+				A2(
+					author$project$Editor$onEnterEffect,
+					author$project$Structure$pathOf(state),
+					author$project$StateMachine$insertNewStateAfter),
+				author$project$Editor$placeholderCell('+')),
+			A2(
+				author$project$Editor$with,
+				author$project$Editor$constantCell('end'),
+				A2(
+					author$project$Editor$with,
+					A2(
+						author$project$Editor$withRange,
+						editorTransitionsResult,
+						author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
+					A2(
+						author$project$Editor$with,
+						author$project$StateMachine$editorStateHead(state),
+						author$project$Editor$vertStackCell)))));
+};
+var author$project$StateMachine$addNewState = F2(
+	function (sm, _n0) {
+		return A2(
+			author$project$Structure$addToDefault,
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'',
+				author$project$Structure$createNode(author$project$StateMachine$State)),
+			sm);
+	});
+var author$project$StateMachine$editorStatesPlaceholder = function (sm) {
+	return A2(
+		author$project$Editor$withEffect,
+		A2(
+			author$project$Editor$onEnterEffect,
+			author$project$Structure$pathOf(sm),
+			author$project$StateMachine$addNewState),
+		author$project$Editor$placeholderCell('no states'));
+};
+var author$project$StateMachine$editorStates = function (sm) {
+	var editorStatesResult = function () {
+		var _n0 = author$project$Structure$getUnderDefault(sm);
+		if (_n0.$ === 'Nothing') {
+			return _List_fromArray(
+				[
+					author$project$StateMachine$editorStatesPlaceholder(sm)
+				]);
+		} else {
+			var states = _n0.a;
+			return A2(elm$core$List$map, author$project$StateMachine$editorState, states);
+		}
+	}();
+	return A2(author$project$Editor$withRange, editorStatesResult, author$project$Editor$vertStackCell);
+};
 var author$project$StateMachine$editorStateMachine = function (sm) {
 	return A2(
 		author$project$Editor$with,
-		author$project$StateMachine$editorEvents(sm),
+		author$project$StateMachine$editorStates(sm),
 		A2(
 			author$project$Editor$with,
-			author$project$StateMachine$editorStateMachineName(sm),
-			author$project$Editor$vertStackCell));
+			author$project$Editor$constantCell(''),
+			A2(
+				author$project$Editor$with,
+				author$project$StateMachine$editorEvents(sm),
+				A2(
+					author$project$Editor$with,
+					author$project$Editor$constantCell(''),
+					A2(
+						author$project$Editor$with,
+						author$project$StateMachine$editorStateMachineName(sm),
+						author$project$Editor$vertStackCell)))));
 };
 var author$project$StateMachine$editor = function (sm) {
 	return A2(

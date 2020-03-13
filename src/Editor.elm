@@ -44,8 +44,8 @@ type ContentCell
 
 type Effect a
     = OnEnterEffect
-        { effectInput : Maybe (Node a)
-        , effectHandler : Node a -> Maybe (Node a) -> Node a
+        { effectInput : Path
+        , effectHandler : Node a -> Path -> Node a
         }
     | OnDeleteEffect
         { effectInput : Node a
@@ -157,7 +157,7 @@ withEffect effect =
             EffectCell effect
 
 
-onEnterEffect : Maybe (Node a) -> (Node a -> Maybe (Node a) -> Node a) -> Effect a
+onEnterEffect : Path -> (Node a -> Path -> Node a) -> Effect a
 onEnterEffect effectInput effectHandler =
     OnEnterEffect
         { effectInput = effectInput

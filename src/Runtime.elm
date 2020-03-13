@@ -50,54 +50,150 @@ view : Model a -> Html (Msg a)
 view model =
     let
         cellModel =
-            model.xform model.domainModel |> updatePaths --|> Debug.log "cell"
+            model.xform model.domainModel |> updatePaths
+
+        --|> Debug.log "cell"
     in
         Html.map (\editorMsg -> EditorMsg cellModel editorMsg) (viewEditor cellModel)
 
-
-
 {-
-   model =
-       Node
-           { features =
-               { custom =
-                   Dict.fromList
-                       [ ( "events"
-                         , [ Node
-                               { features =
-                                   { custom = Dict.fromList []
-                                   , default = Nothing
-                                   }
-                               , isa = Event
-                               , name = ""
-                               , path =
-                                   Path
-                                       [ { feature = "root"
-                                         , index = 0
-                                         }
-                                       , { feature = "events"
-                                         , index = 0
-                                         }
-                                       ]
-                               , properties = Dict.fromList [ ( "name", PString "doorClosed" ) ]
-                               }
-                           ]
-                         )
-                       ]
-               , default = Nothing
-               }
-           , isa = StateMachine
-           , name = "root"
-           , path =
-               Path
-                   [ { feature = "root"
-                     , index = 0
-                     }
-                   ]
-           , properties = Dict.fromList []
-           }
+model =
+    Node
+        { features =
+            { custom = Dict.fromList []
+            , default =
+                Just
+                    [ Node
+                        { features =
+                            { custom = Dict.fromList []
+                            , default =
+                                Just
+                                    [ Node
+                                        { features =
+                                            { custom = Dict.fromList []
+                                            , default = Nothing
+                                            }
+                                        , isa = Transition
+                                        , name = ""
+                                        , path =
+                                            Path
+                                                [ { feature = ""
+                                                  , index = 0
+                                                  }
+                                                ]
+                                        , properties = Dict.fromList [ ( "eventRef", PString "" ), ( "stateRef", PString "" ) ]
+                                        }
+                                    ]
+                            }
+                        , isa = Transition
+                        , name = ""
+                        , path =
+                            Path
+                                [ { feature = "root"
+                                  , index = 0
+                                  }
+                                , { feature = "default"
+                                  , index = 0
+                                  }
+                                , { feature = "default"
+                                  , index = 0
+                                  }
+                                ]
+                        , properties = Dict.fromList [ ( "eventRef", PString "dödel" ), ( "stateRef", PString "" ) ]
+                        }
+                    ]
+            }
+        , isa = State
+        , name = ""
+        , path =
+            Path
+                [ { feature = "root"
+                  , index = 0
+                  }
+                , { feature = "default"
+                  , index = 0
+                  }
+                ]
+        , properties = Dict.fromList [ ( "name", PString "" ) ]
+        }
 
 
+model2 =
+    Node
+        { features =
+            { custom = Dict.fromList []
+            , default =
+                Just
+                    [ Node
+                        { features =
+                            { custom = Dict.fromList []
+                            , default =
+                                Just
+                                    [ Node
+                                        { features =
+                                            { custom = Dict.fromList []
+                                            , default =
+                                                Just
+                                                    [ Node
+                                                        { features =
+                                                            { custom = Dict.fromList []
+                                                            , default = Nothing
+                                                            }
+                                                        , isa = Transition
+                                                        , name = ""
+                                                        , path =
+                                                            Path
+                                                                [ { feature = ""
+                                                                  , index = 0
+                                                                  }
+                                                                ]
+                                                        , properties = Dict.fromList [ ( "eventRef", PString "" ), ( "stateRef", PString "" ) ]
+                                                        }
+                                                    ]
+                                            }
+                                        , isa = Transition
+                                        , name = ""
+                                        , path =
+                                            Path
+                                                [ { feature = "root"
+                                                  , index = 0
+                                                  }
+                                                , { feature = "default"
+                                                  , index = 0
+                                                  }
+                                                , { feature = "default"
+                                                  , index = 0
+                                                  }
+                                                ]
+                                        , properties = Dict.fromList [ ( "eventRef", PString "dödel" ), ( "stateRef", PString "" ) ]
+                                        }
+                                    ]
+                            }
+                        , isa = State
+                        , name = ""
+                        , path =
+                            Path
+                                [ { feature = "root"
+                                  , index = 0
+                                  }
+                                , { feature = "default"
+                                  , index = 0
+                                  }
+                                ]
+                        , properties = Dict.fromList [ ( "name", PString "" ) ]
+                        }
+                    ]
+            }
+        , isa = StateMachine
+        , name = "root"
+        , path =
+            Path
+                [ { feature = "root"
+                  , index = 0
+                  }
+                ]
+        , properties = Dict.fromList []
+        }
 
 
 cell =
@@ -579,5 +675,4 @@ cell =
                 ]
         , properties = Dict.fromList []
         }
-
 -}
