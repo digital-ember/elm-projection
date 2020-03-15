@@ -5059,6 +5059,40 @@ var author$project$Editor$tryDeleteRight = F3(
 			}
 		}
 	});
+var author$project$Editor$Horiz = {$: 'Horiz'};
+var author$project$Editor$Vert = {$: 'Vert'};
+var author$project$Structure$valueOf = F2(
+	function (key, _n0) {
+		var properties = _n0.a.properties;
+		return A2(elm$core$Dict$get, key, properties);
+	});
+var elm$core$Basics$False = {$: 'False'};
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var author$project$Structure$boolOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$withDefault,
+			false,
+			A2(
+				elm$core$Maybe$andThen,
+				function (prop) {
+					if (prop.$ === 'PBool') {
+						var v = prop.a;
+						return elm$core$Maybe$Just(v);
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				A2(author$project$Structure$valueOf, key, node)));
+	});
 var author$project$Structure$isaOf = function (_n0) {
 	var isa = _n0.a.isa;
 	return isa;
@@ -5084,8 +5118,12 @@ var author$project$Editor$orientationOf = F2(
 		var _n0 = author$project$Structure$isaOf(cell);
 		if (_n0.$ === 'ContentCell') {
 			if (_n0.a.$ === 'StackCell') {
-				var o = _n0.a.a;
-				return elm$core$Maybe$Just(o);
+				var _n1 = _n0.a;
+				return elm$core$Maybe$Just(
+					function () {
+						var bO = A2(author$project$Structure$boolOf, 'isHoriz', cell);
+						return bO ? author$project$Editor$Horiz : author$project$Editor$Vert;
+					}());
 			} else {
 				return A2(
 					elm$core$Maybe$andThen,
@@ -5100,15 +5138,6 @@ var author$project$Editor$orientationOf = F2(
 		}
 	});
 var author$project$Editor$NoOp = {$: 'NoOp'};
-var elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var author$project$Editor$findFirstInputCellRec = F2(
 	function (root, candidates) {
 		findFirstInputCellRec:
@@ -5175,6 +5204,7 @@ var author$project$Editor$findNextInputCellRec = F2(
 						var _n1 = _n0.a;
 						return elm$core$Maybe$Just(next);
 					case 'StackCell':
+						var _n2 = _n0.a;
 						var mbChildren = author$project$Structure$getUnderDefault(next);
 						if (mbChildren.$ === 'Just') {
 							var children = mbChildren.a;
@@ -5244,7 +5274,6 @@ var elm$core$Basics$never = function (_n0) {
 		continue never;
 	}
 };
-var elm$core$Basics$False = {$: 'False'};
 var elm$core$Result$isOk = function (result) {
 	if (result.$ === 'Ok') {
 		return true;
@@ -5816,11 +5845,6 @@ var author$project$Editor$move = F4(
 			}
 		}
 	});
-var author$project$Structure$valueOf = F2(
-	function (key, _n0) {
-		var properties = _n0.a.properties;
-		return A2(elm$core$Dict$get, key, properties);
-	});
 var author$project$Structure$textOf = F2(
 	function (key, node) {
 		return A2(
@@ -5893,7 +5917,6 @@ var author$project$Editor$updateSelection = F3(
 		}
 	});
 var author$project$Editor$D = {$: 'D'};
-var author$project$Editor$Vert = {$: 'Vert'};
 var author$project$Editor$updateSelectionOnEnter = F3(
 	function (editorModel, domainModel, cellContext) {
 		var navData = {
@@ -7524,34 +7547,17 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 		return elm$html$Html$text('');
 	}
 };
-var author$project$Structure$boolOf = F2(
-	function (key, node) {
-		return A2(
-			elm$core$Maybe$withDefault,
-			false,
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PBool') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
-	});
 var author$project$Editor$viewCell = function (cell) {
-	var _n6 = author$project$Structure$isaOf(cell);
-	if (_n6.$ === 'ContentCell') {
-		var _n7 = author$project$Structure$getUnderDefault(cell);
-		if (_n7.$ === 'Nothing') {
+	var _n5 = author$project$Structure$isaOf(cell);
+	if (_n5.$ === 'ContentCell') {
+		var _n6 = author$project$Structure$getUnderDefault(cell);
+		if (_n6.$ === 'Nothing') {
 			return _List_fromArray(
 				[
 					elm$html$Html$text('')
 				]);
 		} else {
-			var content = _n7.a;
+			var content = _n6.a;
 			return A3(elm$core$List$foldl, author$project$Editor$viewContent, _List_Nil, content);
 		}
 	} else {
@@ -7560,20 +7566,19 @@ var author$project$Editor$viewCell = function (cell) {
 };
 var author$project$Editor$viewContent = F2(
 	function (cell, html) {
-		var _n4 = author$project$Structure$isaOf(cell);
-		if (_n4.$ === 'ContentCell') {
-			var ccell = _n4.a;
+		var _n3 = author$project$Structure$isaOf(cell);
+		if (_n3.$ === 'ContentCell') {
+			var ccell = _n3.a;
 			var htmlNew = function () {
 				switch (ccell.$) {
 					case 'RootCell':
-						return A2(author$project$Editor$viewStackCell, cell, author$project$Editor$Vert);
+						return author$project$Editor$viewStackCell(cell);
 					case 'ConstantCell':
 						return author$project$Editor$viewConstantCell(cell);
 					case 'InputCell':
 						return author$project$Editor$viewInputCell(cell);
 					case 'StackCell':
-						var orientation = ccell.a;
-						return A2(author$project$Editor$viewStackCell, cell, orientation);
+						return author$project$Editor$viewStackCell(cell);
 					case 'PlaceholderCell':
 						return author$project$Editor$viewPlaceholderCell(cell);
 					default:
@@ -7590,8 +7595,8 @@ var author$project$Editor$viewContent = F2(
 		}
 	});
 var author$project$Editor$viewHorizStackCell = function (cell) {
-	var _n3 = author$project$Structure$isaOf(cell);
-	if (_n3.$ === 'ContentCell') {
+	var _n2 = author$project$Structure$isaOf(cell);
+	if (_n2.$ === 'ContentCell') {
 		return A2(
 			elm$html$Html$div,
 			_List_fromArray(
@@ -7605,19 +7610,18 @@ var author$project$Editor$viewHorizStackCell = function (cell) {
 		return elm$html$Html$text('');
 	}
 };
-var author$project$Editor$viewStackCell = F2(
-	function (cell, orientation) {
-		var _n1 = author$project$Structure$isaOf(cell);
-		if (_n1.$ === 'ContentCell') {
-			if (orientation.$ === 'Vert') {
-				return author$project$Editor$viewVertStackCell(cell);
-			} else {
-				return author$project$Editor$viewHorizStackCell(cell);
-			}
-		} else {
-			return elm$html$Html$text('');
-		}
-	});
+var author$project$Editor$viewStackCell = function (cell) {
+	var _n1 = author$project$Structure$isaOf(cell);
+	if (_n1.$ === 'ContentCell') {
+		var bO = A2(
+			elm$core$Debug$log,
+			'isHoriz',
+			A2(author$project$Structure$boolOf, 'isHoriz', cell));
+		return bO ? author$project$Editor$viewHorizStackCell(cell) : author$project$Editor$viewVertStackCell(cell);
+	} else {
+		return elm$html$Html$text('');
+	}
+};
 var author$project$Editor$viewVertStackCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
@@ -7747,12 +7751,7 @@ var author$project$Editor$constantCell = function (text) {
 		author$project$Structure$createNode(
 			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
 };
-var author$project$Editor$StackCell = function (a) {
-	return {$: 'StackCell', a: a};
-};
-var author$project$Editor$vertStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Vert)));
+var author$project$Editor$StackCell = {$: 'StackCell'};
 var author$project$Structure$addBool = F3(
 	function (key, value, node) {
 		return A2(
@@ -7762,6 +7761,12 @@ var author$project$Structure$addBool = F3(
 				author$project$Structure$PBool(value)),
 			node);
 	});
+var author$project$Editor$vertStackCell = A3(
+	author$project$Structure$addBool,
+	'isHoriz',
+	false,
+	author$project$Structure$createNode(
+		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, 'indent', true, node);
 };
@@ -7939,10 +7944,12 @@ var author$project$StateMachine$editorEvents = function (sm) {
 				author$project$Editor$constantCell('events'),
 				author$project$Editor$vertStackCell)));
 };
-var author$project$Editor$Horiz = {$: 'Horiz'};
-var author$project$Editor$horizStackCell = author$project$Structure$createNode(
-	author$project$Editor$ContentCell(
-		author$project$Editor$StackCell(author$project$Editor$Horiz)));
+var author$project$Editor$horizStackCell = A3(
+	author$project$Structure$addBool,
+	'isHoriz',
+	true,
+	author$project$Structure$createNode(
+		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
 var author$project$StateMachine$editorStateMachineName = function (sm) {
 	return A2(
 		author$project$Editor$with,
@@ -8143,8 +8150,8 @@ var author$project$StateMachine$editor = function (sm) {
 		author$project$Editor$createRootCell);
 };
 var author$project$StateMachine$StateMachine = {$: 'StateMachine'};
-var author$project$StateMachine$stateMachine = author$project$Structure$createRoot(author$project$StateMachine$StateMachine);
-var author$project$StateMachine$main = A2(author$project$Runtime$program, author$project$StateMachine$stateMachine, author$project$StateMachine$editor);
+var author$project$StateMachine$initStateMachine = author$project$Structure$createRoot(author$project$StateMachine$StateMachine);
+var author$project$StateMachine$main = A2(author$project$Runtime$program, author$project$StateMachine$initStateMachine, author$project$StateMachine$editor);
 _Platform_export({'StateMachine':{'init':author$project$StateMachine$main(
 	elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
 

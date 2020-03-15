@@ -38,7 +38,7 @@ type Cell a
 
 type ContentCell
     = RootCell
-    | StackCell Orientation
+    | StackCell
     | ConstantCell
     | InputCell
     | PlaceholderCell
@@ -123,12 +123,14 @@ inputCell text =
 
 horizStackCell : Node (Cell a)
 horizStackCell =
-    createNode (ContentCell (StackCell Horiz))
+    createNode (ContentCell StackCell)
+        |> addBool "isHoriz" True
 
 
 vertStackCell : Node (Cell a)
 vertStackCell =
-    createNode (ContentCell (StackCell Vert))
+    createNode (ContentCell StackCell)
+        |> addBool "isHoriz" False
 
 
 placeholderCell : String -> Node (Cell a)
@@ -509,7 +511,7 @@ findNextInputCellRec root next =
         ContentCell InputCell ->
             Just next
 
-        ContentCell (StackCell _) ->
+        ContentCell StackCell ->
             -- down
             let
                 mbChildren =
@@ -592,7 +594,7 @@ viewContent cell html =
                 htmlNew =
                     case ccell of
                         RootCell ->
-                            viewStackCell cell Vert
+                            viewStackCell cell
 
                         ConstantCell ->
                             viewConstantCell cell
@@ -600,8 +602,8 @@ viewContent cell html =
                         InputCell ->
                             viewInputCell cell
 
-                        StackCell orientation ->
-                            viewStackCell cell orientation
+                        StackCell ->
+                            viewStackCell cell
 
                         PlaceholderCell ->
                             viewPlaceholderCell cell
@@ -615,16 +617,18 @@ viewContent cell html =
             []
 
 
-viewStackCell : Node (Cell a) -> Orientation -> Html (Msg a)
-viewStackCell cell orientation =
+viewStackCell : Node (Cell a) -> Html (Msg a)
+viewStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            case orientation of
-                Vert ->
-                    viewVertStackCell cell
-
-                Horiz ->
+            let
+                bO =
+                    boolOf "isHoriz" cell |> Debug.log "isHoriz"
+            in
+                if bO then
                     viewHorizStackCell cell
+                else
+                    viewVertStackCell cell
 
         EffectCell _ ->
             text ""
@@ -912,8 +916,16 @@ isasUnderCustom featureKey parent =
 orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation
 orientationOf root cell =
     case isaOf cell of
-        ContentCell (StackCell o) ->
-            Just o
+        ContentCell StackCell ->
+            Just <|
+                let
+                    bO =
+                        boolOf "isHoriz" cell
+                in
+                    if bO then
+                        Horiz
+                    else
+                        Vert
 
         ContentCell _ ->
             parentOf root (pathOf cell)
