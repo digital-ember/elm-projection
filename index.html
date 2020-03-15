@@ -7526,10 +7526,18 @@ var author$project$Editor$createInputCellAttributes = function (cell) {
 };
 var elm$html$Html$input = _VirtualDom_node('input');
 var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
+var elm$html$Html$Attributes$size = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'size',
+		elm$core$String$fromInt(n));
+};
 var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
 var author$project$Editor$viewInputCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
+		var inputValue = A2(author$project$Structure$textOf, 'input', cell);
+		var inputSize = (inputValue === '') ? elm$core$String$length('<no value>') : elm$core$String$length(inputValue);
 		return A2(
 			elm$html$Html$div,
 			_List_Nil,
@@ -7547,8 +7555,8 @@ var author$project$Editor$viewInputCell = function (cell) {
 								A2(elm$html$Html$Attributes$style, 'border', 'none'),
 								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
 								elm$html$Html$Attributes$placeholder('<no value>'),
-								elm$html$Html$Attributes$value(
-								A2(author$project$Structure$textOf, 'input', cell)),
+								elm$html$Html$Attributes$value(inputValue),
+								elm$html$Html$Attributes$size(inputSize),
 								elm$html$Html$Attributes$id(
 								author$project$Structure$pathAsIdFromNode(cell))
 							]),
@@ -7823,31 +7831,6 @@ var author$project$Editor$withRange = function (children) {
 	return author$project$Structure$addToDefaultRange(children);
 };
 var author$project$Editor$InputCell = {$: 'InputCell'};
-var author$project$Editor$inputCell = function (text) {
-	return A3(
-		author$project$Structure$addText,
-		'input',
-		text,
-		author$project$Structure$createNode(
-			author$project$Editor$ContentCell(author$project$Editor$InputCell)));
-};
-var author$project$Editor$InsertionEffect = function (a) {
-	return {$: 'InsertionEffect', a: a};
-};
-var author$project$Editor$insertionEffect = F2(
-	function (path, nodeToInsert) {
-		return author$project$Editor$InsertionEffect(
-			{feature: '', isReplace: false, nodeToInsert: nodeToInsert, path: path});
-	});
-var author$project$Editor$onDeleteEffect = F2(
-	function (effectInput, effectHandler) {
-		return author$project$Editor$OnDeleteEffect(
-			{
-				effectHandler: effectHandler,
-				effectInput: effectInput,
-				selection: {dir: '', end: -1, start: -1}
-			});
-	});
 var author$project$Editor$OnInputEffect = function (a) {
 	return {$: 'OnInputEffect', a: a};
 };
@@ -7863,6 +7846,43 @@ var author$project$Editor$withEffect = function (effect) {
 		author$project$Structure$createNode(
 			author$project$Editor$EffectCell(effect)));
 };
+var author$project$Editor$inputCell = F2(
+	function (text, nodeContext) {
+		return A2(
+			author$project$Editor$withEffect,
+			A2(
+				author$project$Editor$onInputEffect,
+				author$project$Structure$pathOf(nodeContext),
+				text),
+			A3(
+				author$project$Structure$addText,
+				'input',
+				A2(author$project$Structure$textOf, text, nodeContext),
+				author$project$Structure$createNode(
+					author$project$Editor$ContentCell(author$project$Editor$InputCell))));
+	});
+var author$project$Editor$InsertionEffect = function (a) {
+	return {$: 'InsertionEffect', a: a};
+};
+var author$project$Editor$insertionEffect = F2(
+	function (nodeContext, nodeToInsert) {
+		return author$project$Editor$InsertionEffect(
+			{
+				feature: '',
+				isReplace: false,
+				nodeToInsert: nodeToInsert,
+				path: author$project$Structure$pathOf(nodeContext)
+			});
+	});
+var author$project$Editor$onDeleteEffect = F2(
+	function (effectInput, effectHandler) {
+		return author$project$Editor$OnDeleteEffect(
+			{
+				effectHandler: effectHandler,
+				effectInput: effectInput,
+				selection: {dir: '', end: -1, start: -1}
+			});
+	});
 var author$project$StateMachine$Event = {$: 'Event'};
 var author$project$StateMachine$ctorEvent = A3(
 	author$project$Structure$addText,
@@ -7922,21 +7942,11 @@ var author$project$StateMachine$deleteEvent = F2(
 var author$project$StateMachine$editorEvent = function (event) {
 	return A2(
 		author$project$Editor$withEffect,
-		A2(
-			author$project$Editor$onInputEffect,
-			author$project$Structure$pathOf(event),
-			'name'),
+		A2(author$project$Editor$onDeleteEffect, event, author$project$StateMachine$deleteEvent),
 		A2(
 			author$project$Editor$withEffect,
-			A2(author$project$Editor$onDeleteEffect, event, author$project$StateMachine$deleteEvent),
-			A2(
-				author$project$Editor$withEffect,
-				A2(
-					author$project$Editor$insertionEffect,
-					author$project$Structure$pathOf(event),
-					author$project$StateMachine$ctorEvent),
-				author$project$Editor$inputCell(
-					A2(author$project$Structure$textOf, 'name', event)))));
+			A2(author$project$Editor$insertionEffect, event, author$project$StateMachine$ctorEvent),
+			A2(author$project$Editor$inputCell, 'name', event)));
 };
 var author$project$Editor$PlaceholderCell = {$: 'PlaceholderCell'};
 var author$project$Editor$placeholderCell = function (text) {
@@ -7948,18 +7958,19 @@ var author$project$Editor$placeholderCell = function (text) {
 			author$project$Editor$ContentCell(author$project$Editor$PlaceholderCell)));
 };
 var author$project$Editor$replacementEffect = F3(
-	function (feature, path, nodeToInsert) {
+	function (feature, nodeContext, nodeToInsert) {
 		return author$project$Editor$InsertionEffect(
-			{feature: feature, isReplace: true, nodeToInsert: nodeToInsert, path: path});
+			{
+				feature: feature,
+				isReplace: true,
+				nodeToInsert: nodeToInsert,
+				path: author$project$Structure$pathOf(nodeContext)
+			});
 	});
 var author$project$StateMachine$editorEventPlaceholder = function (sm) {
 	return A2(
 		author$project$Editor$withEffect,
-		A3(
-			author$project$Editor$replacementEffect,
-			'events',
-			author$project$Structure$pathOf(sm),
-			author$project$StateMachine$ctorEvent),
+		A3(author$project$Editor$replacementEffect, 'events', sm, author$project$StateMachine$ctorEvent),
 		author$project$Editor$placeholderCell('no events'));
 };
 var author$project$StateMachine$editorEvents = function (sm) {
@@ -7998,14 +8009,7 @@ var author$project$Editor$horizStackCell = A3(
 var author$project$StateMachine$editorStateMachineName = function (sm) {
 	return A2(
 		author$project$Editor$with,
-		A2(
-			author$project$Editor$withEffect,
-			A2(
-				author$project$Editor$onInputEffect,
-				author$project$Structure$pathOf(sm),
-				'name'),
-			author$project$Editor$inputCell(
-				A2(author$project$Structure$textOf, 'name', sm))),
+		A2(author$project$Editor$inputCell, 'name', sm),
 		A2(
 			author$project$Editor$with,
 			author$project$Editor$constantCell('name:'),
@@ -8031,18 +8035,8 @@ var author$project$StateMachine$editorStateHead = function (state) {
 		author$project$Editor$with,
 		A2(
 			author$project$Editor$withEffect,
-			A2(
-				author$project$Editor$insertionEffect,
-				author$project$Structure$pathOf(state),
-				author$project$StateMachine$ctorState),
-			A2(
-				author$project$Editor$withEffect,
-				A2(
-					author$project$Editor$onInputEffect,
-					author$project$Structure$pathOf(state),
-					'name'),
-				author$project$Editor$inputCell(
-					A2(author$project$Structure$textOf, 'name', state)))),
+			A2(author$project$Editor$insertionEffect, state, author$project$StateMachine$ctorState),
+			A2(author$project$Editor$inputCell, 'name', state)),
 		A2(
 			author$project$Editor$with,
 			author$project$Editor$constantCell('state'),
@@ -8063,18 +8057,8 @@ var author$project$StateMachine$editorTransition = function (transition) {
 		author$project$Editor$with,
 		A2(
 			author$project$Editor$withEffect,
-			A2(
-				author$project$Editor$insertionEffect,
-				author$project$Structure$pathOf(transition),
-				author$project$StateMachine$ctorTransition),
-			A2(
-				author$project$Editor$withEffect,
-				A2(
-					author$project$Editor$onInputEffect,
-					author$project$Structure$pathOf(transition),
-					'stateRef'),
-				author$project$Editor$inputCell(
-					A2(author$project$Structure$textOf, 'stateRef', transition)))),
+			A2(author$project$Editor$insertionEffect, transition, author$project$StateMachine$ctorTransition),
+			A2(author$project$Editor$inputCell, 'stateRef', transition)),
 		A2(
 			author$project$Editor$with,
 			author$project$Editor$constantCell('⇒'),
@@ -8082,28 +8066,14 @@ var author$project$StateMachine$editorTransition = function (transition) {
 				author$project$Editor$with,
 				A2(
 					author$project$Editor$withEffect,
-					A2(
-						author$project$Editor$insertionEffect,
-						author$project$Structure$pathOf(transition),
-						author$project$StateMachine$ctorTransition),
-					A2(
-						author$project$Editor$withEffect,
-						A2(
-							author$project$Editor$onInputEffect,
-							author$project$Structure$pathOf(transition),
-							'eventRef'),
-						author$project$Editor$inputCell(
-							A2(author$project$Structure$textOf, 'eventRef', transition)))),
+					A2(author$project$Editor$insertionEffect, transition, author$project$StateMachine$ctorTransition),
+					A2(author$project$Editor$inputCell, 'eventRef', transition)),
 				author$project$Editor$horizStackCell)));
 };
 var author$project$StateMachine$editorTransitionPlaceholder = function (state) {
 	return A2(
 		author$project$Editor$withEffect,
-		A3(
-			author$project$Editor$replacementEffect,
-			'',
-			author$project$Structure$pathOf(state),
-			author$project$StateMachine$ctorTransition),
+		A3(author$project$Editor$replacementEffect, '', state, author$project$StateMachine$ctorTransition),
 		author$project$Editor$placeholderCell('no transitions'));
 };
 var author$project$StateMachine$editorState = function (state) {
@@ -8126,10 +8096,7 @@ var author$project$StateMachine$editorState = function (state) {
 			author$project$Editor$with,
 			A2(
 				author$project$Editor$withEffect,
-				A2(
-					author$project$Editor$insertionEffect,
-					author$project$Structure$pathOf(state),
-					author$project$StateMachine$ctorState),
+				A2(author$project$Editor$insertionEffect, state, author$project$StateMachine$ctorState),
 				author$project$Editor$buttonCell('+')),
 			A2(
 				author$project$Editor$with,
@@ -8148,11 +8115,7 @@ var author$project$StateMachine$editorState = function (state) {
 var author$project$StateMachine$editorStatesPlaceholder = function (sm) {
 	return A2(
 		author$project$Editor$withEffect,
-		A3(
-			author$project$Editor$replacementEffect,
-			'',
-			author$project$Structure$pathOf(sm),
-			author$project$StateMachine$ctorState),
+		A3(author$project$Editor$replacementEffect, '', sm, author$project$StateMachine$ctorState),
 		author$project$Editor$placeholderCell('no states'));
 };
 var author$project$StateMachine$editorStates = function (sm) {

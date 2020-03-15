@@ -66,10 +66,7 @@ editorStateMachineName : Node Domain -> Node (Cell Domain)
 editorStateMachineName sm =
     horizStackCell
         |> with (constantCell "name:")
-        |> with
-            (inputCell (textOf "name" sm)
-                |> withEffect (onInputEffect (pathOf sm) "name")
-            )
+        |> with (inputCell "name" sm)
 
 
 {-| If our statemachine does not contain any events, we put a placeholder cell to allow the user to add events
@@ -99,16 +96,15 @@ editorEvents sm =
 
 editorEvent : Node Domain -> Node (Cell Domain)
 editorEvent event =
-    inputCell (textOf "name" event)
-        |> withEffect (insertionEffect (pathOf event) ctorEvent)
+    inputCell "name" event
+        |> withEffect (insertionEffect event ctorEvent)
         |> withEffect (onDeleteEffect event deleteEvent)
-        |> withEffect (onInputEffect (pathOf event) "name")
 
 
 editorEventPlaceholder : Node Domain -> Node (Cell Domain)
 editorEventPlaceholder sm =
     placeholderCell "no events"
-        |> withEffect (replacementEffect "events" (pathOf sm) ctorEvent)
+        |> withEffect (replacementEffect "events" sm ctorEvent)
 
 
 editorStates : Node Domain -> Node (Cell Domain)
@@ -129,7 +125,7 @@ editorStates sm =
 editorStatesPlaceholder : Node Domain -> Node (Cell Domain)
 editorStatesPlaceholder sm =
     placeholderCell "no states"
-        |> withEffect (replacementEffect "" (pathOf sm) ctorState)
+        |> withEffect (replacementEffect "" sm ctorState)
 
 
 editorState : Node Domain -> Node (Cell Domain)
@@ -153,7 +149,7 @@ editorState state =
             |> with (constantCell "end")
             |> with
                 (buttonCell "+"
-                    |> withEffect (insertionEffect (pathOf state) ctorState)
+                    |> withEffect (insertionEffect state ctorState)
                 )
             |> with (constantCell "")
 
@@ -163,31 +159,28 @@ editorStateHead state =
     horizStackCell
         |> with (constantCell "state")
         |> with
-            (inputCell (textOf "name" state)
-                |> withEffect (onInputEffect (pathOf state) "name")
-                |> withEffect (insertionEffect (pathOf state) ctorState)
+            (inputCell "name" state
+                |> withEffect (insertionEffect state ctorState)
             )
 
 
 editorTransitionPlaceholder : Node Domain -> Node (Cell Domain)
 editorTransitionPlaceholder state =
     placeholderCell "no transitions"
-        |> withEffect (replacementEffect "" (pathOf state) ctorTransition)
+        |> withEffect (replacementEffect "" state ctorTransition)
 
 
 editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
-            (inputCell (textOf "eventRef" transition)
-                |> withEffect (onInputEffect (pathOf transition) "eventRef")
-                |> withEffect (insertionEffect (pathOf transition) ctorTransition)
+            (inputCell "eventRef" transition
+                |> withEffect (insertionEffect transition ctorTransition)
             )
         |> with (constantCell "⇒")
         |> with
-            (inputCell (textOf "stateRef" transition)
-                |> withEffect (onInputEffect (pathOf transition) "stateRef")
-                |> withEffect (insertionEffect (pathOf transition) ctorTransition)
+            (inputCell "stateRef" transition
+                |> withEffect (insertionEffect transition ctorTransition)
             )
 
 

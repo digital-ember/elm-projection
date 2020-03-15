@@ -116,10 +116,11 @@ constantCell text =
         |> addText "constant" text
 
 
-inputCell : String -> Node (Cell a)
-inputCell text =
+inputCell : String -> Node a -> Node (Cell a)
+inputCell text nodeContext =
     createNode (ContentCell InputCell)
-        |> addText "input" text
+        |> addText "input" (textOf text nodeContext)
+        |> withEffect (onInputEffect (pathOf nodeContext) text)
 
 
 horizStackCell : Node (Cell a)
@@ -172,20 +173,20 @@ withEffect effect =
             EffectCell effect
 
 
-replacementEffect : String -> Path -> Node a -> Effect a
-replacementEffect feature path nodeToInsert =
+replacementEffect : String -> Node a -> Node a -> Effect a
+replacementEffect feature nodeContext nodeToInsert =
     InsertionEffect
-        { path = path
+        { path = pathOf nodeContext
         , nodeToInsert = nodeToInsert
         , isReplace = True
         , feature = feature
         }
 
 
-insertionEffect : Path -> Node a -> Effect a
-insertionEffect path nodeToInsert =
+insertionEffect : Node a -> Node a -> Effect a
+insertionEffect nodeContext nodeToInsert =
     InsertionEffect
-        { path = path
+        { path = pathOf nodeContext
         , nodeToInsert = nodeToInsert
         , isReplace = False
         , feature = ""
@@ -309,7 +310,7 @@ updateEditor msg editorModel domainModel =
                     ( domainModel, Cmd.none )
 
         OnClick effect cellContext ->
-            case effect of 
+            case effect of
                 InsertionEffect { path, nodeToInsert, isReplace, feature } ->
                     ( if isReplace then
                         if feature == "" || feature == "default" then
@@ -393,17 +394,15 @@ tryDeleteRight domainModel { effectInput, effectHandler, selection } textLength 
                     effectHandler domainModel next |> updatePaths
     else
         domainModel
-    
 
 
 updateSelectionOnEnter : Node (Cell a) -> Cmd (Msg a)
 updateSelectionOnEnter cellContext =
-    Task.perform 
-        NavSelection 
-        (Task.succeed 
-            (NavSelectionEffect {dir = D, cellSelected = cellContext, selection = {dir = "", start = 0, end = 0}})
+    Task.perform
+        NavSelection
+        (Task.succeed
+            (NavSelectionEffect { dir = D, cellSelected = cellContext, selection = { dir = "", start = 0, end = 0 } })
         )
- 
 
 
 updateSelection : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
@@ -423,17 +422,16 @@ updateSelection editorModel navData =
 updateSelectionByOrientation : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
 updateSelectionByOrientation editorModel { dir, cellSelected, selection } orientation =
     let
-
         moverTask f =
-            Task.attempt 
-                (\result -> 
-                    case result of  
+            Task.attempt
+                (\result ->
+                    case result of
                         Result.Err _ ->
-                            NavSelection (NavSelectionEffect {dir = D, cellSelected = cellSelected, selection = selection})
+                            NavSelection (NavSelectionEffect { dir = D, cellSelected = cellSelected, selection = selection })
 
-                        _ -> 
+                        _ ->
                             NoOp
-                ) 
+                )
                 (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
     in
         case ( dir, orientation ) of
@@ -482,7 +480,7 @@ findPrevInputCell root current =
                         Just parent ->
                             findPrevInputCell root parent
 
-              
+
 findPrevInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
 findPrevInputCellRec root prev =
     case isaOf prev of
@@ -513,7 +511,6 @@ findPrevInputCellRec root prev =
 
         _ ->
             Just <| findPrevInputCell root prev
-
 
 
 findNextInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -560,7 +557,7 @@ findNextInputCellRec root next =
                         in
                             case mbFirst of
                                 Nothing ->
-                                    Just <| findNextInputCell root next 
+                                    Just <| findNextInputCell root next
 
                                 Just first ->
                                     Just first
@@ -728,6 +725,11 @@ viewInputCell : Node (Cell a) -> Html (Msg a)
 viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
+            let
+                inputValue = textOf "input" cell
+                inputSize = if inputValue == "" then String.length "<no value>" else String.length inputValue
+            in
+            
             div
                 []
                 [ input
@@ -738,7 +740,8 @@ viewInputCell cell =
                      , HtmlA.style "border" "none"
                      , HtmlA.style "outline" "none"
                      , HtmlA.placeholder "<no value>"
-                     , HtmlA.value (textOf "input" cell)
+                     , HtmlA.value inputValue
+                     , HtmlA.size inputSize
                      , HtmlA.id (pathAsIdFromNode cell)
                      ]
                         ++ createInputCellAttributes cell
