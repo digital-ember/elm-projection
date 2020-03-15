@@ -392,6 +392,7 @@ tryDeleteRight domainModel { effectInput, effectHandler, selection } textLength 
                     effectHandler domainModel next |> updatePaths
     else
         domainModel
+    
 
 
 updateSelectionOnEnter : Node (Cell a) -> Node a -> Node (Cell a) -> Cmd (Msg a)
@@ -425,23 +426,26 @@ updateSelectionByOrientation editorModel domainModel { dir, cellSelected, select
     let
         mover op =
             move editorModel domainModel cellSelected op
+
+        moverTask f =
+            Task.attempt (\_ -> NoOp) (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
     in
         case ( dir, orientation ) of
             ( U, Vert ) ->
-                mover (-)
+                moverTask findPrevInputCell
 
             ( D, Vert ) ->
-                mover (+)
+                moverTask findNextInputCell
 
             ( L, Horiz ) ->
                 if selection.start == 0 then
-                    mover (-)
+                    moverTask findPrevInputCell
                 else
                     Cmd.none
 
             ( R, Horiz ) ->
                 if selection.start >= (textOf "input" cellSelected |> String.length) then
-                    mover (+)
+                    moverTask findNextInputCell
                 else
                     Cmd.none
 
@@ -479,6 +483,62 @@ move editorModel domainModel cellSelected op =
 
                     ( Just { feature, index }, Just parentPath ) ->
                         Task.attempt (\_ -> NoOp) (Dom.focus <| nextPathAsId parentPath feature index)
+
+findPrevInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+findPrevInputCell root current =
+    let
+        mbPrev =
+            previousSibling root (pathOf current)
+    in
+        case mbPrev of
+            Just prev ->
+                findPrevInputCellRec root prev
+                    |> Maybe.withDefault current
+
+            Nothing ->
+                let
+                    mbParent =
+                        parentOf root (pathOf current)
+                in
+                    case mbParent of
+                        Nothing ->
+                            current
+
+                        Just parent ->
+                            findPrevInputCell root parent
+
+              
+findPrevInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
+findPrevInputCellRec root prev =
+    case isaOf prev of
+        ContentCell InputCell ->
+            Just prev
+
+        ContentCell StackCell ->
+            -- down
+            let
+                mbChildren =
+                    getUnderDefault prev
+            in
+                case mbChildren of
+                    Just children ->
+                        let
+                            mbLast =
+                                findFirstInputCellRec root (List.reverse children) findPrevInputCellRec
+                        in
+                            case mbLast of
+                                Nothing ->
+                                    Just <| findPrevInputCell root prev
+
+                                Just last ->
+                                    Just last
+
+                    Nothing ->
+                        Just <| findPrevInputCell root prev
+
+        _ ->
+            Just <| findPrevInputCell root prev
+
 
 
 findNextInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -521,11 +581,11 @@ findNextInputCellRec root next =
                     Just children ->
                         let
                             mbFirst =
-                                findFirstInputCellRec root children
+                                findFirstInputCellRec root children findNextInputCellRec
                         in
                             case mbFirst of
                                 Nothing ->
-                                    Just <| findNextInputCell root next
+                                    Just <| findNextInputCell root next 
 
                                 Just first ->
                                     Just first
@@ -537,8 +597,8 @@ findNextInputCellRec root next =
             Just <| findNextInputCell root next
 
 
-findFirstInputCellRec : Node (Cell a) -> List (Node (Cell a)) -> Maybe (Node (Cell a))
-findFirstInputCellRec root candidates =
+findFirstInputCellRec : Node (Cell a) -> List (Node (Cell a)) -> (Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))) -> Maybe (Node (Cell a))
+findFirstInputCellRec root candidates recFun =
     case candidates of
         [] ->
             Nothing
@@ -546,11 +606,11 @@ findFirstInputCellRec root candidates =
         head :: tail ->
             let
                 mbFirst =
-                    findNextInputCellRec root head
+                    recFun root head
             in
                 case mbFirst of
                     Nothing ->
-                        findFirstInputCellRec root tail
+                        findFirstInputCellRec root tail recFun
 
                     Just first ->
                         Just first
@@ -623,7 +683,7 @@ viewStackCell cell =
         ContentCell _ ->
             let
                 bO =
-                    boolOf "isHoriz" cell |> Debug.log "isHoriz"
+                    boolOf "isHoriz" cell
             in
                 if bO then
                     viewHorizStackCell cell
@@ -911,8 +971,6 @@ isasUnderCustom featureKey parent =
             |> Maybe.withDefault []
 
 
-{-| Defaults to Vert in case of EffectCell, root or unexpected behavior
--}
 orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation
 orientationOf root cell =
     case isaOf cell of

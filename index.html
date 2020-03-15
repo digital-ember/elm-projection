@@ -5138,8 +5138,8 @@ var author$project$Editor$orientationOf = F2(
 		}
 	});
 var author$project$Editor$NoOp = {$: 'NoOp'};
-var author$project$Editor$findFirstInputCellRec = F2(
-	function (root, candidates) {
+var author$project$Editor$findFirstInputCellRec = F3(
+	function (root, candidates, recFun) {
 		findFirstInputCellRec:
 		while (true) {
 			if (!candidates.b) {
@@ -5147,12 +5147,14 @@ var author$project$Editor$findFirstInputCellRec = F2(
 			} else {
 				var head = candidates.a;
 				var tail = candidates.b;
-				var mbFirst = A2(author$project$Editor$findNextInputCellRec, root, head);
+				var mbFirst = A2(recFun, root, head);
 				if (mbFirst.$ === 'Nothing') {
 					var $temp$root = root,
-						$temp$candidates = tail;
+						$temp$candidates = tail,
+						$temp$recFun = recFun;
 					root = $temp$root;
 					candidates = $temp$candidates;
+					recFun = $temp$recFun;
 					continue findFirstInputCellRec;
 				} else {
 					var first = mbFirst.a;
@@ -5208,7 +5210,7 @@ var author$project$Editor$findNextInputCellRec = F2(
 						var mbChildren = author$project$Structure$getUnderDefault(next);
 						if (mbChildren.$ === 'Just') {
 							var children = mbChildren.a;
-							var mbFirst = A2(author$project$Editor$findFirstInputCellRec, root, children);
+							var mbFirst = A3(author$project$Editor$findFirstInputCellRec, root, children, author$project$Editor$findNextInputCellRec);
 							if (mbFirst.$ === 'Nothing') {
 								return elm$core$Maybe$Just(
 									A2(author$project$Editor$findNextInputCell, root, next));
@@ -5229,6 +5231,79 @@ var author$project$Editor$findNextInputCellRec = F2(
 		}
 		return elm$core$Maybe$Just(
 			A2(author$project$Editor$findNextInputCell, root, next));
+	});
+var author$project$Editor$findPrevInputCell = F2(
+	function (root, current) {
+		findPrevInputCell:
+		while (true) {
+			var mbPrev = A2(
+				author$project$Structure$previousSibling,
+				root,
+				author$project$Structure$pathOf(current));
+			if (mbPrev.$ === 'Just') {
+				var prev = mbPrev.a;
+				return A2(
+					elm$core$Maybe$withDefault,
+					current,
+					A2(author$project$Editor$findPrevInputCellRec, root, prev));
+			} else {
+				var mbParent = A2(
+					author$project$Structure$parentOf,
+					root,
+					author$project$Structure$pathOf(current));
+				if (mbParent.$ === 'Nothing') {
+					return current;
+				} else {
+					var parent = mbParent.a;
+					var $temp$root = root,
+						$temp$current = parent;
+					root = $temp$root;
+					current = $temp$current;
+					continue findPrevInputCell;
+				}
+			}
+		}
+	});
+var author$project$Editor$findPrevInputCellRec = F2(
+	function (root, prev) {
+		var _n0 = author$project$Structure$isaOf(prev);
+		_n0$2:
+		while (true) {
+			if (_n0.$ === 'ContentCell') {
+				switch (_n0.a.$) {
+					case 'InputCell':
+						var _n1 = _n0.a;
+						return elm$core$Maybe$Just(prev);
+					case 'StackCell':
+						var _n2 = _n0.a;
+						var mbChildren = author$project$Structure$getUnderDefault(prev);
+						if (mbChildren.$ === 'Just') {
+							var children = mbChildren.a;
+							var mbLast = A3(
+								author$project$Editor$findFirstInputCellRec,
+								root,
+								elm$core$List$reverse(children),
+								author$project$Editor$findPrevInputCellRec);
+							if (mbLast.$ === 'Nothing') {
+								return elm$core$Maybe$Just(
+									A2(author$project$Editor$findPrevInputCell, root, prev));
+							} else {
+								var last = mbLast.a;
+								return elm$core$Maybe$Just(last);
+							}
+						} else {
+							return elm$core$Maybe$Just(
+								A2(author$project$Editor$findPrevInputCell, root, prev));
+						}
+					default:
+						break _n0$2;
+				}
+			} else {
+				break _n0$2;
+			}
+		}
+		return elm$core$Maybe$Just(
+			A2(author$project$Editor$findPrevInputCell, root, prev));
 	});
 var author$project$Structure$lengthOf = function (_n0) {
 	var segments = _n0.a;
@@ -5867,6 +5942,16 @@ var author$project$Editor$updateSelectionByOrientation = F4(
 		var dir = _n0.dir;
 		var cellSelected = _n0.cellSelected;
 		var selection = _n0.selection;
+		var moverTask = function (f) {
+			return A2(
+				elm$core$Task$attempt,
+				function (_n10) {
+					return author$project$Editor$NoOp;
+				},
+				elm$browser$Browser$Dom$focus(
+					author$project$Structure$pathAsIdFromNode(
+						A2(f, editorModel, cellSelected))));
+		};
 		var mover = function (op) {
 			return A4(author$project$Editor$move, editorModel, domainModel, cellSelected, op);
 		};
@@ -5878,11 +5963,11 @@ var author$project$Editor$updateSelectionByOrientation = F4(
 					case 'U':
 						var _n2 = _n1.a;
 						var _n3 = _n1.b;
-						return mover(elm$core$Basics$sub);
+						return moverTask(author$project$Editor$findPrevInputCell);
 					case 'D':
 						var _n4 = _n1.a;
 						var _n5 = _n1.b;
-						return mover(elm$core$Basics$add);
+						return moverTask(author$project$Editor$findNextInputCell);
 					default:
 						break _n1$4;
 				}
@@ -5891,14 +5976,14 @@ var author$project$Editor$updateSelectionByOrientation = F4(
 					case 'L':
 						var _n6 = _n1.a;
 						var _n7 = _n1.b;
-						return (!selection.start) ? mover(elm$core$Basics$sub) : elm$core$Platform$Cmd$none;
+						return (!selection.start) ? moverTask(author$project$Editor$findPrevInputCell) : elm$core$Platform$Cmd$none;
 					case 'R':
 						var _n8 = _n1.a;
 						var _n9 = _n1.b;
 						return (_Utils_cmp(
 							selection.start,
 							elm$core$String$length(
-								A2(author$project$Structure$textOf, 'input', cellSelected))) > -1) ? mover(elm$core$Basics$add) : elm$core$Platform$Cmd$none;
+								A2(author$project$Structure$textOf, 'input', cellSelected))) > -1) ? moverTask(author$project$Editor$findNextInputCell) : elm$core$Platform$Cmd$none;
 					default:
 						break _n1$4;
 				}
@@ -7613,10 +7698,7 @@ var author$project$Editor$viewHorizStackCell = function (cell) {
 var author$project$Editor$viewStackCell = function (cell) {
 	var _n1 = author$project$Structure$isaOf(cell);
 	if (_n1.$ === 'ContentCell') {
-		var bO = A2(
-			elm$core$Debug$log,
-			'isHoriz',
-			A2(author$project$Structure$boolOf, 'isHoriz', cell));
+		var bO = A2(author$project$Structure$boolOf, 'isHoriz', cell);
 		return bO ? author$project$Editor$viewHorizStackCell(cell) : author$project$Editor$viewVertStackCell(cell);
 	} else {
 		return elm$html$Html$text('');
