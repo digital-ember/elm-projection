@@ -10,6 +10,7 @@ module Editor
         , inputCell
         , horizStackCell
         , vertStackCell
+        , vertGridCell
         , placeholderCell
         , buttonCell
         , addIndent
@@ -21,6 +22,7 @@ module Editor
         , onInputEffect
         , updateEditor
         , viewEditor
+        , griddify
         )
 
 import Structure exposing (..)
@@ -56,7 +58,7 @@ type Effect a
         , feature : String
         }
     | OnDeleteEffect
-        { path : Path 
+        { path : Path
         , selection : Selection
         }
     | OnInputEffect
@@ -105,7 +107,8 @@ type Dir
     | L
     | R
 
-type MarginSide 
+
+type MarginSide
     = Top
     | Right
     | Bottom
@@ -142,6 +145,12 @@ vertStackCell =
         |> addBool "isHoriz" False
 
 
+vertGridCell : Node (Cell a)
+vertGridCell =
+    vertStackCell
+        |> addBool "isGrid" True
+
+
 placeholderCell : String -> Node (Cell a)
 placeholderCell text =
     createNode (ContentCell PlaceholderCell)
@@ -172,21 +181,22 @@ addIndent node =
 addMargin : MarginSide -> Int -> Node (Cell a) -> Node (Cell a)
 addMargin side space node =
     let
-        key = 
+        key =
             case side of
-                Top -> 
-                    "margin-top" 
-                
-                Right -> 
+                Top ->
+                    "margin-top"
+
+                Right ->
                     "margin-right"
 
-                Bottom -> 
+                Bottom ->
                     "margin-bottom"
 
-                Left -> 
+                Left ->
                     "margin-left"
     in
         addInt key space node
+
 
 
 -- EFFECTS
@@ -213,7 +223,7 @@ insertionEffect : Node a -> Node a -> Effect a
 insertionEffect nodeContext nodeToInsert =
     InsertionEffect
         { path = pathOf nodeContext
-        , nodeToInsert = nodeToInsert 
+        , nodeToInsert = nodeToInsert
         , isReplace = False
         , feature = ""
         }
@@ -222,7 +232,7 @@ insertionEffect nodeContext nodeToInsert =
 deletionEffect : Node a -> Effect a
 deletionEffect nodeContext =
     OnDeleteEffect
-        { path = pathOf nodeContext 
+        { path = pathOf nodeContext
         , selection = emptySelection
         }
 
@@ -255,12 +265,12 @@ navEffect dir cell =
 
 
 emptySelection : Selection
-emptySelection = 
-  { start = -1
-  , end = -1
-  , dir = ""
-  }
-  
+emptySelection =
+    { start = -1
+    , end = -1
+    , dir = ""
+    }
+
 
 grouped : List (Cell a) -> List (EffectGroup a)
 grouped effectCells =
@@ -356,18 +366,21 @@ updateEditor msg editorModel domainModel =
 
         OnDelete effect cellContext ->
             case effect of
-                OnDeleteEffect ({selection} as effectData) ->
+                OnDeleteEffect ({ selection } as effectData) ->
                     let
-                        textLength = textOf "input" cellContext |> String.length
-                        isAtDeletePos = selection.end == textLength
+                        textLength =
+                            textOf "input" cellContext |> String.length
+
+                        isAtDeletePos =
+                            selection.end == textLength
                     in
-                        ( tryDelete 
-                              domainModel 
-                              effectData 
-                              nextSibling 
-                              textLength
-                              isAtDeletePos
-                        , Cmd.none 
+                        ( tryDelete
+                            domainModel
+                            effectData
+                            nextSibling
+                            textLength
+                            isAtDeletePos
+                        , Cmd.none
                         )
 
                 _ ->
@@ -375,18 +388,21 @@ updateEditor msg editorModel domainModel =
 
         OnBackspace effect cellContext ->
             case effect of
-                OnDeleteEffect ({selection} as effectData) ->
+                OnDeleteEffect ({ selection } as effectData) ->
                     let
-                        textLength = textOf "input" cellContext |> String.length
-                        isAtDeletePos = selection.start == 0 
+                        textLength =
+                            textOf "input" cellContext |> String.length
+
+                        isAtDeletePos =
+                            selection.start == 0
                     in
-                        ( tryDelete 
-                              domainModel 
-                              effectData 
-                              previousSibling 
-                              textLength
-                              isAtDeletePos                          
-                        , Cmd.none 
+                        ( tryDelete
+                            domainModel
+                            effectData
+                            previousSibling
+                            textLength
+                            isAtDeletePos
+                        , Cmd.none
                         )
 
                 _ ->
@@ -409,7 +425,7 @@ updateEditor msg editorModel domainModel =
                     ( domainModel, Cmd.none )
 
 
-tryDelete :  Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
+tryDelete : Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
 tryDelete domainModel { path, selection } navFun textLength isAtDeletePos =
     if textLength == 0 then
         deleteNode path domainModel |> updatePaths
@@ -524,7 +540,7 @@ findPrevInputCellRec root prev =
             case getUnderDefault prev of
                 [] ->
                     Just <| findPrevInputCell root prev
-                
+
                 children ->
                     let
                         mbLast =
@@ -536,8 +552,6 @@ findPrevInputCellRec root prev =
 
                             Just last ->
                                 Just last
-
-                
 
         _ ->
             Just <| findPrevInputCell root prev
@@ -576,10 +590,8 @@ findNextInputCellRec root next =
         ContentCell StackCell ->
             -- down
             case getUnderDefault next of
-            
                 [] ->
                     Just <| findNextInputCell root next
-
 
                 children ->
                     let
@@ -592,7 +604,6 @@ findNextInputCellRec root next =
 
                             Just first ->
                                 Just first
-
 
         _ ->
             Just <| findNextInputCell root next
@@ -700,8 +711,11 @@ viewVertStackCell cell =
     case isaOf cell of
         ContentCell _ ->
             div
-                (HtmlA.id (pathAsIdFromNode cell)
-                :: marginsAndPaddings cell)
+                ([ HtmlA.id (pathAsIdFromNode cell)
+                 , HtmlA.style "display" "table"
+                 ]
+                    ++ marginsAndPaddings cell
+                )
             <|
                 viewCell cell
 
@@ -713,17 +727,20 @@ viewHorizStackCell : Node (Cell a) -> Html (Msg a)
 viewHorizStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div
-                
-                (
-                [ HtmlA.style "display" "flex"
-                , HtmlA.id (pathAsIdFromNode cell)
-                ]
-                ++ 
-                marginsAndPaddings cell
-                )
-            <|
-                viewCell cell
+            let
+                displayAttrs =
+                    divRowAttributes cell
+            in
+                div
+                    (HtmlA.id (pathAsIdFromNode cell)
+                        :: marginsAndPaddings cell
+                        ++ if displayAttrs == [] then
+                            [ HtmlA.style "display" "flex" ]
+                           else
+                            displayAttrs
+                    )
+                <|
+                    viewCell cell
 
         EffectCell _ ->
             text ""
@@ -733,15 +750,14 @@ viewConstantCell : Node (Cell a) -> Html (Msg a)
 viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div []
+            div
+                (divCellAttributes cell)
                 [ label
-                    (
-                    [ HtmlA.id (pathAsIdFromNode cell)
-                    , HtmlA.style "font-weight" "bold"
-                    , HtmlA.style "color" "darkblue"
-                    ]
-                    ++ 
-                    marginsAndPaddings cell
+                    ([ HtmlA.id (pathAsIdFromNode cell)
+                     , HtmlA.style "font-weight" "bold"
+                     , HtmlA.style "color" "darkblue"
+                     ]
+                        ++ marginsAndPaddings cell
                     )
                     [ text (textOf "constant" cell) ]
                 ]
@@ -755,23 +771,28 @@ viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
             let
-                inputValue = textOf "input" cell
-                inputSize = if inputValue == "" then String.length "<no value>" else String.length inputValue
+                inputValue =
+                    textOf "input" cell
+
+                inputSize =
+                    if inputValue == "" then
+                        String.length "<no value>"
+                    else
+                        String.length inputValue
             in
-            
                 div
-                    []
+                    (divCellAttributes cell)
                     [ input
-                        ([ HtmlA.style "border-width" "0px" 
-                        , HtmlA.style "font-family" "Consolas"
-                        , HtmlA.style "font-size" "16px"
-                        , HtmlA.style "border" "none"
-                        , HtmlA.style "outline" "none"
-                        , HtmlA.placeholder "<no value>"
-                        , HtmlA.value inputValue
-                        , HtmlA.size inputSize
-                        , HtmlA.id (pathAsIdFromNode cell)
-                        ]
+                        ([ HtmlA.style "border-width" "0px"
+                         , HtmlA.style "font-family" "Consolas"
+                         , HtmlA.style "font-size" "16px"
+                         , HtmlA.style "border" "none"
+                         , HtmlA.style "outline" "none"
+                         , HtmlA.placeholder "<no value>"
+                         , HtmlA.value inputValue
+                         , HtmlA.size inputSize
+                         , HtmlA.id (pathAsIdFromNode cell)
+                         ]
                             ++ marginsAndPaddings cell
                             ++ createInputCellAttributes cell
                         )
@@ -787,32 +808,34 @@ viewPlaceholderCell cell =
     case isaOf cell of
         ContentCell _ ->
             let
-                placeholderValue = textOf "placeholder" cell
+                placeholderValue =
+                    textOf "placeholder" cell
 
-                inputValue = 
-                    "<" ++ 
-                        if placeholderValue == "" then
+                inputValue =
+                    "<"
+                        ++ if placeholderValue == "" then
                             "..."
-                        else 
+                           else
                             placeholderValue
-                        ++ 
-                    ">"
-                inputSize = String.length inputValue
+                                ++ ">"
+
+                inputSize =
+                    String.length inputValue
             in
                 div []
                     [ input
                         ([ HtmlA.style "border-width" "0px"
-                        , HtmlA.style "font-family" "Consolas"
-                        , HtmlA.style "font-size" "16px"
-                        , HtmlA.style "border" "none"
-                        , HtmlA.style "outline" "none"
-                        , HtmlA.style "color" "#888888"
-                        , HtmlA.style "font-style" "italic"
-                        , HtmlA.value inputValue
-                        , HtmlA.size inputSize
-                        , HtmlE.onInput Swallow
-                        , HtmlA.id (pathAsIdFromNode cell)
-                        ]
+                         , HtmlA.style "font-family" "Consolas"
+                         , HtmlA.style "font-size" "16px"
+                         , HtmlA.style "border" "none"
+                         , HtmlA.style "outline" "none"
+                         , HtmlA.style "color" "#888888"
+                         , HtmlA.style "font-style" "italic"
+                         , HtmlA.value inputValue
+                         , HtmlA.size inputSize
+                         , HtmlE.onInput Swallow
+                         , HtmlA.id (pathAsIdFromNode cell)
+                         ]
                             ++ createInputCellAttributes cell
                             ++ marginsAndPaddings cell
                         )
@@ -848,20 +871,47 @@ viewButtonCell cell =
             text ""
 
 
+divRowAttributes : Node (Cell a) -> List (Attribute (Msg a))
+divRowAttributes cell =
+    if boolOf "isGrid" cell then
+        [ HtmlA.style "display" "table-row" ]
+    else
+        []
+
+
+divCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
+divCellAttributes cell =
+    if boolOf "isGrid" cell then
+        [ HtmlA.style "display" "table-cell" ]
+    else
+        []
+
+
 marginsAndPaddings : Node (Cell a) -> List (Attribute (Msg a))
-marginsAndPaddings cell = 
-    [margins cell, paddings cell]
+marginsAndPaddings cell =
+    [ margins cell, paddings cell ]
+
 
 margins : Node (Cell a) -> Attribute (Msg a)
-margins cell = 
+margins cell =
     let
-        indentMarginLeft = if boolOf "indent" cell then 20 else 0
+        indentMarginLeft =
+            if boolOf "indent" cell then
+                20
+            else
+                0
 
-        top = (intOf "margin-top" cell |> String.fromInt) ++ "px "
-        right = ((intOf "margin-right" cell + 5) |> String.fromInt) ++ "px "
-        bottom = (intOf "margin-bottom" cell |> String.fromInt) ++ "px "
-        left = ((intOf "margin-left" cell + indentMarginLeft) |> String.fromInt) ++ "px"
+        top =
+            (intOf "margin-top" cell |> String.fromInt) ++ "px "
 
+        right =
+            ((intOf "margin-right" cell + 5) |> String.fromInt) ++ "px "
+
+        bottom =
+            (intOf "margin-bottom" cell |> String.fromInt) ++ "px "
+
+        left =
+            ((intOf "margin-left" cell + indentMarginLeft) |> String.fromInt) ++ "px"
     in
         HtmlA.style "margin" <| top ++ right ++ bottom ++ left
 
@@ -1045,3 +1095,20 @@ decodeSelection =
         (JsonD.field "selectionStart" JsonD.int)
         (JsonD.field "selectionEnd" JsonD.int)
         (JsonD.field "selectionDirection" JsonD.string)
+
+
+griddify : Bool -> Node (Cell a) -> Node (Cell a)
+griddify isGridParent node =
+    let
+        nodeNew = 
+            if isGridParent then 
+                addBool "isGrid" True node
+            else 
+                node
+
+        children = getUnderDefault nodeNew
+        isGrid = boolOf "isGrid" nodeNew
+    in
+        replaceUnderDefault (List.map (griddify isGrid) children) nodeNew
+
+    

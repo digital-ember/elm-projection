@@ -51,8 +51,8 @@ view model =
     let
 
         cellModel =
-            model.xform model.domainModel |> updatePaths
-
+            model.xform (model.domainModel |> Debug.log "model") |> griddify False |> updatePaths
+ 
         --|> Debug.log "cell"
     in
         Html.map (\editorMsg -> EditorMsg cellModel editorMsg) (viewEditor cellModel)
