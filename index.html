@@ -5137,6 +5137,13 @@ var author$project$Editor$orientationOf = F2(
 			return elm$core$Maybe$Nothing;
 		}
 	});
+var author$project$Editor$D = {$: 'D'};
+var author$project$Editor$NavSelection = function (a) {
+	return {$: 'NavSelection', a: a};
+};
+var author$project$Editor$NavSelectionEffect = function (a) {
+	return {$: 'NavSelectionEffect', a: a};
+};
 var author$project$Editor$NoOp = {$: 'NoOp'};
 var author$project$Editor$findFirstInputCellRec = F3(
 	function (root, candidates, recFun) {
@@ -5305,10 +5312,6 @@ var author$project$Editor$findPrevInputCellRec = F2(
 		return elm$core$Maybe$Just(
 			A2(author$project$Editor$findPrevInputCell, root, prev));
 	});
-var author$project$Structure$lengthOf = function (_n0) {
-	var segments = _n0.a;
-	return elm$core$List$length(segments);
-};
 var elm$core$String$fromInt = _String_fromNumber;
 var author$project$Structure$pathSegmentAsId = F2(
 	function (_n0, idPart) {
@@ -5331,6 +5334,23 @@ var author$project$Structure$pathAsIdFromNode = function (_n0) {
 	var path = _n0.a.path;
 	return author$project$Structure$pathAsId(path);
 };
+var author$project$Structure$textOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$withDefault,
+			'',
+			A2(
+				elm$core$Maybe$andThen,
+				function (prop) {
+					if (prop.$ === 'PString') {
+						var v = prop.a;
+						return elm$core$Maybe$Just(v);
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				A2(author$project$Structure$valueOf, key, node)));
+	});
 var elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
 };
@@ -5854,7 +5874,6 @@ var elm$url$Url$fromString = function (str) {
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$Dom$focus = _Browser_call('focus');
-var elm$core$Debug$log = _Debug_log;
 var elm$core$Platform$Cmd$batch = _Platform_batch;
 var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
 var elm$core$Basics$composeL = F3(
@@ -5881,79 +5900,26 @@ var elm$core$Task$attempt = F2(
 							elm$core$Result$Ok),
 						task))));
 	});
-var author$project$Editor$move = F4(
-	function (editorModel, domainModel, cellSelected, op) {
-		var pathSelected = author$project$Structure$pathOf(cellSelected);
-		var nextPathAsId = F3(
-			function (parentPath, feature, index) {
-				return author$project$Structure$pathAsId(parentPath) + ('-' + (feature + elm$core$String$fromInt(
-					A2(op, index, 1))));
-			});
-		var d = A2(
-			elm$core$Debug$log,
-			'nid',
-			author$project$Structure$pathAsIdFromNode(
-				A2(author$project$Editor$findNextInputCell, editorModel, cellSelected)));
-		if (author$project$Structure$lengthOf(pathSelected) === 1) {
-			return elm$core$Platform$Cmd$none;
-		} else {
-			var split = author$project$Structure$splitLastPathSegment(pathSelected);
-			if (split.a.$ === 'Nothing') {
-				var _n1 = split.a;
-				return elm$core$Platform$Cmd$none;
-			} else {
-				if (split.b.$ === 'Nothing') {
-					var _n2 = split.b;
-					return elm$core$Platform$Cmd$none;
-				} else {
-					var feature = split.a.a.feature;
-					var index = split.a.a.index;
-					var parentPath = split.b.a;
-					return A2(
-						elm$core$Task$attempt,
-						function (_n3) {
-							return author$project$Editor$NoOp;
-						},
-						elm$browser$Browser$Dom$focus(
-							A3(nextPathAsId, parentPath, feature, index)));
-				}
-			}
-		}
-	});
-var author$project$Structure$textOf = F2(
-	function (key, node) {
-		return A2(
-			elm$core$Maybe$withDefault,
-			'',
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PString') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
-	});
-var author$project$Editor$updateSelectionByOrientation = F4(
-	function (editorModel, domainModel, _n0, orientation) {
+var author$project$Editor$updateSelectionByOrientation = F3(
+	function (editorModel, _n0, orientation) {
 		var dir = _n0.dir;
 		var cellSelected = _n0.cellSelected;
 		var selection = _n0.selection;
 		var moverTask = function (f) {
 			return A2(
 				elm$core$Task$attempt,
-				function (_n10) {
-					return author$project$Editor$NoOp;
+				function (result) {
+					if (result.$ === 'Err') {
+						return author$project$Editor$NavSelection(
+							author$project$Editor$NavSelectionEffect(
+								{cellSelected: cellSelected, dir: author$project$Editor$D, selection: selection}));
+					} else {
+						return author$project$Editor$NoOp;
+					}
 				},
 				elm$browser$Browser$Dom$focus(
 					author$project$Structure$pathAsIdFromNode(
 						A2(f, editorModel, cellSelected))));
-		};
-		var mover = function (op) {
-			return A4(author$project$Editor$move, editorModel, domainModel, cellSelected, op);
 		};
 		var _n1 = _Utils_Tuple2(dir, orientation);
 		_n1$4:
@@ -5991,26 +5957,28 @@ var author$project$Editor$updateSelectionByOrientation = F4(
 		}
 		return elm$core$Platform$Cmd$none;
 	});
-var author$project$Editor$updateSelection = F3(
-	function (editorModel, domainModel, navData) {
+var author$project$Editor$updateSelection = F2(
+	function (editorModel, navData) {
 		var mbOrientation = A2(author$project$Editor$orientationOf, editorModel, navData.cellSelected);
 		if (mbOrientation.$ === 'Nothing') {
 			return elm$core$Platform$Cmd$none;
 		} else {
 			var orientation = mbOrientation.a;
-			return A4(author$project$Editor$updateSelectionByOrientation, editorModel, domainModel, navData, orientation);
+			return A3(author$project$Editor$updateSelectionByOrientation, editorModel, navData, orientation);
 		}
 	});
-var author$project$Editor$D = {$: 'D'};
-var author$project$Editor$updateSelectionOnEnter = F3(
-	function (editorModel, domainModel, cellContext) {
-		var navData = {
-			cellSelected: cellContext,
-			dir: author$project$Editor$D,
-			selection: {dir: '', end: 0, start: 0}
-		};
-		return A4(author$project$Editor$updateSelectionByOrientation, editorModel, domainModel, navData, author$project$Editor$Vert);
-	});
+var author$project$Editor$updateSelectionOnEnter = function (cellContext) {
+	return A2(
+		elm$core$Task$perform,
+		author$project$Editor$NavSelection,
+		elm$core$Task$succeed(
+			author$project$Editor$NavSelectionEffect(
+				{
+					cellSelected: cellContext,
+					dir: author$project$Editor$D,
+					selection: {dir: '', end: 0, start: 0}
+				})));
+};
 var elm$core$Dict$Black = {$: 'Black'};
 var elm$core$Dict$Red = {$: 'Red'};
 var elm$core$Dict$balance = F5(
@@ -6959,7 +6927,7 @@ var author$project$Editor$updateEditor = F3(
 							A3(author$project$Structure$addChildAtPathToDefault, nodeToInsert, path, domainModel)) : author$project$Structure$updatePaths(
 							A4(author$project$Structure$addChildAtPathToCustom, feature, nodeToInsert, path, domainModel))) : author$project$Structure$updatePaths(
 							A3(author$project$Structure$insertChildAfterPath, nodeToInsert, path, domainModel)),
-						A3(author$project$Editor$updateSelectionOnEnter, editorModel, domainModel, cellContext));
+						author$project$Editor$updateSelectionOnEnter(cellContext));
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
@@ -6976,7 +6944,7 @@ var author$project$Editor$updateEditor = F3(
 							A3(author$project$Structure$addChildAtPathToDefault, nodeToInsert, path, domainModel)) : author$project$Structure$updatePaths(
 							A4(author$project$Structure$addChildAtPathToCustom, feature, nodeToInsert, path, domainModel))) : author$project$Structure$updatePaths(
 							A3(author$project$Structure$insertChildAfterPath, nodeToInsert, path, domainModel)),
-						A3(author$project$Editor$updateSelectionOnEnter, editorModel, domainModel, cellContext));
+						author$project$Editor$updateSelectionOnEnter(cellContext));
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
@@ -7035,7 +7003,7 @@ var author$project$Editor$updateEditor = F3(
 					var navData = effect.a;
 					return _Utils_Tuple2(
 						domainModel,
-						A3(author$project$Editor$updateSelection, editorModel, domainModel, navData));
+						A2(author$project$Editor$updateSelection, editorModel, navData));
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
@@ -7222,12 +7190,6 @@ var elm$html$Html$Events$onInput = function (tagger) {
 var author$project$Editor$effectAttributeFromInput = function (handler) {
 	return elm$html$Html$Events$onInput(handler);
 };
-var author$project$Editor$NavSelection = function (a) {
-	return {$: 'NavSelection', a: a};
-};
-var author$project$Editor$NavSelectionEffect = function (a) {
-	return {$: 'NavSelectionEffect', a: a};
-};
 var author$project$Editor$OnBackspace = F2(
 	function (a, b) {
 		return {$: 'OnBackspace', a: a, b: b};
@@ -7250,6 +7212,7 @@ var author$project$Editor$decodeSelection = A4(
 	A2(elm$json$Json$Decode$field, 'selectionStart', elm$json$Json$Decode$int),
 	A2(elm$json$Json$Decode$field, 'selectionEnd', elm$json$Json$Decode$int),
 	A2(elm$json$Json$Decode$field, 'selectionDirection', elm$json$Json$Decode$string));
+var elm$core$Debug$log = _Debug_log;
 var elm$json$Json$Decode$andThen = _Json_andThen;
 var elm$json$Json$Decode$fail = _Json_fail;
 var author$project$Editor$effectAttributeFromKey = function (dictKeyToMsg) {

@@ -29,6 +29,7 @@ import Html.Events as HtmlE
 import Json.Decode as JsonD
 import Browser.Dom as Dom
 import Task as Task
+import Result as Result
 
 
 type Cell a
@@ -301,14 +302,14 @@ updateEditor msg editorModel domainModel =
                             addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
-                    , updateSelectionOnEnter editorModel domainModel cellContext
+                    , updateSelectionOnEnter cellContext
                     )
 
                 _ ->
                     ( domainModel, Cmd.none )
 
         OnClick effect cellContext ->
-            case effect of
+            case effect of 
                 InsertionEffect { path, nodeToInsert, isReplace, feature } ->
                     ( if isReplace then
                         if feature == "" || feature == "default" then
@@ -317,7 +318,7 @@ updateEditor msg editorModel domainModel =
                             addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
-                    , updateSelectionOnEnter editorModel domainModel cellContext
+                    , updateSelectionOnEnter cellContext
                     )
 
                 _ ->
@@ -350,7 +351,7 @@ updateEditor msg editorModel domainModel =
         NavSelection effect ->
             case effect of
                 NavSelectionEffect navData ->
-                    ( domainModel, updateSelection editorModel domainModel navData )
+                    ( domainModel, updateSelection editorModel navData )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -395,20 +396,18 @@ tryDeleteRight domainModel { effectInput, effectHandler, selection } textLength 
     
 
 
-updateSelectionOnEnter : Node (Cell a) -> Node a -> Node (Cell a) -> Cmd (Msg a)
-updateSelectionOnEnter editorModel domainModel cellContext =
-    let
-        navData =
-            { dir = D
-            , cellSelected = cellContext
-            , selection = { start = 0, end = 0, dir = "" }
-            }
-    in
-        updateSelectionByOrientation editorModel domainModel navData Vert
+updateSelectionOnEnter : Node (Cell a) -> Cmd (Msg a)
+updateSelectionOnEnter cellContext =
+    Task.perform 
+        NavSelection 
+        (Task.succeed 
+            (NavSelectionEffect {dir = D, cellSelected = cellContext, selection = {dir = "", start = 0, end = 0}})
+        )
+ 
 
 
-updateSelection : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
-updateSelection editorModel domainModel navData =
+updateSelection : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
+updateSelection editorModel navData =
     let
         mbOrientation =
             orientationOf editorModel navData.cellSelected
@@ -418,17 +417,24 @@ updateSelection editorModel domainModel navData =
                 Cmd.none
 
             Just orientation ->
-                updateSelectionByOrientation editorModel domainModel navData orientation
+                updateSelectionByOrientation editorModel navData orientation
 
 
-updateSelectionByOrientation : Node (Cell a) -> Node a -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
-updateSelectionByOrientation editorModel domainModel { dir, cellSelected, selection } orientation =
+updateSelectionByOrientation : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
+updateSelectionByOrientation editorModel { dir, cellSelected, selection } orientation =
     let
-        mover op =
-            move editorModel domainModel cellSelected op
 
         moverTask f =
-            Task.attempt (\_ -> NoOp) (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
+            Task.attempt 
+                (\result -> 
+                    case result of  
+                        Result.Err _ ->
+                            NavSelection (NavSelectionEffect {dir = D, cellSelected = cellSelected, selection = selection})
+
+                        _ -> 
+                            NoOp
+                ) 
+                (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
     in
         case ( dir, orientation ) of
             ( U, Vert ) ->
@@ -452,37 +458,6 @@ updateSelectionByOrientation editorModel domainModel { dir, cellSelected, select
             _ ->
                 Cmd.none
 
-
-move : Node (Cell a) -> Node a -> Node (Cell a) -> (Int -> Int -> Int) -> Cmd (Msg a)
-move editorModel domainModel cellSelected op =
-    let
-        nextPathAsId parentPath feature index =
-            --pathAsIdFromNode (findNextInputCell editorModel cellSelected)
-            pathAsId parentPath ++ "-" ++ feature ++ String.fromInt (op index 1)
-
-        d =
-            pathAsIdFromNode (findNextInputCell editorModel cellSelected) |> Debug.log "nid"
-
-        pathSelected =
-            pathOf cellSelected
-    in
-        if lengthOf pathSelected == 1 then
-            --root or error
-            Cmd.none
-        else
-            let
-                split =
-                    splitLastPathSegment pathSelected
-            in
-                case split of
-                    ( Nothing, _ ) ->
-                        Cmd.none
-
-                    ( _, Nothing ) ->
-                        Cmd.none
-
-                    ( Just { feature, index }, Just parentPath ) ->
-                        Task.attempt (\_ -> NoOp) (Dom.focus <| nextPathAsId parentPath feature index)
 
 findPrevInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
 findPrevInputCell root current =
