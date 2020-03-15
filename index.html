@@ -7573,6 +7573,9 @@ var author$project$Editor$Swallow = function (a) {
 var author$project$Editor$viewPlaceholderCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
+		var placeholderValue = A2(author$project$Structure$textOf, 'placeholder', cell);
+		var inputValue = '<' + ((placeholderValue === '') ? '...' : (placeholderValue + '>'));
+		var inputSize = elm$core$String$length(inputValue);
 		return A2(
 			elm$html$Html$div,
 			_List_Nil,
@@ -7590,8 +7593,8 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
 								A2(elm$html$Html$Attributes$style, 'color', '#888888'),
 								A2(elm$html$Html$Attributes$style, 'font-style', 'italic'),
-								elm$html$Html$Attributes$value(
-								'<' + (A2(author$project$Structure$textOf, 'placeholder', cell) + '>')),
+								elm$html$Html$Attributes$value(inputValue),
+								elm$html$Html$Attributes$size(inputSize),
 								elm$html$Html$Events$onInput(author$project$Editor$Swallow),
 								elm$html$Html$Attributes$id(
 								author$project$Structure$pathAsIdFromNode(cell))

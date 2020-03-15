@@ -730,24 +730,24 @@ viewInputCell cell =
                 inputSize = if inputValue == "" then String.length "<no value>" else String.length inputValue
             in
             
-            div
-                []
-                [ input
-                    ([ HtmlA.style "border-width" "0px"
-                     , HtmlA.style "margin" "0px 3px 0px 0px"
-                     , HtmlA.style "font-family" "Consolas"
-                     , HtmlA.style "font-size" "16px"
-                     , HtmlA.style "border" "none"
-                     , HtmlA.style "outline" "none"
-                     , HtmlA.placeholder "<no value>"
-                     , HtmlA.value inputValue
-                     , HtmlA.size inputSize
-                     , HtmlA.id (pathAsIdFromNode cell)
-                     ]
-                        ++ createInputCellAttributes cell
-                    )
+                div
                     []
-                ]
+                    [ input
+                        ([ HtmlA.style "border-width" "0px"
+                        , HtmlA.style "margin" "0px 3px 0px 0px"
+                        , HtmlA.style "font-family" "Consolas"
+                        , HtmlA.style "font-size" "16px"
+                        , HtmlA.style "border" "none"
+                        , HtmlA.style "outline" "none"
+                        , HtmlA.placeholder "<no value>"
+                        , HtmlA.value inputValue
+                        , HtmlA.size inputSize
+                        , HtmlA.id (pathAsIdFromNode cell)
+                        ]
+                            ++ createInputCellAttributes cell
+                        )
+                        []
+                    ]
 
         EffectCell _ ->
             text ""
@@ -757,23 +757,37 @@ viewPlaceholderCell : Node (Cell a) -> Html (Msg a)
 viewPlaceholderCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div []
-                [ input
-                    ([ HtmlA.style "border-width" "0px"
-                     , HtmlA.style "font-family" "Consolas"
-                     , HtmlA.style "font-size" "16px"
-                     , HtmlA.style "border" "none"
-                     , HtmlA.style "outline" "none"
-                     , HtmlA.style "color" "#888888"
-                     , HtmlA.style "font-style" "italic"
-                     , HtmlA.value ("<" ++ textOf "placeholder" cell ++ ">")
-                     , HtmlE.onInput Swallow
-                     , HtmlA.id (pathAsIdFromNode cell)
-                     ]
-                        ++ createInputCellAttributes cell
-                    )
-                    []
-                ]
+            let
+                placeholderValue = textOf "placeholder" cell
+
+                inputValue = 
+                    "<" ++ 
+                        if placeholderValue == "" then
+                            "..."
+                        else 
+                            placeholderValue
+                        ++ 
+                    ">"
+                inputSize = String.length inputValue
+            in
+                div []
+                    [ input
+                        ([ HtmlA.style "border-width" "0px"
+                        , HtmlA.style "font-family" "Consolas"
+                        , HtmlA.style "font-size" "16px"
+                        , HtmlA.style "border" "none"
+                        , HtmlA.style "outline" "none"
+                        , HtmlA.style "color" "#888888"
+                        , HtmlA.style "font-style" "italic"
+                        , HtmlA.value inputValue
+                        , HtmlA.size inputSize
+                        , HtmlE.onInput Swallow
+                        , HtmlA.id (pathAsIdFromNode cell)
+                        ]
+                            ++ createInputCellAttributes cell
+                        )
+                        []
+                    ]
 
         EffectCell _ ->
             text ""
