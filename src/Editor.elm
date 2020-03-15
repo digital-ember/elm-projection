@@ -2,6 +2,7 @@ module Editor
     exposing
         ( Cell
         , Msg
+        , MarginSide(..)
         , createRootCell
         , with
         , withRange
@@ -12,6 +13,7 @@ module Editor
         , placeholderCell
         , buttonCell
         , addIndent
+        , addMargin
         , withEffect
         , insertionEffect
         , replacementEffect
@@ -103,6 +105,12 @@ type Dir
     | L
     | R
 
+type MarginSide 
+    = Top
+    | Right
+    | Bottom
+    | Left
+
 
 createRootCell : Node (Cell a)
 createRootCell =
@@ -160,6 +168,25 @@ addIndent : Node (Cell a) -> Node (Cell a)
 addIndent node =
     addBool "indent" True node
 
+
+addMargin : MarginSide -> Int -> Node (Cell a) -> Node (Cell a)
+addMargin side space node =
+    let
+        key = 
+            case side of
+                Top -> 
+                    "margin-top" 
+                
+                Right -> 
+                    "margin-right"
+
+                Bottom -> 
+                    "margin-bottom"
+
+                Left -> 
+                    "margin-left"
+    in
+        addInt key space node
 
 
 -- EFFECTS
@@ -553,7 +580,7 @@ findNextInputCellRec root next =
                 [] ->
                     Just <| findNextInputCell root next
 
-                    
+
                 children ->
                     let
                         mbFirst =
@@ -672,19 +699,11 @@ viewVertStackCell : Node (Cell a) -> Html (Msg a)
 viewVertStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            let
-                indent =
-                    if boolOf "indent" cell then
-                        HtmlA.style "margin" "3px 20px"
-                    else
-                        HtmlA.style "margin" "0px"
-            in
-                div
-                    [ indent
-                    , HtmlA.id (pathAsIdFromNode cell)
-                    ]
-                <|
-                    viewCell cell
+            div
+                (HtmlA.id (pathAsIdFromNode cell)
+                :: marginsAndPaddings cell)
+            <|
+                viewCell cell
 
         EffectCell _ ->
             text ""
@@ -695,9 +714,14 @@ viewHorizStackCell cell =
     case isaOf cell of
         ContentCell _ ->
             div
+                
+                (
                 [ HtmlA.style "display" "flex"
                 , HtmlA.id (pathAsIdFromNode cell)
                 ]
+                ++ 
+                marginsAndPaddings cell
+                )
             <|
                 viewCell cell
 
@@ -711,11 +735,14 @@ viewConstantCell cell =
         ContentCell _ ->
             div []
                 [ label
-                    [ HtmlA.style "margin" "0px 3px 0px 0px"
-                    , HtmlA.id (pathAsIdFromNode cell)
+                    (
+                    [ HtmlA.id (pathAsIdFromNode cell)
                     , HtmlA.style "font-weight" "bold"
                     , HtmlA.style "color" "darkblue"
                     ]
+                    ++ 
+                    marginsAndPaddings cell
+                    )
                     [ text (textOf "constant" cell) ]
                 ]
 
@@ -735,8 +762,7 @@ viewInputCell cell =
                 div
                     []
                     [ input
-                        ([ HtmlA.style "border-width" "0px"
-                        , HtmlA.style "margin" "0px 3px 0px 0px"
+                        ([ HtmlA.style "border-width" "0px" 
                         , HtmlA.style "font-family" "Consolas"
                         , HtmlA.style "font-size" "16px"
                         , HtmlA.style "border" "none"
@@ -746,6 +772,7 @@ viewInputCell cell =
                         , HtmlA.size inputSize
                         , HtmlA.id (pathAsIdFromNode cell)
                         ]
+                            ++ marginsAndPaddings cell
                             ++ createInputCellAttributes cell
                         )
                         []
@@ -787,6 +814,7 @@ viewPlaceholderCell cell =
                         , HtmlA.id (pathAsIdFromNode cell)
                         ]
                             ++ createInputCellAttributes cell
+                            ++ marginsAndPaddings cell
                         )
                         []
                     ]
@@ -814,10 +842,33 @@ viewButtonCell cell =
                             )
                         |> Maybe.withDefault []
             in
-                button onClick [ text (textOf "text" cell) ]
+                button (marginsAndPaddings cell ++ onClick) [ text (textOf "text" cell) ]
 
         EffectCell _ ->
             text ""
+
+
+marginsAndPaddings : Node (Cell a) -> List (Attribute (Msg a))
+marginsAndPaddings cell = 
+    [margins cell, paddings cell]
+
+margins : Node (Cell a) -> Attribute (Msg a)
+margins cell = 
+    let
+        indentMarginLeft = if boolOf "indent" cell then 20 else 0
+
+        top = (intOf "margin-top" cell |> String.fromInt) ++ "px "
+        right = ((intOf "margin-right" cell + 5) |> String.fromInt) ++ "px "
+        bottom = (intOf "margin-bottom" cell |> String.fromInt) ++ "px "
+        left = ((intOf "margin-left" cell + indentMarginLeft) |> String.fromInt) ++ "px"
+
+    in
+        HtmlA.style "margin" <| top ++ right ++ bottom ++ left
+
+
+paddings : Node (Cell a) -> Attribute (Msg a)
+paddings cell =
+    HtmlA.style "padding" <| "0px 0px 0px 0px"
 
 
 createInputCellAttributes : Node (Cell a) -> List (Attribute (Msg a))

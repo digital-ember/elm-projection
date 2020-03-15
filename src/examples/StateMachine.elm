@@ -50,9 +50,7 @@ editorStateMachine : Node Domain -> Node (Cell Domain)
 editorStateMachine sm =
     vertStackCell
         |> with (editorStateMachineName sm)
-        |> with (constantCell "")
         |> with (editorEvents sm)
-        |> with (constantCell "")
         |> with (editorStates sm)
 
 
@@ -67,6 +65,7 @@ editorStateMachineName sm =
     horizStackCell
         |> with (constantCell "name:")
         |> with (inputCell "name" sm)
+        |> addMargin Bottom 20
 
 
 {-| If our statemachine does not contain any events, we put a placeholder cell to allow the user to add events
@@ -92,6 +91,7 @@ editorEvents sm =
                     |> withRange editorEventsResult
                 )
             |> with (constantCell "end")
+            |> addMargin Bottom 20
 
 
 editorEvent : Node Domain -> Node (Cell Domain)
@@ -151,7 +151,7 @@ editorState state =
                 (buttonCell "+"
                     |> withEffect (insertionEffect state ctorState)
                 )
-            |> with (constantCell "")
+            |> addMargin Bottom 20
 
 
 editorStateHead : Node Domain -> Node (Cell Domain)

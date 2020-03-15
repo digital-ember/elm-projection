@@ -7110,6 +7110,54 @@ var author$project$Runtime$update = F2(
 					editorCmd));
 		}
 	});
+var author$project$Structure$intOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$withDefault,
+			0,
+			A2(
+				elm$core$Maybe$andThen,
+				function (prop) {
+					if (prop.$ === 'PInt') {
+						var v = prop.a;
+						return elm$core$Maybe$Just(v);
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				A2(author$project$Structure$valueOf, key, node)));
+	});
+var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
+var author$project$Editor$margins = function (cell) {
+	var top = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, 'margin-top', cell)) + 'px ';
+	var right = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, 'margin-right', cell) + 5) + 'px ';
+	var indentMarginLeft = A2(author$project$Structure$boolOf, 'indent', cell) ? 20 : 0;
+	var left = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, 'margin-left', cell) + indentMarginLeft) + 'px';
+	var bottom = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, 'margin-bottom', cell)) + 'px ';
+	return A2(
+		elm$html$Html$Attributes$style,
+		'margin',
+		_Utils_ap(
+			top,
+			_Utils_ap(
+				right,
+				_Utils_ap(bottom, left))));
+};
+var author$project$Editor$paddings = function (cell) {
+	return A2(elm$html$Html$Attributes$style, 'padding', '0px 0px 0px 0px');
+};
+var author$project$Editor$marginsAndPaddings = function (cell) {
+	return _List_fromArray(
+		[
+			author$project$Editor$margins(cell),
+			author$project$Editor$paddings(cell)
+		]);
+};
 var author$project$Editor$OnClick = F2(
 	function (a, b) {
 		return {$: 'OnClick', a: a, b: b};
@@ -7164,7 +7212,9 @@ var author$project$Editor$viewButtonCell = function (cell) {
 					A2(author$project$Editor$isasUnderCustom, 'effects', cell))));
 		return A2(
 			elm$html$Html$button,
-			onClick,
+			_Utils_ap(
+				author$project$Editor$marginsAndPaddings(cell),
+				onClick),
 			_List_fromArray(
 				[
 					elm$html$Html$text(
@@ -7185,8 +7235,6 @@ var elm$html$Html$Attributes$stringProperty = F2(
 			elm$json$Json$Encode$string(string));
 	});
 var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
-var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
 var author$project$Editor$viewConstantCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
@@ -7197,14 +7245,15 @@ var author$project$Editor$viewConstantCell = function (cell) {
 				[
 					A2(
 					elm$html$Html$label,
-					_List_fromArray(
-						[
-							A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px'),
-							elm$html$Html$Attributes$id(
-							author$project$Structure$pathAsIdFromNode(cell)),
-							A2(elm$html$Html$Attributes$style, 'font-weight', 'bold'),
-							A2(elm$html$Html$Attributes$style, 'color', 'darkblue')
-						]),
+					_Utils_ap(
+						_List_fromArray(
+							[
+								elm$html$Html$Attributes$id(
+								author$project$Structure$pathAsIdFromNode(cell)),
+								A2(elm$html$Html$Attributes$style, 'font-weight', 'bold'),
+								A2(elm$html$Html$Attributes$style, 'color', 'darkblue')
+							]),
+						author$project$Editor$marginsAndPaddings(cell)),
 					_List_fromArray(
 						[
 							elm$html$Html$text(
@@ -7593,7 +7642,6 @@ var author$project$Editor$viewInputCell = function (cell) {
 						_List_fromArray(
 							[
 								A2(elm$html$Html$Attributes$style, 'border-width', '0px'),
-								A2(elm$html$Html$Attributes$style, 'margin', '0px 3px 0px 0px'),
 								A2(elm$html$Html$Attributes$style, 'font-family', 'Consolas'),
 								A2(elm$html$Html$Attributes$style, 'font-size', '16px'),
 								A2(elm$html$Html$Attributes$style, 'border', 'none'),
@@ -7604,7 +7652,9 @@ var author$project$Editor$viewInputCell = function (cell) {
 								elm$html$Html$Attributes$id(
 								author$project$Structure$pathAsIdFromNode(cell))
 							]),
-						author$project$Editor$createInputCellAttributes(cell)),
+						_Utils_ap(
+							author$project$Editor$marginsAndPaddings(cell),
+							author$project$Editor$createInputCellAttributes(cell))),
 					_List_Nil)
 				]));
 	} else {
@@ -7643,7 +7693,9 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 								elm$html$Html$Attributes$id(
 								author$project$Structure$pathAsIdFromNode(cell))
 							]),
-						author$project$Editor$createInputCellAttributes(cell)),
+						_Utils_ap(
+							author$project$Editor$createInputCellAttributes(cell),
+							author$project$Editor$marginsAndPaddings(cell))),
 					_List_Nil)
 				]));
 	} else {
@@ -7702,12 +7754,14 @@ var author$project$Editor$viewHorizStackCell = function (cell) {
 	if (_n2.$ === 'ContentCell') {
 		return A2(
 			elm$html$Html$div,
-			_List_fromArray(
-				[
-					A2(elm$html$Html$Attributes$style, 'display', 'flex'),
-					elm$html$Html$Attributes$id(
-					author$project$Structure$pathAsIdFromNode(cell))
-				]),
+			_Utils_ap(
+				_List_fromArray(
+					[
+						A2(elm$html$Html$Attributes$style, 'display', 'flex'),
+						elm$html$Html$Attributes$id(
+						author$project$Structure$pathAsIdFromNode(cell))
+					]),
+				author$project$Editor$marginsAndPaddings(cell)),
 			author$project$Editor$viewCell(cell));
 	} else {
 		return elm$html$Html$text('');
@@ -7725,15 +7779,13 @@ var author$project$Editor$viewStackCell = function (cell) {
 var author$project$Editor$viewVertStackCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
-		var indent = A2(author$project$Structure$boolOf, 'indent', cell) ? A2(elm$html$Html$Attributes$style, 'margin', '3px 20px') : A2(elm$html$Html$Attributes$style, 'margin', '0px');
 		return A2(
 			elm$html$Html$div,
-			_List_fromArray(
-				[
-					indent,
-					elm$html$Html$Attributes$id(
-					author$project$Structure$pathAsIdFromNode(cell))
-				]),
+			A2(
+				elm$core$List$cons,
+				elm$html$Html$Attributes$id(
+					author$project$Structure$pathAsIdFromNode(cell)),
+				author$project$Editor$marginsAndPaddings(cell)),
 			author$project$Editor$viewCell(cell));
 	} else {
 		return elm$html$Html$text('');
@@ -7818,7 +7870,7 @@ var author$project$Editor$createRootCell = author$project$Structure$createRoot(
 var author$project$Editor$with = function (node) {
 	return author$project$Structure$addToDefault(node);
 };
-var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
+var author$project$Editor$StackCell = {$: 'StackCell'};
 var author$project$Structure$addProperty = F2(
 	function (_n0, _n1) {
 		var key = _n0.a;
@@ -7831,27 +7883,6 @@ var author$project$Structure$addProperty = F2(
 					properties: A3(elm$core$Dict$insert, key, value, data.properties)
 				}));
 	});
-var author$project$Structure$addText = F3(
-	function (key, text, node) {
-		return A2(
-			author$project$Structure$addProperty,
-			_Utils_Tuple2(
-				key,
-				author$project$Structure$PString(text)),
-			node);
-	});
-var author$project$Structure$createNode = function (isa) {
-	return A2(author$project$Structure$createNodeInternal, '', isa);
-};
-var author$project$Editor$constantCell = function (text) {
-	return A3(
-		author$project$Structure$addText,
-		'constant',
-		text,
-		author$project$Structure$createNode(
-			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
-};
-var author$project$Editor$StackCell = {$: 'StackCell'};
 var author$project$Structure$addBool = F3(
 	function (key, value, node) {
 		return A2(
@@ -7861,14 +7892,61 @@ var author$project$Structure$addBool = F3(
 				author$project$Structure$PBool(value)),
 			node);
 	});
+var author$project$Structure$createNode = function (isa) {
+	return A2(author$project$Structure$createNodeInternal, '', isa);
+};
 var author$project$Editor$vertStackCell = A3(
 	author$project$Structure$addBool,
 	'isHoriz',
 	false,
 	author$project$Structure$createNode(
 		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
+var author$project$Editor$Bottom = {$: 'Bottom'};
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, 'indent', true, node);
+};
+var author$project$Structure$addInt = F3(
+	function (key, value, node) {
+		return A2(
+			author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PInt(value)),
+			node);
+	});
+var author$project$Editor$addMargin = F3(
+	function (side, space, node) {
+		var key = function () {
+			switch (side.$) {
+				case 'Top':
+					return 'margin-top';
+				case 'Right':
+					return 'margin-right';
+				case 'Bottom':
+					return 'margin-bottom';
+				default:
+					return 'margin-left';
+			}
+		}();
+		return A3(author$project$Structure$addInt, key, space, node);
+	});
+var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
+var author$project$Structure$addText = F3(
+	function (key, text, node) {
+		return A2(
+			author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PString(text)),
+			node);
+	});
+var author$project$Editor$constantCell = function (text) {
+	return A3(
+		author$project$Structure$addText,
+		'constant',
+		text,
+		author$project$Structure$createNode(
+			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
 };
 var author$project$Structure$addToDefaultRange = F2(
 	function (children, parent) {
@@ -7981,19 +8059,23 @@ var author$project$StateMachine$editorEvents = function (sm) {
 			return A2(elm$core$List$map, author$project$StateMachine$editorEvent, events);
 		}
 	}();
-	return A2(
-		author$project$Editor$with,
-		author$project$Editor$constantCell('end'),
+	return A3(
+		author$project$Editor$addMargin,
+		author$project$Editor$Bottom,
+		20,
 		A2(
 			author$project$Editor$with,
-			A2(
-				author$project$Editor$withRange,
-				editorEventsResult,
-				author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
+			author$project$Editor$constantCell('end'),
 			A2(
 				author$project$Editor$with,
-				author$project$Editor$constantCell('events'),
-				author$project$Editor$vertStackCell)));
+				A2(
+					author$project$Editor$withRange,
+					editorEventsResult,
+					author$project$Editor$addIndent(author$project$Editor$vertStackCell)),
+				A2(
+					author$project$Editor$with,
+					author$project$Editor$constantCell('events'),
+					author$project$Editor$vertStackCell))));
 };
 var author$project$Editor$horizStackCell = A3(
 	author$project$Structure$addBool,
@@ -8002,13 +8084,17 @@ var author$project$Editor$horizStackCell = A3(
 	author$project$Structure$createNode(
 		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
 var author$project$StateMachine$editorStateMachineName = function (sm) {
-	return A2(
-		author$project$Editor$with,
-		A2(author$project$Editor$inputCell, 'name', sm),
+	return A3(
+		author$project$Editor$addMargin,
+		author$project$Editor$Bottom,
+		20,
 		A2(
 			author$project$Editor$with,
-			author$project$Editor$constantCell('name:'),
-			author$project$Editor$horizStackCell));
+			A2(author$project$Editor$inputCell, 'name', sm),
+			A2(
+				author$project$Editor$with,
+				author$project$Editor$constantCell('name:'),
+				author$project$Editor$horizStackCell)));
 };
 var author$project$Editor$ButtonCell = {$: 'ButtonCell'};
 var author$project$Editor$buttonCell = function (text) {
@@ -8093,9 +8179,10 @@ var author$project$StateMachine$editorState = function (state) {
 			return A2(elm$core$List$map, author$project$StateMachine$editorTransition, transitions);
 		}
 	}();
-	return A2(
-		author$project$Editor$with,
-		author$project$Editor$constantCell(''),
+	return A3(
+		author$project$Editor$addMargin,
+		author$project$Editor$Bottom,
+		20,
 		A2(
 			author$project$Editor$with,
 			A2(
@@ -8143,17 +8230,11 @@ var author$project$StateMachine$editorStateMachine = function (sm) {
 		author$project$StateMachine$editorStates(sm),
 		A2(
 			author$project$Editor$with,
-			author$project$Editor$constantCell(''),
+			author$project$StateMachine$editorEvents(sm),
 			A2(
 				author$project$Editor$with,
-				author$project$StateMachine$editorEvents(sm),
-				A2(
-					author$project$Editor$with,
-					author$project$Editor$constantCell(''),
-					A2(
-						author$project$Editor$with,
-						author$project$StateMachine$editorStateMachineName(sm),
-						author$project$Editor$vertStackCell)))));
+				author$project$StateMachine$editorStateMachineName(sm),
+				author$project$Editor$vertStackCell)));
 };
 var author$project$StateMachine$editor = function (sm) {
 	return A2(
