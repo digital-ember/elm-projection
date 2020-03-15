@@ -68,7 +68,7 @@ type alias PathSegment =
 
 
 type alias Features a =
-    { default : Maybe (List (Node a))
+    { default : List (Node a)
     , custom : Dict String (List (Node a))
     }
 
@@ -192,7 +192,7 @@ stringProperty ( k, v ) =
 
 emptyFeatures : Features a
 emptyFeatures =
-    { default = Nothing
+    { default = []
     , custom = Dict.empty
     }
 
@@ -253,11 +253,11 @@ addToDefault child (Node ({ features } as data)) =
     let
         featuresNew =
             case features.default of
-                Nothing ->
-                    { features | default = Just [ child ] }
+                [] ->
+                    { features | default = [ child ] }
 
-                Just children ->
-                    { features | default = Just (List.reverse (child :: List.reverse children)) }
+                children ->
+                    { features | default = List.reverse (child :: List.reverse children) }
     in
         Node { data | features = featuresNew }
 
@@ -284,7 +284,7 @@ addToCustom key child (Node ({ features } as data)) =
         Node { data | features = featuresNew }
 
 
-replaceUnderDefault : Maybe (List (Node a)) -> Node a -> Node a
+replaceUnderDefault : List (Node a) -> Node a -> Node a
 replaceUnderDefault children (Node ({ features } as data)) =
     let
         featuresNew =
@@ -307,11 +307,11 @@ insertAfterUnderDefault child pathAfter (Node ({ features } as data)) =
     let
         featuresNew =
             case features.default of
-                Nothing ->
-                    { features | default = Just [ child ] }
+                [] ->
+                    { features | default = [ child ] }
 
-                Just children ->
-                    { features | default = Just (List.foldl (insertAfter pathAfter child) [] children) }
+                children ->
+                    { features | default = List.foldl (insertAfter pathAfter child) [] children }
     in
         Node { data | features = featuresNew }
 
@@ -346,7 +346,7 @@ insertAfter pathAfter child candidate result =
         result ++ [ candidate ]
 
 
-getUnder : String -> Node a -> Maybe (List (Node a))
+getUnder : String -> Node a -> List (Node a)
 getUnder feature node =
     if feature == strDefault then
         getUnderDefault node
@@ -354,14 +354,15 @@ getUnder feature node =
         getUnderCustom feature node
 
 
-getUnderDefault : Node a -> Maybe (List (Node a))
+getUnderDefault : Node a -> List (Node a)
 getUnderDefault (Node { features }) =
     features.default
 
 
-getUnderCustom : String -> Node a -> Maybe (List (Node a))
+getUnderCustom : String -> Node a -> List (Node a)
 getUnderCustom key (Node { features }) =
     Dict.get key features.custom
+        |> Maybe.withDefault []
 
 
 addChildAtPathToDefault : Node a -> Path -> Node a -> Node a
@@ -386,21 +387,21 @@ addChildAtPathToDefaultRec nodeNew segments parent =
 addChildrenDefault : Node a -> PathSegment -> List PathSegment -> Node a -> Node a
 addChildrenDefault nodeNew { feature, index } tailSegments ((Node ({ features } as data)) as parent) =
     let
-        mbChildrenNew =
+        childrenNew =
             (if feature == strDefault then
                 getUnderDefault parent
             else
                 getUnderCustom feature parent
             )
-            |> Maybe.andThen (getNewChildrenForRecDefaultAdd nodeNew index tailSegments)
+            |> getNewChildrenForRecDefaultAdd nodeNew index tailSegments
 
         featuresNew =
-            { features | default = mbChildrenNew }
+            { features | default = childrenNew }
     in
         Node { data | features = featuresNew }
 
 
-getNewChildrenForRecDefaultAdd : Node a -> Int -> List PathSegment -> List (Node a) -> Maybe (List (Node a))
+getNewChildrenForRecDefaultAdd : Node a -> Int -> List PathSegment -> List (Node a) -> List (Node a)
 getNewChildrenForRecDefaultAdd nodeNew index tailSegments children =
     let
         insertAt i child =
@@ -409,8 +410,7 @@ getNewChildrenForRecDefaultAdd nodeNew index tailSegments children =
             else
                 child
     in
-        Just <|
-            List.indexedMap insertAt children
+        List.indexedMap insertAt children
 
 
 addChildAtPathToCustom : String -> Node a -> Path -> Node a -> Node a
@@ -435,21 +435,21 @@ addChildAtPathToCustomRec key nodeNew segments parent =
 addChildrenCustom : String -> Node a -> PathSegment -> List PathSegment -> Node a -> Node a
 addChildrenCustom key nodeNew { feature, index } tailSegments ((Node ({ features } as data)) as parent) =
     let
-        mbChildrenNew =
-            if feature == strDefault then
+        childrenNew =
+            (if feature == strDefault then
                 getUnderDefault parent
-                    |> Maybe.andThen (getNewChildrenForRecCustomAdd key nodeNew index tailSegments)
             else
                 getUnderCustom feature parent
-                    |> Maybe.andThen (getNewChildrenForRecCustomAdd key nodeNew index tailSegments)
+            )
+            |> getNewChildrenForRecCustomAdd key nodeNew index tailSegments
 
         featuresNew =
-            { features | default = mbChildrenNew }
+            { features | default = childrenNew }
     in
         Node { data | features = featuresNew }
 
 
-getNewChildrenForRecCustomAdd : String -> Node a -> Int -> List PathSegment -> List (Node a) -> Maybe (List (Node a))
+getNewChildrenForRecCustomAdd : String -> Node a -> Int -> List PathSegment -> List (Node a) -> List (Node a)
 getNewChildrenForRecCustomAdd key nodeNew index tailSegments children =
     let
         insertAt i child =
@@ -458,8 +458,7 @@ getNewChildrenForRecCustomAdd key nodeNew index tailSegments children =
             else
                 child
     in
-        Just <|
-            List.indexedMap insertAt children
+        List.indexedMap insertAt children
 
 
 insertChildAfterPath : Node a -> Path -> Node a -> Node a
@@ -495,12 +494,12 @@ insertChildrenUnder nodeNew pathAfter ({ feature } as segment) tailSegments pare
 insertChildrenUnderDefault : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
 insertChildrenUnderDefault nodeNew pathAfter segment tailSegments ((Node ({ features } as data)) as parent) =
     let
-        mbChildrenNew =
+        childrenNew =
             getUnderDefault parent
-                |> Maybe.andThen (getNewChildrenForRecInsert nodeNew pathAfter segment tailSegments)
+                |> getNewChildrenForRecInsert nodeNew pathAfter segment tailSegments
 
         featuresNew =
-            { features | default = mbChildrenNew }
+            { features | default = childrenNew }
     in
         Node { data | features = featuresNew }
 
@@ -508,17 +507,17 @@ insertChildrenUnderDefault nodeNew pathAfter segment tailSegments ((Node ({ feat
 insertChildrenUnderCustom : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
 insertChildrenUnderCustom nodeNew pathAfter segment tailSegments ((Node ({ features } as data)) as parent) =
     let
-        mbChildrenNew =
+        childrenNew =
             getUnderCustom segment.feature parent
-                |> Maybe.andThen (getNewChildrenForRecInsert nodeNew pathAfter segment tailSegments)
+                |> getNewChildrenForRecInsert nodeNew pathAfter segment tailSegments
 
         featuresNew =
-            { features | custom = Dict.update segment.feature (\_ -> mbChildrenNew) features.custom }
+            { features | custom = Dict.insert segment.feature childrenNew features.custom }
     in
         Node { data | features = featuresNew }
 
 
-getNewChildrenForRecInsert : Node a -> Path -> PathSegment -> List PathSegment -> List (Node a) -> Maybe (List (Node a))
+getNewChildrenForRecInsert : Node a -> Path -> PathSegment -> List PathSegment -> List (Node a) -> List (Node a)
 getNewChildrenForRecInsert nodeNew pathAfter segment tailSegments children =
     let
         insertAt i child =
@@ -527,8 +526,7 @@ getNewChildrenForRecInsert nodeNew pathAfter segment tailSegments children =
             else
                 child
     in
-        Just <|
-            List.indexedMap insertAt children
+        List.indexedMap insertAt children
 
 
 insertChildAfter : Node a -> Path -> PathSegment -> Node a -> Node a
@@ -567,31 +565,30 @@ deleteNodeRec segments parent =
 deleteNodeNested : PathSegment -> List PathSegment -> Node a -> Node a
 deleteNodeNested { feature, index } tailSegments ((Node ({ features } as data)) as parent) =
     let
-        mbChildrenNew =
+        childrenNew =
             (if feature == strDefault then
                 getUnderDefault parent
             else
                 getUnderCustom feature parent
             )
-            |> Maybe.andThen (getNewChildrenForRecDelete index tailSegments)
+            |> getNewChildrenForRecDelete index tailSegments
 
         featuresNew =
-            { features | default = mbChildrenNew }
+            { features | default = childrenNew }
     in
         Node { data | features = featuresNew }
 
 
-getNewChildrenForRecDelete : Int -> List PathSegment -> List (Node a) -> Maybe (List (Node a))
+getNewChildrenForRecDelete : Int -> List PathSegment -> List (Node a) -> List (Node a)
 getNewChildrenForRecDelete index tailSegments children =
     let
-        deleteAt i child =
+        deleteRec i child =
             if i == index then
                 deleteNodeRec tailSegments child
             else
                 child
     in
-        Just <|
-            List.indexedMap deleteAt children
+        List.indexedMap deleteRec children
 
 deleteNodeUnderDefault : Int -> Node a -> Node a
 deleteNodeUnderDefault index parent = 
@@ -599,19 +596,13 @@ deleteNodeUnderDefault index parent =
         delete children =
             List.indexedMap (\i c -> if i == index  then Nothing else Just c) children
             |> List.filterMap identity
-            |> Just
 
 
-        mbChildrenNew =
+        childrenNew =
             getUnderDefault parent
-                |> Maybe.andThen delete
+                |> delete
     in
-        case mbChildrenNew of
-            Nothing ->
-                parent
-
-            _ ->
-                replaceUnderDefault mbChildrenNew parent
+        replaceUnderDefault childrenNew parent
 
 deleteNodeUnderCustom : PathSegment -> Node a -> Node a
 deleteNodeUnderCustom { feature, index } parent = 
@@ -619,19 +610,13 @@ deleteNodeUnderCustom { feature, index } parent =
         delete children =
             List.indexedMap (\i c -> if i == index  then Nothing else Just c) children
             |> List.filterMap identity
-            |> Just
 
 
-        mbChildrenNew =
+        childrenNew =
             getUnderCustom feature parent
-                |> Maybe.andThen delete
+                |> delete
     in
-        case mbChildrenNew of
-            Nothing ->
-                parent
-
-            Just childrenNew ->
-                replaceUnderCustom feature childrenNew parent
+        replaceUnderCustom feature childrenNew parent
 
 
 updatePropertyByPath : Node a -> Path -> ( String, String ) -> Node a
@@ -667,12 +652,12 @@ updateChildrenUnder parent ({ feature } as segment) tailSegments kvp =
 updateChildrenUnderDefault : Node a -> PathSegment -> List PathSegment -> ( String, String ) -> Node a
 updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } tailSegments kvp =
     let
-        mbChildrenNew =
+        childrenNew =
             getUnderDefault parent
-                |> Maybe.andThen (updateChildren index tailSegments kvp)
+                |> updateChildren index tailSegments kvp
 
         featuresNew =
-            { features | default = mbChildrenNew }
+            { features | default = childrenNew }
     in
         Node { data | features = featuresNew }
 
@@ -680,17 +665,17 @@ updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } t
 updateChildrenUnderCustom : Node a -> PathSegment -> List PathSegment -> ( String, String ) -> Node a
 updateChildrenUnderCustom ((Node ({ features } as data)) as parent) { feature, index } tailSegments kvp =
     let
-        mbChildrenNew =
+        childrenNew =
             getUnderCustom feature parent
-                |> Maybe.andThen (updateChildren index tailSegments kvp)
+                |> updateChildren index tailSegments kvp
 
         featuresNew =
-            { features | custom = Dict.update feature (\_ -> mbChildrenNew) features.custom }
+            { features | custom = Dict.insert feature childrenNew features.custom }
     in
         Node { data | features = featuresNew }
 
 
-updateChildren : Int -> List PathSegment -> ( String, String ) -> List (Node a) -> Maybe (List (Node a))
+updateChildren : Int -> List PathSegment -> ( String, String ) -> List (Node a) -> List (Node a)
 updateChildren index tailSegments kvp children =
     let
         updateAt i child =
@@ -699,8 +684,7 @@ updateChildren index tailSegments kvp children =
             else
                 child
     in
-        Just <|
-            List.indexedMap updateAt children
+        List.indexedMap updateAt children
 
 
 updateProperty : Node a -> ( String, String ) -> Node a
@@ -728,7 +712,7 @@ updateProperty (Node data) ( key, value ) =
                     else
                         primitiveOld
     in
-        Node { data | properties = Dict.update key (\_ -> Just primitiveNew) data.properties }
+        Node { data | properties = Dict.insert key primitiveNew data.properties }
 
 
 updatePaths : Node a -> Node a
@@ -743,7 +727,7 @@ addFeaturePath parentPath { default, custom } =
             List.indexedMap (addPath parentPath feature)
 
         defaultNew =
-            Maybe.map (\children -> indexUpdater strDefault children) default
+            indexUpdater strDefault default
 
         customNew =
             Dict.map (\key children -> indexUpdater key children) custom
@@ -850,7 +834,7 @@ nodeAt parent segments =
 
                 mbNextChild =
                     getUnder feature parent
-                        |> Maybe.andThen (getAt index)
+                        |> getAt index
             in
                 case mbNextChild of
                     Nothing ->

@@ -40,7 +40,7 @@ update msg model =
 
         EditorMsg cellModel eMsg ->
             let
-                ( domainModelNew, editorCmd ) =
+                ( domainModelNew, editorCmd ) = 
                     updateEditor eMsg cellModel model.domainModel
             in
                 ( { model | domainModel = domainModelNew }, Cmd.map (\editorMsg -> EditorMsg cellModel editorMsg) editorCmd )

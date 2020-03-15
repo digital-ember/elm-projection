@@ -78,10 +78,10 @@ editorEvents sm =
     let
         editorEventsResult =
             case getUnderCustom "events" sm of
-                Nothing ->
+                [] ->
                     [ editorEventPlaceholder sm ]
 
-                Just events ->
+                events ->
                     List.map editorEvent events
     in
         vertStackCell
@@ -112,10 +112,10 @@ editorStates sm =
     let
         editorStatesResult =
             case getUnderDefault sm of
-                Nothing ->
+                [] ->
                     [ editorStatesPlaceholder sm ]
 
-                Just states ->
+                states ->
                     List.map editorState states
     in
         vertStackCell
@@ -133,10 +133,10 @@ editorState state =
     let
         editorTransitionsResult =
             case getUnderDefault state of
-                Nothing ->
+                [] ->
                     [ editorTransitionPlaceholder state ]
 
-                Just transitions ->
+                transitions ->
                     List.map editorTransition transitions
     in
         vertStackCell

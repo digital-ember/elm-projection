@@ -186,7 +186,7 @@ insertionEffect : Node a -> Node a -> Effect a
 insertionEffect nodeContext nodeToInsert =
     InsertionEffect
         { path = pathOf nodeContext
-        , nodeToInsert = nodeToInsert
+        , nodeToInsert = nodeToInsert 
         , isReplace = False
         , feature = ""
         }
@@ -494,25 +494,23 @@ findPrevInputCellRec root prev =
 
         ContentCell StackCell ->
             -- down
-            let
-                mbChildren =
-                    getUnderDefault prev
-            in
-                case mbChildren of
-                    Just children ->
-                        let
-                            mbLast =
-                                findFirstInputCellRec root (List.reverse children) findPrevInputCellRec
-                        in
-                            case mbLast of
-                                Nothing ->
-                                    Just <| findPrevInputCell root prev
+            case getUnderDefault prev of
+                [] ->
+                    Just <| findPrevInputCell root prev
+                
+                children ->
+                    let
+                        mbLast =
+                            findFirstInputCellRec root (List.reverse children) findPrevInputCellRec
+                    in
+                        case mbLast of
+                            Nothing ->
+                                Just <| findPrevInputCell root prev
 
-                                Just last ->
-                                    Just last
+                            Just last ->
+                                Just last
 
-                    Nothing ->
-                        Just <| findPrevInputCell root prev
+                
 
         _ ->
             Just <| findPrevInputCell root prev
@@ -550,25 +548,24 @@ findNextInputCellRec root next =
 
         ContentCell StackCell ->
             -- down
-            let
-                mbChildren =
-                    getUnderDefault next
-            in
-                case mbChildren of
-                    Just children ->
-                        let
-                            mbFirst =
-                                findFirstInputCellRec root children findNextInputCellRec
-                        in
-                            case mbFirst of
-                                Nothing ->
-                                    Just <| findNextInputCell root next
+            case getUnderDefault next of
+            
+                [] ->
+                    Just <| findNextInputCell root next
 
-                                Just first ->
-                                    Just first
+                    
+                children ->
+                    let
+                        mbFirst =
+                            findFirstInputCellRec root children findNextInputCellRec
+                    in
+                        case mbFirst of
+                            Nothing ->
+                                Just <| findNextInputCell root next
 
-                    Nothing ->
-                        Just <| findNextInputCell root next
+                            Just first ->
+                                Just first
+
 
         _ ->
             Just <| findNextInputCell root next
@@ -613,11 +610,11 @@ viewCell cell =
     case isaOf cell of
         ContentCell _ ->
             case getUnderDefault cell of
-                Nothing ->
+                [] ->
                     [ text "" ]
 
-                Just content ->
-                    List.foldl viewContent [] content
+                children ->
+                    List.foldl viewContent [] children
 
         EffectCell _ ->
             []
@@ -954,18 +951,13 @@ effectAttributeFromKey dictKeyToMsg =
 isasUnderCustom : String -> Node a -> List a
 isasUnderCustom featureKey parent =
     let
-        mbChildren =
+        children =
             if featureKey == "" then
                 getUnderDefault parent
             else
                 getUnderCustom featureKey parent
     in
-        mbChildren
-            |> Maybe.andThen
-                (\children ->
-                    Just (List.map isaOf children)
-                )
-            |> Maybe.withDefault []
+        List.map isaOf children
 
 
 orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation

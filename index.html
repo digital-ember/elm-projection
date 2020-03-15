@@ -4405,6 +4405,10 @@ function _Browser_load(url)
 var author$project$Structure$Node = function (a) {
 	return {$: 'Node', a: a};
 };
+var elm$core$Basics$apR = F2(
+	function (x, f) {
+		return f(x);
+	});
 var elm$core$Elm$JsArray$foldr = _JsArray_foldr;
 var elm$core$Array$foldr = F3(
 	function (func, baseCase, _n0) {
@@ -4521,10 +4525,22 @@ var elm$core$Dict$get = F2(
 			}
 		}
 	});
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
 var author$project$Structure$getUnderCustom = F2(
 	function (key, _n0) {
 		var features = _n0.a.features;
-		return A2(elm$core$Dict$get, key, features.custom);
+		return A2(
+			elm$core$Maybe$withDefault,
+			_List_Nil,
+			A2(elm$core$Dict$get, key, features.custom));
 	});
 var elm$core$Basics$identity = function (x) {
 	return x;
@@ -4651,10 +4667,6 @@ var author$project$Structure$replaceUnderCustom = F3(
 			_Utils_update(
 				data,
 				{features: featuresNew}));
-	});
-var elm$core$Basics$apR = F2(
-	function (x, f) {
-		return f(x);
 	});
 var elm$core$Basics$eq = _Utils_equal;
 var elm$core$Basics$add = _Basics_add;
@@ -4799,42 +4811,25 @@ var elm$core$List$indexedMap = F2(
 				elm$core$List$length(xs) - 1),
 			xs);
 	});
-var elm$core$Maybe$andThen = F2(
-	function (callback, maybeValue) {
-		if (maybeValue.$ === 'Just') {
-			var value = maybeValue.a;
-			return callback(value);
-		} else {
-			return elm$core$Maybe$Nothing;
-		}
-	});
 var author$project$Structure$deleteNodeUnderCustom = F2(
 	function (_n0, parent) {
 		var feature = _n0.feature;
 		var index = _n0.index;
 		var _delete = function (children) {
-			return elm$core$Maybe$Just(
+			return A2(
+				elm$core$List$filterMap,
+				elm$core$Basics$identity,
 				A2(
-					elm$core$List$filterMap,
-					elm$core$Basics$identity,
-					A2(
-						elm$core$List$indexedMap,
-						F2(
-							function (i, c) {
-								return _Utils_eq(i, index) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(c);
-							}),
-						children)));
+					elm$core$List$indexedMap,
+					F2(
+						function (i, c) {
+							return _Utils_eq(i, index) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(c);
+						}),
+					children));
 		};
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			_delete,
+		var childrenNew = _delete(
 			A2(author$project$Structure$getUnderCustom, feature, parent));
-		if (mbChildrenNew.$ === 'Nothing') {
-			return parent;
-		} else {
-			var childrenNew = mbChildrenNew.a;
-			return A3(author$project$Structure$replaceUnderCustom, feature, childrenNew, parent);
-		}
+		return A3(author$project$Structure$replaceUnderCustom, feature, childrenNew, parent);
 	});
 var author$project$Structure$getUnderDefault = function (_n0) {
 	var features = _n0.a.features;
@@ -4855,46 +4850,36 @@ var author$project$Structure$replaceUnderDefault = F2(
 var author$project$Structure$deleteNodeUnderDefault = F2(
 	function (index, parent) {
 		var _delete = function (children) {
-			return elm$core$Maybe$Just(
+			return A2(
+				elm$core$List$filterMap,
+				elm$core$Basics$identity,
 				A2(
-					elm$core$List$filterMap,
-					elm$core$Basics$identity,
-					A2(
-						elm$core$List$indexedMap,
-						F2(
-							function (i, c) {
-								return _Utils_eq(i, index) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(c);
-							}),
-						children)));
+					elm$core$List$indexedMap,
+					F2(
+						function (i, c) {
+							return _Utils_eq(i, index) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(c);
+						}),
+					children));
 		};
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			_delete,
+		var childrenNew = _delete(
 			author$project$Structure$getUnderDefault(parent));
-		if (mbChildrenNew.$ === 'Nothing') {
-			return parent;
-		} else {
-			return A2(author$project$Structure$replaceUnderDefault, mbChildrenNew, parent);
-		}
+		return A2(author$project$Structure$replaceUnderDefault, childrenNew, parent);
 	});
 var author$project$Structure$strDefault = 'default';
-var elm$core$Basics$apL = F2(
-	function (f, x) {
-		return f(x);
-	});
 var author$project$Structure$deleteNodeNested = F3(
 	function (_n1, tailSegments, parent) {
 		var feature = _n1.feature;
 		var index = _n1.index;
 		var data = parent.a;
 		var features = data.features;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A2(author$project$Structure$getNewChildrenForRecDelete, index, tailSegments),
+		var childrenNew = A3(
+			author$project$Structure$getNewChildrenForRecDelete,
+			index,
+			tailSegments,
 			_Utils_eq(feature, author$project$Structure$strDefault) ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, feature, parent));
 		var featuresNew = _Utils_update(
 			features,
-			{_default: mbChildrenNew});
+			{_default: childrenNew});
 		return author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -4919,12 +4904,11 @@ var author$project$Structure$deleteNodeRec = F2(
 	});
 var author$project$Structure$getNewChildrenForRecDelete = F3(
 	function (index, tailSegments, children) {
-		var deleteAt = F2(
+		var deleteRec = F2(
 			function (i, child) {
 				return _Utils_eq(i, index) ? A2(author$project$Structure$deleteNodeRec, tailSegments, child) : child;
 			});
-		return elm$core$Maybe$Just(
-			A2(elm$core$List$indexedMap, deleteAt, children));
+		return A2(elm$core$List$indexedMap, deleteRec, children);
 	});
 var author$project$Structure$Path = function (a) {
 	return {$: 'Path', a: a};
@@ -4949,6 +4933,10 @@ var author$project$Structure$pathOf = function (_n0) {
 	var path = _n0.a.path;
 	return path;
 };
+var elm$core$Basics$apL = F2(
+	function (f, x) {
+		return f(x);
+	});
 var elm$core$Dict$map = F2(
 	function (func, dict) {
 		if (dict.$ === 'RBEmpty_elm_builtin') {
@@ -4968,16 +4956,6 @@ var elm$core$Dict$map = F2(
 				A2(elm$core$Dict$map, func, right));
 		}
 	});
-var elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return elm$core$Maybe$Nothing;
-		}
-	});
 var author$project$Structure$addFeaturePath = F2(
 	function (parentPath, _n2) {
 		var _default = _n2._default;
@@ -4986,12 +4964,7 @@ var author$project$Structure$addFeaturePath = F2(
 			return elm$core$List$indexedMap(
 				A2(author$project$Structure$addPath, parentPath, feature));
 		};
-		var defaultNew = A2(
-			elm$core$Maybe$map,
-			function (children) {
-				return A2(indexUpdater, author$project$Structure$strDefault, children);
-			},
-			_default);
+		var defaultNew = A2(indexUpdater, author$project$Structure$strDefault, _default);
 		var customNew = A2(
 			elm$core$Dict$map,
 			F2(
@@ -5062,13 +5035,13 @@ var author$project$Structure$valueOf = F2(
 		return A2(elm$core$Dict$get, key, properties);
 	});
 var elm$core$Basics$False = {$: 'False'};
-var elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
+var elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
 		} else {
-			return _default;
+			return elm$core$Maybe$Nothing;
 		}
 	});
 var author$project$Structure$boolOf = F2(
@@ -5287,8 +5260,8 @@ var author$project$Structure$nodeAt = F2(
 							elm$core$Array$fromList(children));
 					});
 				var mbNextChild = A2(
-					elm$core$Maybe$andThen,
-					getAt(index),
+					getAt,
+					index,
 					A2(author$project$Structure$getUnder, feature, parent));
 				if (mbNextChild.$ === 'Nothing') {
 					return elm$core$Maybe$Nothing;
@@ -5489,9 +5462,12 @@ var author$project$Editor$findNextInputCellRec = F2(
 						return elm$core$Maybe$Just(next);
 					case 'StackCell':
 						var _n2 = _n0.a;
-						var mbChildren = author$project$Structure$getUnderDefault(next);
-						if (mbChildren.$ === 'Just') {
-							var children = mbChildren.a;
+						var _n3 = author$project$Structure$getUnderDefault(next);
+						if (!_n3.b) {
+							return elm$core$Maybe$Just(
+								A2(author$project$Editor$findNextInputCell, root, next));
+						} else {
+							var children = _n3;
 							var mbFirst = A3(author$project$Editor$findFirstInputCellRec, root, children, author$project$Editor$findNextInputCellRec);
 							if (mbFirst.$ === 'Nothing') {
 								return elm$core$Maybe$Just(
@@ -5500,9 +5476,6 @@ var author$project$Editor$findNextInputCellRec = F2(
 								var first = mbFirst.a;
 								return elm$core$Maybe$Just(first);
 							}
-						} else {
-							return elm$core$Maybe$Just(
-								A2(author$project$Editor$findNextInputCell, root, next));
 						}
 					default:
 						break _n0$2;
@@ -5562,9 +5535,12 @@ var author$project$Editor$findPrevInputCellRec = F2(
 						return elm$core$Maybe$Just(prev);
 					case 'StackCell':
 						var _n2 = _n0.a;
-						var mbChildren = author$project$Structure$getUnderDefault(prev);
-						if (mbChildren.$ === 'Just') {
-							var children = mbChildren.a;
+						var _n3 = author$project$Structure$getUnderDefault(prev);
+						if (!_n3.b) {
+							return elm$core$Maybe$Just(
+								A2(author$project$Editor$findPrevInputCell, root, prev));
+						} else {
+							var children = _n3;
 							var mbLast = A3(
 								author$project$Editor$findFirstInputCellRec,
 								root,
@@ -5577,9 +5553,6 @@ var author$project$Editor$findPrevInputCellRec = F2(
 								var last = mbLast.a;
 								return elm$core$Maybe$Just(last);
 							}
-						} else {
-							return elm$core$Maybe$Just(
-								A2(author$project$Editor$findPrevInputCell, root, prev));
 						}
 					default:
 						break _n0$2;
@@ -6624,16 +6597,16 @@ var author$project$Structure$addChildrenCustom = F5(
 		var index = _n0.index;
 		var data = parent.a;
 		var features = data.features;
-		var mbChildrenNew = _Utils_eq(feature, author$project$Structure$strDefault) ? A2(
-			elm$core$Maybe$andThen,
-			A4(author$project$Structure$getNewChildrenForRecCustomAdd, key, nodeNew, index, tailSegments),
-			author$project$Structure$getUnderDefault(parent)) : A2(
-			elm$core$Maybe$andThen,
-			A4(author$project$Structure$getNewChildrenForRecCustomAdd, key, nodeNew, index, tailSegments),
-			A2(author$project$Structure$getUnderCustom, feature, parent));
+		var childrenNew = A5(
+			author$project$Structure$getNewChildrenForRecCustomAdd,
+			key,
+			nodeNew,
+			index,
+			tailSegments,
+			_Utils_eq(feature, author$project$Structure$strDefault) ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, feature, parent));
 		var featuresNew = _Utils_update(
 			features,
-			{_default: mbChildrenNew});
+			{_default: childrenNew});
 		return author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -6645,8 +6618,7 @@ var author$project$Structure$getNewChildrenForRecCustomAdd = F5(
 			function (i, child) {
 				return _Utils_eq(i, index) ? A4(author$project$Structure$addChildAtPathToCustomRec, key, nodeNew, tailSegments, child) : child;
 			});
-		return elm$core$Maybe$Just(
-			A2(elm$core$List$indexedMap, insertAt, children));
+		return A2(elm$core$List$indexedMap, insertAt, children);
 	});
 var author$project$Structure$addChildAtPathToCustom = F4(
 	function (key, nodeNew, path, root) {
@@ -6660,25 +6632,23 @@ var author$project$Structure$addToDefault = F2(
 		var features = data.features;
 		var featuresNew = function () {
 			var _n1 = features._default;
-			if (_n1.$ === 'Nothing') {
+			if (!_n1.b) {
 				return _Utils_update(
 					features,
 					{
-						_default: elm$core$Maybe$Just(
-							_List_fromArray(
-								[child]))
+						_default: _List_fromArray(
+							[child])
 					});
 			} else {
-				var children = _n1.a;
+				var children = _n1;
 				return _Utils_update(
 					features,
 					{
-						_default: elm$core$Maybe$Just(
-							elm$core$List$reverse(
-								A2(
-									elm$core$List$cons,
-									child,
-									elm$core$List$reverse(children))))
+						_default: elm$core$List$reverse(
+							A2(
+								elm$core$List$cons,
+								child,
+								elm$core$List$reverse(children)))
 					});
 			}
 		}();
@@ -6703,13 +6673,15 @@ var author$project$Structure$addChildrenDefault = F4(
 		var index = _n0.index;
 		var data = parent.a;
 		var features = data.features;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A3(author$project$Structure$getNewChildrenForRecDefaultAdd, nodeNew, index, tailSegments),
+		var childrenNew = A4(
+			author$project$Structure$getNewChildrenForRecDefaultAdd,
+			nodeNew,
+			index,
+			tailSegments,
 			_Utils_eq(feature, author$project$Structure$strDefault) ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, feature, parent));
 		var featuresNew = _Utils_update(
 			features,
-			{_default: mbChildrenNew});
+			{_default: childrenNew});
 		return author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -6721,8 +6693,7 @@ var author$project$Structure$getNewChildrenForRecDefaultAdd = F4(
 			function (i, child) {
 				return _Utils_eq(i, index) ? A3(author$project$Structure$addChildAtPathToDefaultRec, nodeNew, tailSegments, child) : child;
 			});
-		return elm$core$Maybe$Just(
-			A2(elm$core$List$indexedMap, insertAt, children));
+		return A2(elm$core$List$indexedMap, insertAt, children);
 	});
 var author$project$Structure$addChildAtPathToDefault = F3(
 	function (nodeNew, path, root) {
@@ -6780,25 +6751,23 @@ var author$project$Structure$insertAfterUnderDefault = F3(
 		var features = data.features;
 		var featuresNew = function () {
 			var _n1 = features._default;
-			if (_n1.$ === 'Nothing') {
+			if (!_n1.b) {
 				return _Utils_update(
 					features,
 					{
-						_default: elm$core$Maybe$Just(
-							_List_fromArray(
-								[child]))
+						_default: _List_fromArray(
+							[child])
 					});
 			} else {
-				var children = _n1.a;
+				var children = _n1;
 				return _Utils_update(
 					features,
 					{
-						_default: elm$core$Maybe$Just(
-							A3(
-								elm$core$List$foldl,
-								A2(author$project$Structure$insertAfter, pathAfter, child),
-								_List_Nil,
-								children))
+						_default: A3(
+							elm$core$List$foldl,
+							A2(author$project$Structure$insertAfter, pathAfter, child),
+							_List_Nil,
+							children)
 					});
 			}
 		}();
@@ -6818,8 +6787,7 @@ var author$project$Structure$getNewChildrenForRecInsert = F5(
 			function (i, child) {
 				return _Utils_eq(i, segment.index) ? A4(author$project$Structure$insertChildAfterPathRec, nodeNew, pathAfter, tailSegments, child) : child;
 			});
-		return elm$core$Maybe$Just(
-			A2(elm$core$List$indexedMap, insertAt, children));
+		return A2(elm$core$List$indexedMap, insertAt, children);
 	});
 var author$project$Structure$insertChildAfterPathRec = F4(
 	function (nodeNew, pathAfter, segments, parent) {
@@ -6845,20 +6813,17 @@ var author$project$Structure$insertChildrenUnderCustom = F5(
 	function (nodeNew, pathAfter, segment, tailSegments, parent) {
 		var data = parent.a;
 		var features = data.features;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A4(author$project$Structure$getNewChildrenForRecInsert, nodeNew, pathAfter, segment, tailSegments),
+		var childrenNew = A5(
+			author$project$Structure$getNewChildrenForRecInsert,
+			nodeNew,
+			pathAfter,
+			segment,
+			tailSegments,
 			A2(author$project$Structure$getUnderCustom, segment.feature, parent));
 		var featuresNew = _Utils_update(
 			features,
 			{
-				custom: A3(
-					elm$core$Dict$update,
-					segment.feature,
-					function (_n0) {
-						return mbChildrenNew;
-					},
-					features.custom)
+				custom: A3(elm$core$Dict$insert, segment.feature, childrenNew, features.custom)
 			});
 		return author$project$Structure$Node(
 			_Utils_update(
@@ -6869,13 +6834,16 @@ var author$project$Structure$insertChildrenUnderDefault = F5(
 	function (nodeNew, pathAfter, segment, tailSegments, parent) {
 		var data = parent.a;
 		var features = data.features;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A4(author$project$Structure$getNewChildrenForRecInsert, nodeNew, pathAfter, segment, tailSegments),
+		var childrenNew = A5(
+			author$project$Structure$getNewChildrenForRecInsert,
+			nodeNew,
+			pathAfter,
+			segment,
+			tailSegments,
 			author$project$Structure$getUnderDefault(parent));
 		var featuresNew = _Utils_update(
 			features,
-			{_default: mbChildrenNew});
+			{_default: childrenNew});
 		return author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -6929,13 +6897,7 @@ var author$project$Structure$updateProperty = F2(
 			_Utils_update(
 				data,
 				{
-					properties: A3(
-						elm$core$Dict$update,
-						key,
-						function (_n2) {
-							return elm$core$Maybe$Just(primitiveNew);
-						},
-						data.properties)
+					properties: A3(elm$core$Dict$insert, key, primitiveNew, data.properties)
 				}));
 	});
 var author$project$Structure$updateChildren = F4(
@@ -6944,8 +6906,7 @@ var author$project$Structure$updateChildren = F4(
 			function (i, child) {
 				return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, child, tailSegments, kvp) : child;
 			});
-		return elm$core$Maybe$Just(
-			A2(elm$core$List$indexedMap, updateAt, children));
+		return A2(elm$core$List$indexedMap, updateAt, children);
 	});
 var author$project$Structure$updateChildrenUnder = F4(
 	function (parent, segment, tailSegments, kvp) {
@@ -6958,20 +6919,16 @@ var author$project$Structure$updateChildrenUnderCustom = F4(
 		var features = data.features;
 		var feature = _n3.feature;
 		var index = _n3.index;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A3(author$project$Structure$updateChildren, index, tailSegments, kvp),
+		var childrenNew = A4(
+			author$project$Structure$updateChildren,
+			index,
+			tailSegments,
+			kvp,
 			A2(author$project$Structure$getUnderCustom, feature, parent));
 		var featuresNew = _Utils_update(
 			features,
 			{
-				custom: A3(
-					elm$core$Dict$update,
-					feature,
-					function (_n4) {
-						return mbChildrenNew;
-					},
-					features.custom)
+				custom: A3(elm$core$Dict$insert, feature, childrenNew, features.custom)
 			});
 		return author$project$Structure$Node(
 			_Utils_update(
@@ -6983,13 +6940,15 @@ var author$project$Structure$updateChildrenUnderDefault = F4(
 		var data = parent.a;
 		var features = data.features;
 		var index = _n2.index;
-		var mbChildrenNew = A2(
-			elm$core$Maybe$andThen,
-			A3(author$project$Structure$updateChildren, index, tailSegments, kvp),
+		var childrenNew = A4(
+			author$project$Structure$updateChildren,
+			index,
+			tailSegments,
+			kvp,
 			author$project$Structure$getUnderDefault(parent));
 		var featuresNew = _Utils_update(
 			features,
-			{_default: mbChildrenNew});
+			{_default: childrenNew});
 		return author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -7157,17 +7116,8 @@ var author$project$Editor$OnClick = F2(
 	});
 var author$project$Editor$isasUnderCustom = F2(
 	function (featureKey, parent) {
-		var mbChildren = (featureKey === '') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, featureKey, parent);
-		return A2(
-			elm$core$Maybe$withDefault,
-			_List_Nil,
-			A2(
-				elm$core$Maybe$andThen,
-				function (children) {
-					return elm$core$Maybe$Just(
-						A2(elm$core$List$map, author$project$Structure$isaOf, children));
-				},
-				mbChildren));
+		var children = (featureKey === '') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, featureKey, parent);
+		return A2(elm$core$List$map, author$project$Structure$isaOf, children);
 	});
 var elm$html$Html$button = _VirtualDom_node('button');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
@@ -7704,14 +7654,14 @@ var author$project$Editor$viewCell = function (cell) {
 	var _n5 = author$project$Structure$isaOf(cell);
 	if (_n5.$ === 'ContentCell') {
 		var _n6 = author$project$Structure$getUnderDefault(cell);
-		if (_n6.$ === 'Nothing') {
+		if (!_n6.b) {
 			return _List_fromArray(
 				[
 					elm$html$Html$text('')
 				]);
 		} else {
-			var content = _n6.a;
-			return A3(elm$core$List$foldl, author$project$Editor$viewContent, _List_Nil, content);
+			var children = _n6;
+			return A3(elm$core$List$foldl, author$project$Editor$viewContent, _List_Nil, children);
 		}
 	} else {
 		return _List_Nil;
@@ -7844,7 +7794,7 @@ var author$project$Editor$ContentCell = function (a) {
 	return {$: 'ContentCell', a: a};
 };
 var author$project$Editor$RootCell = {$: 'RootCell'};
-var author$project$Structure$emptyFeatures = {custom: elm$core$Dict$empty, _default: elm$core$Maybe$Nothing};
+var author$project$Structure$emptyFeatures = {custom: elm$core$Dict$empty, _default: _List_Nil};
 var author$project$Structure$createNodeInternal = F2(
 	function (name, isa) {
 		return author$project$Structure$Node(
@@ -8021,13 +7971,13 @@ var author$project$StateMachine$editorEventPlaceholder = function (sm) {
 var author$project$StateMachine$editorEvents = function (sm) {
 	var editorEventsResult = function () {
 		var _n0 = A2(author$project$Structure$getUnderCustom, 'events', sm);
-		if (_n0.$ === 'Nothing') {
+		if (!_n0.b) {
 			return _List_fromArray(
 				[
 					author$project$StateMachine$editorEventPlaceholder(sm)
 				]);
 		} else {
-			var events = _n0.a;
+			var events = _n0;
 			return A2(elm$core$List$map, author$project$StateMachine$editorEvent, events);
 		}
 	}();
@@ -8133,13 +8083,13 @@ var author$project$StateMachine$editorTransitionPlaceholder = function (state) {
 var author$project$StateMachine$editorState = function (state) {
 	var editorTransitionsResult = function () {
 		var _n0 = author$project$Structure$getUnderDefault(state);
-		if (_n0.$ === 'Nothing') {
+		if (!_n0.b) {
 			return _List_fromArray(
 				[
 					author$project$StateMachine$editorTransitionPlaceholder(state)
 				]);
 		} else {
-			var transitions = _n0.a;
+			var transitions = _n0;
 			return A2(elm$core$List$map, author$project$StateMachine$editorTransition, transitions);
 		}
 	}();
@@ -8175,13 +8125,13 @@ var author$project$StateMachine$editorStatesPlaceholder = function (sm) {
 var author$project$StateMachine$editorStates = function (sm) {
 	var editorStatesResult = function () {
 		var _n0 = author$project$Structure$getUnderDefault(sm);
-		if (_n0.$ === 'Nothing') {
+		if (!_n0.b) {
 			return _List_fromArray(
 				[
 					author$project$StateMachine$editorStatesPlaceholder(sm)
 				]);
 		} else {
-			var states = _n0.a;
+			var states = _n0;
 			return A2(elm$core$List$map, author$project$StateMachine$editorState, states);
 		}
 	}();
