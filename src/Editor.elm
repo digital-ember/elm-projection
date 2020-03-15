@@ -15,7 +15,7 @@ module Editor
         , withEffect
         , insertionEffect
         , replacementEffect
-        , onDeleteEffect
+        , deletionEffect
         , onInputEffect
         , updateEditor
         , viewEditor
@@ -54,8 +54,7 @@ type Effect a
         , feature : String
         }
     | OnDeleteEffect
-        { effectInput : Node a
-        , effectHandler : Node a -> Node a -> Node a
+        { path : Path 
         , selection : Selection
         }
     | OnInputEffect
@@ -193,12 +192,11 @@ insertionEffect nodeContext nodeToInsert =
         }
 
 
-onDeleteEffect : Node a -> (Node a -> Node a -> Node a) -> Effect a
-onDeleteEffect effectInput effectHandler =
+deletionEffect : Node a -> Effect a
+deletionEffect nodeContext =
     OnDeleteEffect
-        { effectInput = effectInput
-        , effectHandler = effectHandler
-        , selection = { start = -1, end = -1, dir = "" }
+        { path = pathOf nodeContext 
+        , selection = emptySelection
         }
 
 
@@ -225,13 +223,17 @@ navEffect dir cell =
         NavSelectionEffect
             { dir = dir
             , cellSelected = cell
-            , selection =
-                { start = -1
-                , end = -1
-                , dir = ""
-                }
+            , selection = emptySelection
             }
 
+
+emptySelection : Selection
+emptySelection = 
+  { start = -1
+  , end = -1
+  , dir = ""
+  }
+  
 
 grouped : List (Cell a) -> List (EffectGroup a)
 grouped effectCells =
@@ -327,16 +329,38 @@ updateEditor msg editorModel domainModel =
 
         OnDelete effect cellContext ->
             case effect of
-                OnDeleteEffect effectData ->
-                    ( tryDeleteRight domainModel effectData (textOf "input" cellContext |> String.length), Cmd.none )
+                OnDeleteEffect ({selection} as effectData) ->
+                    let
+                        textLength = textOf "input" cellContext |> String.length
+                        isAtDeletePos = selection.end == textLength
+                    in
+                        ( tryDelete 
+                              domainModel 
+                              effectData 
+                              nextSibling 
+                              textLength
+                              isAtDeletePos
+                        , Cmd.none 
+                        )
 
                 _ ->
                     ( domainModel, Cmd.none )
 
         OnBackspace effect cellContext ->
             case effect of
-                OnDeleteEffect effectData ->
-                    ( tryDeleteLeft domainModel effectData (textOf "input" cellContext |> String.length), Cmd.none )
+                OnDeleteEffect ({selection} as effectData) ->
+                    let
+                        textLength = textOf "input" cellContext |> String.length
+                        isAtDeletePos = selection.start == 0 
+                    in
+                        ( tryDelete 
+                              domainModel 
+                              effectData 
+                              previousSibling 
+                              textLength
+                              isAtDeletePos                          
+                        , Cmd.none 
+                        )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -358,40 +382,21 @@ updateEditor msg editorModel domainModel =
                     ( domainModel, Cmd.none )
 
 
-tryDeleteLeft : Node a -> { effectInput : Node a, effectHandler : Node a -> Node a -> Node a, selection : Selection } -> Int -> Node a
-tryDeleteLeft domainModel { effectInput, effectHandler, selection } textLength =
+tryDelete :  Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
+tryDelete domainModel { path, selection } navFun textLength isAtDeletePos =
     if textLength == 0 then
-        effectHandler domainModel effectInput |> updatePaths
-    else if selection.start == 0 then
-        let
-            mbPrev =
-                previousSibling domainModel (pathOf effectInput)
-        in
-            case mbPrev of
-                Nothing ->
-                    domainModel
-
-                Just prev ->
-                    effectHandler domainModel prev |> updatePaths
-    else
-        domainModel
-
-
-tryDeleteRight : Node a -> { effectInput : Node a, effectHandler : Node a -> Node a -> Node a, selection : Selection } -> Int -> Node a
-tryDeleteRight domainModel { effectInput, effectHandler, selection } textLength =
-    if textLength == 0 then
-        effectHandler domainModel effectInput |> updatePaths
-    else if selection.start == textLength then
+        deleteNode path domainModel |> updatePaths
+    else if isAtDeletePos then
         let
             mbNext =
-                nextSibling domainModel (pathOf effectInput)
+                navFun domainModel path
         in
             case mbNext of
                 Nothing ->
                     domainModel
 
                 Just next ->
-                    effectHandler domainModel next |> updatePaths
+                    deleteNode (pathOf next) domainModel |> updatePaths
     else
         domainModel
 

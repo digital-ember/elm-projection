@@ -33,6 +33,7 @@ module Structure
         , insertChildAfterPath
         , replaceUnderDefault
         , replaceUnderCustom
+        , deleteNode
         , updatePropertyByPath
         , getUnderDefault
         , getUnderCustom
@@ -386,12 +387,12 @@ addChildrenDefault : Node a -> PathSegment -> List PathSegment -> Node a -> Node
 addChildrenDefault nodeNew { feature, index } tailSegments ((Node ({ features } as data)) as parent) =
     let
         mbChildrenNew =
-            if feature == strDefault then
+            (if feature == strDefault then
                 getUnderDefault parent
-                    |> Maybe.andThen (getNewChildrenForRecDefaultAdd nodeNew index tailSegments)
             else
                 getUnderCustom feature parent
-                    |> Maybe.andThen (getNewChildrenForRecDefaultAdd nodeNew index tailSegments)
+            )
+            |> Maybe.andThen (getNewChildrenForRecDefaultAdd nodeNew index tailSegments)
 
         featuresNew =
             { features | default = mbChildrenNew }
@@ -536,6 +537,101 @@ insertChildAfter nodeNew pathAfter { feature } parent =
         insertAfterUnderDefault nodeNew pathAfter parent
     else
         insertAfterUnderCustom feature nodeNew pathAfter parent
+
+
+deleteNode : Path -> Node a -> Node a
+deleteNode path root =
+    let
+        (Path segmentsNoRoot) =
+            dropRootSegment path
+    in
+        deleteNodeRec segmentsNoRoot root 
+
+
+deleteNodeRec : List PathSegment -> Node a -> Node a
+deleteNodeRec segments parent =
+    case segments of
+        ({feature, index} as segment) :: [] ->
+            if feature == strDefault then 
+                deleteNodeUnderDefault index parent
+            else
+                deleteNodeUnderCustom segment parent
+
+        segment :: tail ->
+            deleteNodeNested segment tail parent
+
+        [] ->
+            parent
+
+
+deleteNodeNested : PathSegment -> List PathSegment -> Node a -> Node a
+deleteNodeNested { feature, index } tailSegments ((Node ({ features } as data)) as parent) =
+    let
+        mbChildrenNew =
+            (if feature == strDefault then
+                getUnderDefault parent
+            else
+                getUnderCustom feature parent
+            )
+            |> Maybe.andThen (getNewChildrenForRecDelete index tailSegments)
+
+        featuresNew =
+            { features | default = mbChildrenNew }
+    in
+        Node { data | features = featuresNew }
+
+
+getNewChildrenForRecDelete : Int -> List PathSegment -> List (Node a) -> Maybe (List (Node a))
+getNewChildrenForRecDelete index tailSegments children =
+    let
+        deleteAt i child =
+            if i == index then
+                deleteNodeRec tailSegments child
+            else
+                child
+    in
+        Just <|
+            List.indexedMap deleteAt children
+
+deleteNodeUnderDefault : Int -> Node a -> Node a
+deleteNodeUnderDefault index parent = 
+    let
+        delete children =
+            List.indexedMap (\i c -> if i == index  then Nothing else Just c) children
+            |> List.filterMap identity
+            |> Just
+
+
+        mbChildrenNew =
+            getUnderDefault parent
+                |> Maybe.andThen delete
+    in
+        case mbChildrenNew of
+            Nothing ->
+                parent
+
+            _ ->
+                replaceUnderDefault mbChildrenNew parent
+
+deleteNodeUnderCustom : PathSegment -> Node a -> Node a
+deleteNodeUnderCustom { feature, index } parent = 
+    let
+        delete children =
+            List.indexedMap (\i c -> if i == index  then Nothing else Just c) children
+            |> List.filterMap identity
+            |> Just
+
+
+        mbChildrenNew =
+            getUnderCustom feature parent
+                |> Maybe.andThen delete
+    in
+        case mbChildrenNew of
+            Nothing ->
+                parent
+
+            Just childrenNew ->
+                replaceUnderCustom feature childrenNew parent
 
 
 updatePropertyByPath : Node a -> Path -> ( String, String ) -> Node a

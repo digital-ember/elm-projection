@@ -98,7 +98,7 @@ editorEvent : Node Domain -> Node (Cell Domain)
 editorEvent event =
     inputCell "name" event
         |> withEffect (insertionEffect event ctorEvent)
-        |> withEffect (onDeleteEffect event deleteEvent)
+        |> withEffect (deletionEffect event)
 
 
 editorEventPlaceholder : Node Domain -> Node (Cell Domain)
@@ -161,6 +161,7 @@ editorStateHead state =
         |> with
             (inputCell "name" state
                 |> withEffect (insertionEffect state ctorState)
+                |> withEffect (deletionEffect state)
             )
 
 
@@ -176,11 +177,13 @@ editorTransition transition =
         |> with
             (inputCell "eventRef" transition
                 |> withEffect (insertionEffect transition ctorTransition)
+                |> withEffect (deletionEffect transition)
             )
         |> with (constantCell "⇒")
         |> with
             (inputCell "stateRef" transition
                 |> withEffect (insertionEffect transition ctorTransition)
+                |> withEffect (deletionEffect transition)
             )
 
 
@@ -207,24 +210,3 @@ ctorTransition =
         |> addText "stateRef" ""
 
 
-
--- DELETION
-
-
-deleteEvent : Node Domain -> Node Domain -> Node Domain
-deleteEvent sm event =
-    let
-        delete children =
-            Just <|
-                List.filter (\e -> pathOf e /= pathOf event) children
-
-        mbEventsNew =
-            getUnderCustom "events" sm
-                |> Maybe.andThen delete
-    in
-        case mbEventsNew of
-            Nothing ->
-                sm
-
-            Just eventsNew ->
-                replaceUnderCustom "events" eventsNew sm
