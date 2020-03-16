@@ -1120,4 +1120,4 @@ griddifyI isGridParent node =
         isGrid =
             boolOf "isGrid" nodeNew
     in
-    replaceUnderDefault (List.map (griddifyI isGrid) children) nodeNew
+    replaceUnderFeature "default" (List.map (griddifyI isGrid) children) nodeNew

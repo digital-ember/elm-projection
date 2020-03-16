@@ -52,7 +52,7 @@ editorTanksPlaceholder faction =
 editorTank : Node Domain -> Node (Cell Domain) -> Node (Cell Domain)
 editorTank tank container =
     container
-        |> with (inputCell "name" tank)
+        |> with (inputCell "name" tank |> withEffect (insertionEffect tank (createNode Tank)))
         |> with (editorTankKind tank)
         |> with (editorTankFireChance tank)
         |> with (editorTankViewRange tank)

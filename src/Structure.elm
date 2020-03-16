@@ -25,8 +25,7 @@ module Structure exposing
     , pathAsIdFromNode
     , pathOf
     , previousSibling
-    , replaceUnderCustom
-    , replaceUnderDefault
+    , replaceUnderFeature
     , textOf
     , updatePaths
     , updatePropertyByPath
@@ -374,7 +373,7 @@ insertChildAfterPathRec nodeNew pathAfter segments parent =
 
 
 insertChildren : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
-insertChildren nodeNew pathAfter segment tailSegments ((Node ({ features } as data)) as parent) =
+insertChildren nodeNew pathAfter segment tailSegments parent =
     let
         insertAt i child =
             if i == segment.index then
@@ -402,12 +401,8 @@ deleteNode path root =
 deleteNodeRec : List PathSegment -> Node a -> Node a
 deleteNodeRec segments parent =
     case segments of
-        ({ feature, index } as segment) :: [] ->
-            if feature == strDefault then
-                deleteNodeUnderDefault index parent
-
-            else
-                deleteNodeUnderCustom segment parent
+        segment :: [] ->
+            deleteNodeUnder segment parent
 
         segment :: tail ->
             deleteNodeNested segment tail parent
@@ -417,25 +412,7 @@ deleteNodeRec segments parent =
 
 
 deleteNodeNested : PathSegment -> List PathSegment -> Node a -> Node a
-deleteNodeNested { feature, index } tailSegments ((Node ({ features } as data)) as parent) =
-    let
-        childrenNew =
-            (if feature == strDefault then
-                getUnderDefault parent
-
-             else
-                getUnderCustom feature parent
-            )
-                |> getNewChildrenForRecDelete index tailSegments
-
-        featuresNew =
-            { features | default = childrenNew }
-    in
-    Node { data | features = featuresNew }
-
-
-getNewChildrenForRecDelete : Int -> List PathSegment -> List (Node a) -> List (Node a)
-getNewChildrenForRecDelete index tailSegments children =
+deleteNodeNested { feature, index } tailSegments parent =
     let
         deleteRec i child =
             if i == index then
@@ -443,126 +420,73 @@ getNewChildrenForRecDelete index tailSegments children =
 
             else
                 child
+
+        childrenNew =
+            getUnder feature parent
+                |> List.indexedMap deleteRec
     in
-    List.indexedMap deleteRec children
+    replaceUnderFeature feature childrenNew parent
 
 
-deleteNodeUnderDefault : Int -> Node a -> Node a
-deleteNodeUnderDefault index parent =
+deleteNodeUnder : PathSegment -> Node a -> Node a
+deleteNodeUnder { feature, index } parent =
     let
-        delete children =
-            List.indexedMap
-                (\i c ->
-                    if i == index then
-                        Nothing
+        mbChildAt i c =
+            if i == index then
+                Nothing
 
-                    else
-                        Just c
-                )
-                children
+            else
+                Just c
+
+        delete children =
+            List.indexedMap mbChildAt children
                 |> List.filterMap identity
 
         childrenNew =
-            getUnderDefault parent
+            getUnder feature parent
                 |> delete
     in
-    replaceUnderDefault childrenNew parent
-
-
-deleteNodeUnderCustom : PathSegment -> Node a -> Node a
-deleteNodeUnderCustom { feature, index } parent =
-    let
-        delete children =
-            List.indexedMap
-                (\i c ->
-                    if i == index then
-                        Nothing
-
-                    else
-                        Just c
-                )
-                children
-                |> List.filterMap identity
-
-        childrenNew =
-            getUnderCustom feature parent
-                |> delete
-    in
-    replaceUnderCustom feature childrenNew parent
+    replaceUnderFeature feature childrenNew parent
 
 
 updatePropertyByPath : Node a -> Path -> ( String, String ) -> Node a
-updatePropertyByPath root (Path segments) kvp =
-    updatePropertyRec root segments kvp
+updatePropertyByPath root path kvp =
+    let
+        (Path segmentsNoRoot) =
+            dropRootSegment path
+    in
+    updatePropertyRec segmentsNoRoot kvp root
 
 
-updatePropertyRec : Node a -> List PathSegment -> ( String, String ) -> Node a
-updatePropertyRec parent segments kvp =
+updatePropertyRec : List PathSegment -> ( String, String ) -> Node a -> Node a
+updatePropertyRec segments kvp parent =
     case segments of
-        -- reached end of path => update value for that node!
         [] ->
-            updateProperty parent kvp
+            updateProperty kvp parent
 
-        ({ feature } as segment) :: tail ->
-            case feature of
-                -- special handling for root node which has no parent => we skip its segment
-                "root" ->
-                    updatePropertyRec parent tail kvp
-
-                _ ->
-                    updateChildrenUnder parent segment tail kvp
+        segment :: tail ->
+            updateChildrenUnder segment tail kvp parent
 
 
-updateChildrenUnder : Node a -> PathSegment -> List PathSegment -> ( String, String ) -> Node a
-updateChildrenUnder parent ({ feature } as segment) tailSegments kvp =
-    if feature == strDefault then
-        updateChildrenUnderDefault parent segment tailSegments kvp
-
-    else
-        updateChildrenUnderCustom parent segment tailSegments kvp
-
-
-updateChildrenUnderDefault : Node a -> PathSegment -> List PathSegment -> ( String, String ) -> Node a
-updateChildrenUnderDefault ((Node ({ features } as data)) as parent) { index } tailSegments kvp =
-    let
-        childrenNew =
-            getUnderDefault parent
-                |> updateChildren index tailSegments kvp
-
-        featuresNew =
-            { features | default = childrenNew }
-    in
-    Node { data | features = featuresNew }
-
-
-updateChildrenUnderCustom : Node a -> PathSegment -> List PathSegment -> ( String, String ) -> Node a
-updateChildrenUnderCustom ((Node ({ features } as data)) as parent) { feature, index } tailSegments kvp =
-    let
-        childrenNew =
-            getUnderCustom feature parent
-                |> updateChildren index tailSegments kvp
-
-        featuresNew =
-            { features | custom = Dict.insert feature childrenNew features.custom }
-    in
-    Node { data | features = featuresNew }
-
-
-updateChildren : Int -> List PathSegment -> ( String, String ) -> List (Node a) -> List (Node a)
-updateChildren index tailSegments kvp children =
+updateChildrenUnder : PathSegment -> List PathSegment -> ( String, String ) -> Node a -> Node a
+updateChildrenUnder { feature, index } tailSegments kvp parent =
     let
         updateAt i child =
             if i == index then
-                updatePropertyRec child tailSegments kvp
+                updatePropertyRec tailSegments kvp child
 
             else
                 child
+
+        childrenNew =
+            getUnder feature parent
+                |> List.indexedMap updateAt
     in
-    List.indexedMap updateAt children
+    replaceUnderFeature feature childrenNew parent
 
 
-updateProperty : Node a -> ( String, String ) -> Node a
-updateProperty (Node data) ( key, value ) =
+updateProperty : ( String, String ) -> Node a -> Node a
+updateProperty ( key, value ) (Node data) =
     let
         primitiveOld =
             Dict.get key data.properties
@@ -592,8 +516,8 @@ updateProperty (Node data) ( key, value ) =
 
 
 updatePaths : Node a -> Node a
-updatePaths (Node ({ path } as data)) =
-    Node { data | features = addFeaturePath path data.features }
+updatePaths (Node data) =
+    Node { data | features = addFeaturePath data.path data.features }
 
 
 addFeaturePath : Path -> Features a -> Features a
@@ -606,7 +530,7 @@ addFeaturePath parentPath { default, custom } =
             indexUpdater strDefault default
 
         customNew =
-            Dict.map (\key children -> indexUpdater key children) custom
+            Dict.map indexUpdater custom
     in
     { default = defaultNew
     , custom = customNew
@@ -616,11 +540,12 @@ addFeaturePath parentPath { default, custom } =
 addPath : Path -> String -> Int -> Node a -> Node a
 addPath (Path parentSegments) feature index (Node data) =
     let
+        segmentNew =
+            { feature = feature, index = index }
+
         pathNew =
             Path <|
-                List.reverse <|
-                    { feature = feature, index = index }
-                        :: List.reverse parentSegments
+                appendTo segmentNew parentSegments
     in
     Node { data | path = pathNew, features = addFeaturePath pathNew data.features }
 
@@ -630,37 +555,33 @@ splitLastPathSegment (Path segments) =
     let
         reversed =
             List.reverse segments
+
+        tailReversed t =
+            Path (List.reverse t)
     in
-    ( List.head reversed, List.tail reversed |> Maybe.andThen (\t -> Just (Path (List.reverse t))) )
+    case reversed of
+        [] ->
+            ( Nothing, Nothing )
+
+        head :: [] ->
+            ( Just head, Nothing )
+
+        head :: tail ->
+            ( Just head, Just <| tailReversed tail )
 
 
 
 -- TREE NAVIGATION
 
 
-dropRootSegment : Path -> Path
-dropRootSegment ((Path segments) as path) =
-    case segments of
-        { feature } :: tail ->
-            if feature == "root" then
-                Path tail
-
-            else
-                path
-
-        _ ->
-            path
-
-
 parentOf : Node a -> Path -> Maybe (Node a)
 parentOf root path =
     let
-        (Path segmentsNoRoot) =
-            dropRootSegment path
+        ( _, mbPathToParent ) =
+            dropRootSegment path |> splitLastPathSegment
     in
-    List.reverse segmentsNoRoot
-        |> List.tail
-        |> Maybe.andThen (\t -> Just (List.reverse t))
+    mbPathToParent
+        |> Maybe.map (\(Path segments) -> segments)
         |> Maybe.andThen (nodeAt root)
 
 
@@ -705,20 +626,27 @@ nodeAt parent segments =
     case segments of
         { feature, index } :: tail ->
             let
-                getAt i children =
-                    Array.fromList children
-                        |> Array.get i
+                mbChildAt i c =
+                    if i == index then
+                        Just c
 
-                mbNextChild =
+                    else
+                        Nothing
+
+                getAtIndex children =
+                    List.indexedMap mbChildAt children
+                        |> List.filterMap identity
+
+                nextChild =
                     getUnder feature parent
-                        |> getAt index
+                        |> getAtIndex
             in
-            case mbNextChild of
-                Nothing ->
-                    Nothing
-
-                Just child ->
+            case nextChild of
+                child :: [] ->
                     nodeAt child tail
+
+                _ ->
+                    Nothing
 
         [] ->
             Just parent
@@ -728,7 +656,7 @@ nodeAt parent segments =
 -- UTILITIES
 
 
-appendTo : Node a -> List (Node a) -> List (Node a)
+appendTo : a -> List a -> List a
 appendTo child list =
     List.reverse (child :: List.reverse list)
 
@@ -749,23 +677,27 @@ updateCustomFeature key child appender custom =
 
 
 replaceUnderFeature : String -> List (Node a) -> Node a -> Node a
-replaceUnderFeature feature defaultNew (Node ({ features } as data)) =
+replaceUnderFeature feature childrenNew (Node ({ features } as data)) =
     let
         featuresNew =
             if feature == strDefault then
-                { features | default = defaultNew }
+                { features | default = childrenNew }
 
             else
-                { features | custom = Dict.insert feature defaultNew features.custom }
+                { features | custom = Dict.insert feature childrenNew features.custom }
     in
     Node { data | features = featuresNew }
 
 
-replaceUnderDefault : List (Node a) -> Node a -> Node a
-replaceUnderDefault children node =
-    replaceUnderFeature strDefault children node
+dropRootSegment : Path -> Path
+dropRootSegment ((Path segments) as path) =
+    case segments of
+        { feature } :: tail ->
+            if feature == "root" then
+                Path tail
 
+            else
+                path
 
-replaceUnderCustom : String -> List (Node a) -> Node a -> Node a
-replaceUnderCustom key children node =
-    replaceUnderFeature key children node
+        _ ->
+            path
