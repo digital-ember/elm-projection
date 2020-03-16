@@ -30,7 +30,6 @@ import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as JsonD
-import Result as Result
 import Structure exposing (..)
 import Task as Task
 
@@ -335,11 +334,7 @@ updateEditor msg editorModel domainModel =
             case effect of
                 InsertionEffect { path, nodeToInsert, isReplace, feature } ->
                     ( if isReplace then
-                        if feature == "" || feature == "default" then
-                            addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
-
-                        else
-                            addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+                        addChildAtPath feature nodeToInsert path domainModel |> updatePaths
 
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
@@ -353,11 +348,7 @@ updateEditor msg editorModel domainModel =
             case effect of
                 InsertionEffect { path, nodeToInsert, isReplace, feature } ->
                     ( if isReplace then
-                        if feature == "" || feature == "default" then
-                            addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
-
-                        else
-                            addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+                        addChildAtPath feature nodeToInsert path domainModel |> updatePaths
 
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
@@ -480,29 +471,29 @@ updateSelectionByOrientation editorModel { dir, cellSelected, selection } orient
                 (\_ -> NoOp)
                 (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
     in
-        case ( dir, orientation ) of
-            ( U, Vert ) ->
+    case ( dir, orientation ) of
+        ( U, Vert ) ->
+            moverTask findPrevInputCell
+
+        ( D, Vert ) ->
+            moverTask findNextInputCell
+
+        ( L, Horiz ) ->
+            if selection.start == 0 then
                 moverTask findPrevInputCell
 
-            ( D, Vert ) ->
+            else
+                Cmd.none
+
+        ( R, Horiz ) ->
+            if selection.start >= (textOf "input" cellSelected |> String.length) then
                 moverTask findNextInputCell
 
-            ( L, Horiz ) ->
-                if selection.start == 0 then
-                    moverTask findPrevInputCell
-
-                else
-                    Cmd.none
-
-            ( R, Horiz ) ->
-                if selection.start >= (textOf "input" cellSelected |> String.length) then
-                    moverTask findNextInputCell
-
-                else
-                    Cmd.none
-
-            _ ->
+            else
                 Cmd.none
+
+        _ ->
+            Cmd.none
 
 
 findPrevInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -1108,8 +1099,13 @@ decodeSelection =
         (JsonD.field "selectionDirection" JsonD.string)
 
 
-griddify : Bool -> Node (Cell a) -> Node (Cell a)
-griddify isGridParent node =
+griddify : Node (Cell a) -> Node (Cell a)
+griddify =
+    griddifyI False
+
+
+griddifyI : Bool -> Node (Cell a) -> Node (Cell a)
+griddifyI isGridParent node =
     let
         nodeNew =
             if isGridParent then
@@ -1124,4 +1120,4 @@ griddify isGridParent node =
         isGrid =
             boolOf "isGrid" nodeNew
     in
-    replaceUnderDefault (List.map (griddify isGrid) children) nodeNew
+    replaceUnderDefault (List.map (griddifyI isGrid) children) nodeNew
