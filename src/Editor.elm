@@ -1,39 +1,38 @@
-module Editor
-    exposing
-        ( Cell
-        , Msg
-        , MarginSide(..)
-        , createRootCell
-        , with
-        , withRange
-        , constantCell
-        , inputCell
-        , horizStackCell
-        , vertStackCell
-        , vertGridCell
-        , placeholderCell
-        , buttonCell
-        , addIndent
-        , addMargin
-        , withEffect
-        , insertionEffect
-        , replacementEffect
-        , deletionEffect
-        , onInputEffect
-        , updateEditor
-        , viewEditor
-        , griddify
-        )
+module Editor exposing
+    ( Cell
+    , MarginSide(..)
+    , Msg
+    , addIndent
+    , addMargin
+    , buttonCell
+    , constantCell
+    , createRootCell
+    , deletionEffect
+    , griddify
+    , horizStackCell
+    , inputCell
+    , insertionEffect
+    , onInputEffect
+    , placeholderCell
+    , replacementEffect
+    , updateEditor
+    , vertGridCell
+    , vertStackCell
+    , viewEditor
+    , with
+    , withEffect
+    , withRange
+    )
 
-import Structure exposing (..)
+import Browser.Dom as Dom
 import Dict as Dict
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as JsonD
-import Browser.Dom as Dom
-import Task as Task
 import Result as Result
+import Structure exposing (..)
+import Task as Task
 
 
 type Cell a
@@ -195,7 +194,7 @@ addMargin side space node =
                 Left ->
                     "margin-left"
     in
-        addInt key space node
+    addInt key space node
 
 
 
@@ -316,7 +315,7 @@ grouped effectCells =
                 _ ->
                     effectGroupList
     in
-        Dict.foldl toEffectGroupList [] dictGrouped
+    Dict.foldl toEffectGroupList [] dictGrouped
 
 
 
@@ -327,7 +326,7 @@ updateEditor : Msg a -> Node (Cell a) -> Node a -> ( Node a, Cmd (Msg a) )
 updateEditor msg editorModel domainModel =
     case msg of
         NoOp ->
-            ( domainModel, Cmd.none )
+            ( domainModel, Cmd.none ) |> Debug.log "NoOp"
 
         Swallow _ ->
             ( domainModel, Cmd.none )
@@ -338,11 +337,13 @@ updateEditor msg editorModel domainModel =
                     ( if isReplace then
                         if feature == "" || feature == "default" then
                             addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
+
                         else
                             addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
-                    , updateSelectionOnEnter cellContext
+                    , updateSelectionOnEnter cellContext |> Debug.log "OnEnter"
                     )
 
                 _ ->
@@ -354,8 +355,10 @@ updateEditor msg editorModel domainModel =
                     ( if isReplace then
                         if feature == "" || feature == "default" then
                             addChildAtPathToDefault nodeToInsert path domainModel |> updatePaths
+
                         else
                             addChildAtPathToCustom feature nodeToInsert path domainModel |> updatePaths
+
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
                     , updateSelectionOnEnter cellContext
@@ -374,14 +377,14 @@ updateEditor msg editorModel domainModel =
                         isAtDeletePos =
                             selection.end == textLength
                     in
-                        ( tryDelete
-                            domainModel
-                            effectData
-                            nextSibling
-                            textLength
-                            isAtDeletePos
-                        , Cmd.none
-                        )
+                    ( tryDelete
+                        domainModel
+                        effectData
+                        nextSibling
+                        textLength
+                        isAtDeletePos
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -396,14 +399,14 @@ updateEditor msg editorModel domainModel =
                         isAtDeletePos =
                             selection.start == 0
                     in
-                        ( tryDelete
-                            domainModel
-                            effectData
-                            previousSibling
-                            textLength
-                            isAtDeletePos
-                        , Cmd.none
-                        )
+                    ( tryDelete
+                        domainModel
+                        effectData
+                        previousSibling
+                        textLength
+                        isAtDeletePos
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( domainModel, Cmd.none )
@@ -426,20 +429,22 @@ updateEditor msg editorModel domainModel =
 
 
 tryDelete : Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
-tryDelete domainModel { path, selection } navFun textLength isAtDeletePos =
+tryDelete domainModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
         deleteNode path domainModel |> updatePaths
+
     else if isAtDeletePos then
         let
             mbNext =
                 navFun domainModel path
         in
-            case mbNext of
-                Nothing ->
-                    domainModel
+        case mbNext of
+            Nothing ->
+                domainModel
 
-                Just next ->
-                    deleteNode (pathOf next) domainModel |> updatePaths
+            Just next ->
+                deleteNode (pathOf next) domainModel |> updatePaths
+
     else
         domainModel
 
@@ -459,12 +464,12 @@ updateSelection editorModel navData =
         mbOrientation =
             orientationOf editorModel navData.cellSelected
     in
-        case mbOrientation of
-            Nothing ->
-                Cmd.none
+    case mbOrientation of
+        Nothing ->
+            Cmd.none
 
-            Just orientation ->
-                updateSelectionByOrientation editorModel navData orientation
+        Just orientation ->
+            updateSelectionByOrientation editorModel navData orientation
 
 
 updateSelectionByOrientation : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
@@ -472,14 +477,7 @@ updateSelectionByOrientation editorModel { dir, cellSelected, selection } orient
     let
         moverTask f =
             Task.attempt
-                (\result ->
-                    case result of
-                        Result.Err _ ->
-                            NavSelection (NavSelectionEffect { dir = D, cellSelected = cellSelected, selection = selection })
-
-                        _ ->
-                            NoOp
-                )
+                (\_ -> NoOp)
                 (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
     in
         case ( dir, orientation ) of
@@ -492,12 +490,14 @@ updateSelectionByOrientation editorModel { dir, cellSelected, selection } orient
             ( L, Horiz ) ->
                 if selection.start == 0 then
                     moverTask findPrevInputCell
+
                 else
                     Cmd.none
 
             ( R, Horiz ) ->
                 if selection.start >= (textOf "input" cellSelected |> String.length) then
                     moverTask findNextInputCell
+
                 else
                     Cmd.none
 
@@ -511,22 +511,22 @@ findPrevInputCell root current =
         mbPrev =
             previousSibling root (pathOf current)
     in
-        case mbPrev of
-            Just prev ->
-                findPrevInputCellRec root prev
-                    |> Maybe.withDefault current
+    case mbPrev of
+        Just prev ->
+            findPrevInputCellRec root prev
+                |> Maybe.withDefault current
 
-            Nothing ->
-                let
-                    mbParent =
-                        parentOf root (pathOf current)
-                in
-                    case mbParent of
-                        Nothing ->
-                            current
+        Nothing ->
+            let
+                mbParent =
+                    parentOf root (pathOf current)
+            in
+            case mbParent of
+                Nothing ->
+                    current
 
-                        Just parent ->
-                            findPrevInputCell root parent
+                Just parent ->
+                    findPrevInputCell root parent
 
 
 findPrevInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
@@ -546,12 +546,12 @@ findPrevInputCellRec root prev =
                         mbLast =
                             findFirstInputCellRec root (List.reverse children) findPrevInputCellRec
                     in
-                        case mbLast of
-                            Nothing ->
-                                Just <| findPrevInputCell root prev
+                    case mbLast of
+                        Nothing ->
+                            Just <| findPrevInputCell root prev
 
-                            Just last ->
-                                Just last
+                        Just last ->
+                            Just last
 
         _ ->
             Just <| findPrevInputCell root prev
@@ -563,22 +563,22 @@ findNextInputCell root current =
         mbNext =
             nextSibling root (pathOf current)
     in
-        case mbNext of
-            Just next ->
-                findNextInputCellRec root next
-                    |> Maybe.withDefault current
+    case mbNext of
+        Just next ->
+            findNextInputCellRec root next
+                |> Maybe.withDefault current
 
-            Nothing ->
-                let
-                    mbParent =
-                        parentOf root (pathOf current)
-                in
-                    case mbParent of
-                        Nothing ->
-                            current
+        Nothing ->
+            let
+                mbParent =
+                    parentOf root (pathOf current)
+            in
+            case mbParent of
+                Nothing ->
+                    current
 
-                        Just parent ->
-                            findNextInputCell root parent
+                Just parent ->
+                    findNextInputCell root parent
 
 
 findNextInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
@@ -598,12 +598,12 @@ findNextInputCellRec root next =
                         mbFirst =
                             findFirstInputCellRec root children findNextInputCellRec
                     in
-                        case mbFirst of
-                            Nothing ->
-                                Just <| findNextInputCell root next
+                    case mbFirst of
+                        Nothing ->
+                            Just <| findNextInputCell root next
 
-                            Just first ->
-                                Just first
+                        Just first ->
+                            Just first
 
         _ ->
             Just <| findNextInputCell root next
@@ -620,12 +620,12 @@ findFirstInputCellRec root candidates recFun =
                 mbFirst =
                     recFun root head
             in
-                case mbFirst of
-                    Nothing ->
-                        findFirstInputCellRec root tail recFun
+            case mbFirst of
+                Nothing ->
+                    findFirstInputCellRec root tail recFun
 
-                    Just first ->
-                        Just first
+                Just first ->
+                    Just first
 
 
 
@@ -683,7 +683,7 @@ viewContent cell html =
                         ButtonCell ->
                             viewButtonCell cell
             in
-                htmlNew :: List.reverse html |> List.reverse
+            htmlNew :: List.reverse html |> List.reverse
 
         EffectCell _ ->
             []
@@ -697,10 +697,11 @@ viewStackCell cell =
                 bO =
                     boolOf "isHoriz" cell
             in
-                if bO then
-                    viewHorizStackCell cell
-                else
-                    viewVertStackCell cell
+            if bO then
+                viewHorizStackCell cell
+
+            else
+                viewVertStackCell cell
 
         EffectCell _ ->
             text ""
@@ -731,16 +732,18 @@ viewHorizStackCell cell =
                 displayAttrs =
                     divRowAttributes cell
             in
-                div
-                    (HtmlA.id (pathAsIdFromNode cell)
-                        :: marginsAndPaddings cell
-                        ++ if displayAttrs == [] then
+            div
+                (HtmlA.id (pathAsIdFromNode cell)
+                    :: marginsAndPaddings cell
+                    ++ (if displayAttrs == [] then
                             [ HtmlA.style "display" "flex" ]
-                           else
+
+                        else
                             displayAttrs
-                    )
-                <|
-                    viewCell cell
+                       )
+                )
+            <|
+                viewCell cell
 
         EffectCell _ ->
             text ""
@@ -777,27 +780,28 @@ viewInputCell cell =
                 inputSize =
                     if inputValue == "" then
                         String.length "<no value>"
+
                     else
                         String.length inputValue
             in
-                div
-                    (divCellAttributes cell)
-                    [ input
-                        ([ HtmlA.style "border-width" "0px"
-                         , HtmlA.style "font-family" "Consolas"
-                         , HtmlA.style "font-size" "16px"
-                         , HtmlA.style "border" "none"
-                         , HtmlA.style "outline" "none"
-                         , HtmlA.placeholder "<no value>"
-                         , HtmlA.value inputValue
-                         , HtmlA.size inputSize
-                         , HtmlA.id (pathAsIdFromNode cell)
-                         ]
-                            ++ marginsAndPaddings cell
-                            ++ createInputCellAttributes cell
-                        )
-                        []
-                    ]
+            div
+                (divCellAttributes cell)
+                [ input
+                    ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "font-family" "Consolas"
+                     , HtmlA.style "font-size" "16px"
+                     , HtmlA.style "border" "none"
+                     , HtmlA.style "outline" "none"
+                     , HtmlA.placeholder "<no value>"
+                     , HtmlA.value inputValue
+                     , HtmlA.size inputSize
+                     , HtmlA.id (pathAsIdFromNode cell)
+                     ]
+                        ++ marginsAndPaddings cell
+                        ++ createInputCellAttributes cell
+                    )
+                    []
+                ]
 
         EffectCell _ ->
             text ""
@@ -813,34 +817,36 @@ viewPlaceholderCell cell =
 
                 inputValue =
                     "<"
-                        ++ if placeholderValue == "" then
-                            "..."
-                           else
-                            placeholderValue
-                                ++ ">"
+                        ++ (if placeholderValue == "" then
+                                "..."
+
+                            else
+                                placeholderValue
+                                    ++ ">"
+                           )
 
                 inputSize =
                     String.length inputValue
             in
-                div []
-                    [ input
-                        ([ HtmlA.style "border-width" "0px"
-                         , HtmlA.style "font-family" "Consolas"
-                         , HtmlA.style "font-size" "16px"
-                         , HtmlA.style "border" "none"
-                         , HtmlA.style "outline" "none"
-                         , HtmlA.style "color" "#888888"
-                         , HtmlA.style "font-style" "italic"
-                         , HtmlA.value inputValue
-                         , HtmlA.size inputSize
-                         , HtmlE.onInput Swallow
-                         , HtmlA.id (pathAsIdFromNode cell)
-                         ]
-                            ++ createInputCellAttributes cell
-                            ++ marginsAndPaddings cell
-                        )
-                        []
-                    ]
+            div []
+                [ input
+                    ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "font-family" "Consolas"
+                     , HtmlA.style "font-size" "16px"
+                     , HtmlA.style "border" "none"
+                     , HtmlA.style "outline" "none"
+                     , HtmlA.style "color" "#888888"
+                     , HtmlA.style "font-style" "italic"
+                     , HtmlA.value inputValue
+                     , HtmlA.size inputSize
+                     , HtmlE.onInput Swallow
+                     , HtmlA.id (pathAsIdFromNode cell)
+                     ]
+                        ++ createInputCellAttributes cell
+                        ++ marginsAndPaddings cell
+                    )
+                    []
+                ]
 
         EffectCell _ ->
             text ""
@@ -865,7 +871,7 @@ viewButtonCell cell =
                             )
                         |> Maybe.withDefault []
             in
-                button (marginsAndPaddings cell ++ onClick) [ text (textOf "text" cell) ]
+            button (marginsAndPaddings cell ++ onClick) [ text (textOf "text" cell) ]
 
         EffectCell _ ->
             text ""
@@ -875,6 +881,7 @@ divRowAttributes : Node (Cell a) -> List (Attribute (Msg a))
 divRowAttributes cell =
     if boolOf "isGrid" cell then
         [ HtmlA.style "display" "table-row" ]
+
     else
         []
 
@@ -883,6 +890,7 @@ divCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
 divCellAttributes cell =
     if boolOf "isGrid" cell then
         [ HtmlA.style "display" "table-cell" ]
+
     else
         []
 
@@ -898,6 +906,7 @@ margins cell =
         indentMarginLeft =
             if boolOf "indent" cell then
                 20
+
             else
                 0
 
@@ -913,11 +922,11 @@ margins cell =
         left =
             ((intOf "margin-left" cell + indentMarginLeft) |> String.fromInt) ++ "px"
     in
-        HtmlA.style "margin" <| top ++ right ++ bottom ++ left
+    HtmlA.style "margin" <| top ++ right ++ bottom ++ left
 
 
 paddings : Node (Cell a) -> Attribute (Msg a)
-paddings cell =
+paddings _ =
     HtmlA.style "padding" <| "0px 0px 0px 0px"
 
 
@@ -929,8 +938,8 @@ createInputCellAttributes cell =
                 isasUnderCustom "effects" cell
                     ++ navEffects cell
     in
-        List.map (attributeFromEffectGroup cell) effectGroups
-            |> List.filterMap identity
+    List.map (attributeFromEffectGroup cell) effectGroups
+        |> List.filterMap identity
 
 
 attributeFromEffectGroup : Node (Cell a) -> EffectGroup a -> Maybe (Attribute (Msg a))
@@ -999,54 +1008,54 @@ effectAttributeFromKey dictKeyToMsg =
                 mbMsg =
                     Dict.get k dictKeyToMsg
             in
-                case mbMsg of
-                    Nothing ->
-                        JsonD.fail ("incorrect code: " ++ k |> Debug.log "incorrect")
+            case mbMsg of
+                Nothing ->
+                    JsonD.fail <| "incorrect code: " ++ k
 
-                    Just msg ->
-                        case msg of
-                            NavSelection effect ->
-                                case effect of
-                                    NavSelectionEffect navData ->
-                                        JsonD.map
-                                            (\sel ->
-                                                NavSelection <| NavSelectionEffect { navData | selection = sel }
-                                            )
-                                            (JsonD.field "target" decodeSelection)
+                Just msg ->
+                    case msg of
+                        NavSelection effect ->
+                            case effect of
+                                NavSelectionEffect navData ->
+                                    JsonD.map
+                                        (\sel ->
+                                            NavSelection <| NavSelectionEffect { navData | selection = sel }
+                                        )
+                                        (JsonD.field "target" decodeSelection)
 
-                                    _ ->
-                                        JsonD.succeed msg
+                                _ ->
+                                    JsonD.succeed msg
 
-                            OnDelete effect cellContext ->
-                                case effect of
-                                    OnDeleteEffect effectData ->
-                                        JsonD.map
-                                            (\sel ->
-                                                OnDelete (OnDeleteEffect { effectData | selection = sel }) cellContext
-                                            )
-                                            (JsonD.field "target" decodeSelection)
+                        OnDelete effect cellContext ->
+                            case effect of
+                                OnDeleteEffect effectData ->
+                                    JsonD.map
+                                        (\sel ->
+                                            OnDelete (OnDeleteEffect { effectData | selection = sel }) cellContext
+                                        )
+                                        (JsonD.field "target" decodeSelection)
 
-                                    _ ->
-                                        JsonD.succeed msg
+                                _ ->
+                                    JsonD.succeed msg
 
-                            OnBackspace effect cellContext ->
-                                case effect of
-                                    OnDeleteEffect effectData ->
-                                        JsonD.map
-                                            (\sel ->
-                                                OnBackspace (OnDeleteEffect { effectData | selection = sel }) cellContext
-                                            )
-                                            (JsonD.field "target" decodeSelection)
+                        OnBackspace effect cellContext ->
+                            case effect of
+                                OnDeleteEffect effectData ->
+                                    JsonD.map
+                                        (\sel ->
+                                            OnBackspace (OnDeleteEffect { effectData | selection = sel }) cellContext
+                                        )
+                                        (JsonD.field "target" decodeSelection)
 
-                                    _ ->
-                                        JsonD.succeed msg
+                                _ ->
+                                    JsonD.succeed msg
 
-                            _ ->
-                                JsonD.succeed msg
+                        _ ->
+                            JsonD.succeed msg
     in
-        HtmlE.on "keydown" <|
-            JsonD.andThen canHandle <|
-                JsonD.field "key" JsonD.string
+    HtmlE.on "keydown" <|
+        JsonD.andThen canHandle <|
+            JsonD.field "key" JsonD.string
 
 
 isasUnderCustom : String -> Node a -> List a
@@ -1055,10 +1064,11 @@ isasUnderCustom featureKey parent =
         children =
             if featureKey == "" then
                 getUnderDefault parent
+
             else
                 getUnderCustom featureKey parent
     in
-        List.map isaOf children
+    List.map isaOf children
 
 
 orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation
@@ -1070,10 +1080,11 @@ orientationOf root cell =
                     bO =
                         boolOf "isHoriz" cell
                 in
-                    if bO then
-                        Horiz
-                    else
-                        Vert
+                if bO then
+                    Horiz
+
+                else
+                    Vert
 
         ContentCell _ ->
             parentOf root (pathOf cell)
@@ -1100,15 +1111,17 @@ decodeSelection =
 griddify : Bool -> Node (Cell a) -> Node (Cell a)
 griddify isGridParent node =
     let
-        nodeNew = 
-            if isGridParent then 
+        nodeNew =
+            if isGridParent then
                 addBool "isGrid" True node
-            else 
+
+            else
                 node
 
-        children = getUnderDefault nodeNew
-        isGrid = boolOf "isGrid" nodeNew
-    in
-        replaceUnderDefault (List.map (griddify isGrid) children) nodeNew
+        children =
+            getUnderDefault nodeNew
 
-    
+        isGrid =
+            boolOf "isGrid" nodeNew
+    in
+    replaceUnderDefault (List.map (griddify isGrid) children) nodeNew

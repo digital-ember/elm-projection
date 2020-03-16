@@ -11,7 +11,7 @@ type Domain
   | Faction
 
 main =
-    program initFaction editorFaction
+    projection initFaction editorFaction
 
 
 initFaction : Node Domain
@@ -30,6 +30,7 @@ editorFactionName faction =
     horizStackCell
         |> with (constantCell "Faction:")
         |> with (inputCell "name" faction)
+        |> addMargin Bottom 20
 
 
 editorTanks : Node Domain -> Node (Cell Domain)

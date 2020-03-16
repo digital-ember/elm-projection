@@ -1,8 +1,7 @@
-module Runtime exposing (program, Msg, Model)
+module Runtime exposing (projection, Msg, Model)
 
 import Structure exposing (..)
 import Editor exposing (..)
-import Maybe exposing (..)
 import Html exposing (..)
 import Browser exposing (..)
 
@@ -18,8 +17,8 @@ type Msg a
     | EditorMsg (Node (Cell a)) (Editor.Msg a)
 
 
-program : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
-program domainModel xform =
+projection : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
+projection domainModel xform =
     let
         init () =
             ( { domainModel = domainModel |> updatePaths, xform = xform }, Cmd.none )

@@ -1,8 +1,8 @@
-module StateMachine exposing (main)
+--module StateMachine exposing (main)
 
 import Structure exposing (..)
 import Editor exposing (..)
-import Runtime exposing (..)
+import Runtime exposing (Model, projection)
 
 
 {-| We need to define a custom domain type.
@@ -22,7 +22,7 @@ It requires:
 -}
 main : Program () (Model Domain) (Runtime.Msg Domain)
 main =
-    program initStateMachine editor
+    projection initStateMachine editor
 
 
 {-| Initial root node to start the program with.

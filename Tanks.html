@@ -5005,7 +5005,6 @@ var author$project$Structure$updatePaths = function (_n0) {
 var author$project$Editor$tryDelete = F5(
 	function (domainModel, _n0, navFun, textLength, isAtDeletePos) {
 		var path = _n0.path;
-		var selection = _n0.selection;
 		if (!textLength) {
 			return author$project$Structure$updatePaths(
 				A2(author$project$Structure$deleteNode, path, domainModel));
@@ -7926,6 +7925,32 @@ var author$project$Editor$createRootCell = author$project$Structure$createRoot(
 var author$project$Editor$with = function (node) {
 	return author$project$Structure$addToDefault(node);
 };
+var author$project$Editor$Bottom = {$: 'Bottom'};
+var author$project$Structure$addInt = F3(
+	function (key, value, node) {
+		return A2(
+			author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PInt(value)),
+			node);
+	});
+var author$project$Editor$addMargin = F3(
+	function (side, space, node) {
+		var key = function () {
+			switch (side.$) {
+				case 'Top':
+					return 'margin-top';
+				case 'Right':
+					return 'margin-right';
+				case 'Bottom':
+					return 'margin-bottom';
+				default:
+					return 'margin-left';
+			}
+		}();
+		return A3(author$project$Structure$addInt, key, space, node);
+	});
 var author$project$Editor$ConstantCell = {$: 'ConstantCell'};
 var author$project$Structure$addText = F3(
 	function (key, text, node) {
@@ -7986,13 +8011,17 @@ var author$project$Editor$inputCell = F2(
 					author$project$Editor$ContentCell(author$project$Editor$InputCell))));
 	});
 var author$project$Tanks$editorFactionName = function (faction) {
-	return A2(
-		author$project$Editor$with,
-		A2(author$project$Editor$inputCell, 'name', faction),
+	return A3(
+		author$project$Editor$addMargin,
+		author$project$Editor$Bottom,
+		20,
 		A2(
 			author$project$Editor$with,
-			author$project$Editor$constantCell('Faction:'),
-			author$project$Editor$horizStackCell));
+			A2(author$project$Editor$inputCell, 'name', faction),
+			A2(
+				author$project$Editor$with,
+				author$project$Editor$constantCell('Faction:'),
+				author$project$Editor$horizStackCell)));
 };
 var author$project$Editor$vertStackCell = A3(
 	author$project$Structure$addBool,
