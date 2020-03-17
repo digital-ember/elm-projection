@@ -36,7 +36,7 @@ import Task as Task
 
 type Cell a
     = ContentCell ContentCell
-    | EffectCell (Effect a)
+    | EffectCell (EffectCell a)
 
 
 type ContentCell
@@ -48,14 +48,14 @@ type ContentCell
     | ButtonCell
 
 
-type Effect a
+type EffectCell a
     = InsertionEffect
         { path : Path
         , nodeToInsert : Node a
         , isReplace : Bool
         , feature : String
         }
-    | OnDeleteEffect
+    | DeletionEffect
         { path : Path
         , selection : Selection
         }
@@ -78,8 +78,8 @@ type alias Selection =
 
 
 type EffectGroup a
-    = InputEffectGroup (List (Effect a))
-    | KeyboardEffectGroup (List (Effect a))
+    = InputEffectGroup (List (EffectCell a))
+    | KeyboardEffectGroup (List (EffectCell a))
 
 
 type Orientation
@@ -91,12 +91,12 @@ type Msg a
     = -- will be needed for selection update
       NoOp
     | Swallow String
-    | NavSelection (Effect a)
-    | OnEnter (Effect a) (Node (Cell a))
-    | OnClick (Effect a) (Node (Cell a))
-    | OnBackspace (Effect a) (Node (Cell a))
-    | OnDelete (Effect a) (Node (Cell a))
-    | OnInput (Effect a) String
+    | NavSelection (EffectCell a)
+    | OnEnter (EffectCell a) (Node (Cell a))
+    | OnClick (EffectCell a) (Node (Cell a))
+    | OnBackspace (EffectCell a) (Node (Cell a))
+    | OnDelete (EffectCell a) (Node (Cell a))
+    | OnInput (EffectCell a) String
 
 
 type Dir
@@ -200,14 +200,14 @@ addMargin side space node =
 -- EFFECTS
 
 
-withEffect : Effect a -> Node (Cell a) -> Node (Cell a)
+withEffect : EffectCell a -> Node (Cell a) -> Node (Cell a)
 withEffect effect =
     addToCustom "effects" <|
         createNode <|
             EffectCell effect
 
 
-replacementEffect : String -> Node a -> Node a -> Effect a
+replacementEffect : String -> Node a -> Node a -> EffectCell a
 replacementEffect feature nodeContext nodeToInsert =
     InsertionEffect
         { path = pathOf nodeContext
@@ -217,7 +217,7 @@ replacementEffect feature nodeContext nodeToInsert =
         }
 
 
-insertionEffect : Node a -> Node a -> Effect a
+insertionEffect : Node a -> Node a -> EffectCell a
 insertionEffect nodeContext nodeToInsert =
     InsertionEffect
         { path = pathOf nodeContext
@@ -227,15 +227,15 @@ insertionEffect nodeContext nodeToInsert =
         }
 
 
-deletionEffect : Node a -> Effect a
+deletionEffect : Node a -> EffectCell a
 deletionEffect nodeContext =
-    OnDeleteEffect
+    DeletionEffect
         { path = pathOf nodeContext
         , selection = emptySelection
         }
 
 
-onInputEffect : Path -> String -> Effect a
+onInputEffect : Path -> String -> EffectCell a
 onInputEffect path key =
     OnInputEffect
         { path = path
@@ -294,7 +294,7 @@ grouped effectCells =
                         InsertionEffect _ ->
                             Dict.update "keyboard" (updateGroup effect) groupDict
 
-                        OnDeleteEffect _ ->
+                        DeletionEffect _ ->
                             Dict.update "keyboard" (updateGroup effect) groupDict
 
                         NavSelectionEffect _ ->
@@ -360,7 +360,7 @@ updateEditor msg editorModel domainModel =
 
         OnDelete effect cellContext ->
             case effect of
-                OnDeleteEffect ({ selection } as effectData) ->
+                DeletionEffect ({ selection } as effectData) ->
                     let
                         textLength =
                             textOf "input" cellContext |> String.length
@@ -382,7 +382,7 @@ updateEditor msg editorModel domainModel =
 
         OnBackspace effect cellContext ->
             case effect of
-                OnDeleteEffect ({ selection } as effectData) ->
+                DeletionEffect ({ selection } as effectData) ->
                     let
                         textLength =
                             textOf "input" cellContext |> String.length
@@ -969,7 +969,7 @@ effectAttributeFromInput handler =
     HtmlE.onInput handler
 
 
-inputEffectMap : Node (Cell a) -> List (Effect a) -> Dict.Dict String (Msg a)
+inputEffectMap : Node (Cell a) -> List (EffectCell a) -> Dict.Dict String (Msg a)
 inputEffectMap cell effects =
     List.foldl
         (\effect dict ->
@@ -977,7 +977,7 @@ inputEffectMap cell effects =
                 InsertionEffect _ ->
                     Dict.insert "Enter" (OnEnter effect cell) dict
 
-                OnDeleteEffect _ ->
+                DeletionEffect _ ->
                     Dict.insert "Delete" (OnDelete effect cell) <|
                         Dict.insert "Backspace" (OnBackspace effect cell) dict
 
@@ -1019,10 +1019,10 @@ effectAttributeFromKey dictKeyToMsg =
 
                         OnDelete effect cellContext ->
                             case effect of
-                                OnDeleteEffect effectData ->
+                                DeletionEffect effectData ->
                                     JsonD.map
                                         (\sel ->
-                                            OnDelete (OnDeleteEffect { effectData | selection = sel }) cellContext
+                                            OnDelete (DeletionEffect { effectData | selection = sel }) cellContext
                                         )
                                         (JsonD.field "target" decodeSelection)
 
@@ -1031,10 +1031,10 @@ effectAttributeFromKey dictKeyToMsg =
 
                         OnBackspace effect cellContext ->
                             case effect of
-                                OnDeleteEffect effectData ->
+                                DeletionEffect effectData ->
                                     JsonD.map
                                         (\sel ->
-                                            OnBackspace (OnDeleteEffect { effectData | selection = sel }) cellContext
+                                            OnBackspace (DeletionEffect { effectData | selection = sel }) cellContext
                                         )
                                         (JsonD.field "target" decodeSelection)
 

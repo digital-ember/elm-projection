@@ -31,7 +31,6 @@ module Structure exposing
     , updatePropertyByPath
     )
 
-import Array as Array
 import Dict as Dict exposing (Dict)
 import Maybe as Maybe
 
