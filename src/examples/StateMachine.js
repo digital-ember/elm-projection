@@ -4739,8 +4739,8 @@ var author$project$Structure$addToDefaultRange = F2(
 var author$project$Editor$withRange = function (children) {
 	return author$project$Structure$addToDefaultRange(children);
 };
-var author$project$Editor$OnDeleteEffect = function (a) {
-	return {$: 'OnDeleteEffect', a: a};
+var author$project$Editor$DeletionEffect = function (a) {
+	return {$: 'DeletionEffect', a: a};
 };
 var elm$core$Basics$negate = function (n) {
 	return -n;
@@ -4751,19 +4751,19 @@ var author$project$Structure$pathOf = function (_n0) {
 	return path;
 };
 var author$project$Editor$deletionEffect = function (nodeContext) {
-	return author$project$Editor$OnDeleteEffect(
+	return author$project$Editor$DeletionEffect(
 		{
 			path: author$project$Structure$pathOf(nodeContext),
 			selection: author$project$Editor$emptySelection
 		});
 };
 var author$project$Editor$InputCell = {$: 'InputCell'};
-var author$project$Editor$OnInputEffect = function (a) {
-	return {$: 'OnInputEffect', a: a};
+var author$project$Editor$InputEffect = function (a) {
+	return {$: 'InputEffect', a: a};
 };
-var author$project$Editor$onInputEffect = F2(
+var author$project$Editor$inputEffect = F2(
 	function (path, key) {
-		return author$project$Editor$OnInputEffect(
+		return author$project$Editor$InputEffect(
 			{key: key, path: path});
 	});
 var author$project$Editor$EffectCell = function (a) {
@@ -5265,7 +5265,7 @@ var author$project$Editor$inputCell = F2(
 		return A2(
 			author$project$Editor$withEffect,
 			A2(
-				author$project$Editor$onInputEffect,
+				author$project$Editor$inputEffect,
 				author$project$Structure$pathOf(nodeContext),
 				text),
 			A3(
@@ -5487,6 +5487,54 @@ var author$project$Main$editorStateHead = function (state) {
 			author$project$Editor$constantCell('state'),
 			author$project$Editor$horizStackCell));
 };
+var author$project$Editor$RefCell = function (a) {
+	return {$: 'RefCell', a: a};
+};
+var author$project$Editor$CreateScopeEffect = function (a) {
+	return {$: 'CreateScopeEffect', a: a};
+};
+var author$project$Editor$createScopeEffect = F2(
+	function (target, nodeContext) {
+		return author$project$Editor$CreateScopeEffect(
+			{nodeContext: nodeContext, target: target});
+	});
+var author$project$Structure$addToCustomRange = F3(
+	function (key, children, parent) {
+		return A3(
+			elm$core$List$foldl,
+			author$project$Structure$addToCustom(key),
+			parent,
+			children);
+	});
+var author$project$Editor$refCell = F3(
+	function (target, text, nodeContext) {
+		return A2(
+			author$project$Editor$withEffect,
+			A2(author$project$Editor$createScopeEffect, target, nodeContext),
+			A2(
+				author$project$Editor$withEffect,
+				A2(
+					author$project$Editor$inputEffect,
+					author$project$Structure$pathOf(nodeContext),
+					text),
+				A3(
+					author$project$Structure$addToCustomRange,
+					'scope',
+					A2(
+						elm$core$List$map,
+						function (scopeElement) {
+							return author$project$Editor$constantCell(
+								A2(author$project$Structure$textOf, 'scopeValue', scopeElement));
+						},
+						A2(author$project$Structure$getUnderCustom, 'scope', nodeContext)),
+					A3(
+						author$project$Structure$addText,
+						'input',
+						A2(author$project$Structure$textOf, text, nodeContext),
+						author$project$Structure$createNode(
+							author$project$Editor$ContentCell(
+								author$project$Editor$RefCell(target)))))));
+	});
 var author$project$Main$Transition = {$: 'Transition'};
 var author$project$Main$ctorTransition = A3(
 	author$project$Structure$addText,
@@ -5518,7 +5566,7 @@ var author$project$Main$editorTransition = function (transition) {
 					A2(
 						author$project$Editor$withEffect,
 						A2(author$project$Editor$insertionEffect, transition, author$project$Main$ctorTransition),
-						A2(author$project$Editor$inputCell, 'eventRef', transition))),
+						A3(author$project$Editor$refCell, author$project$Main$Event, 'eventRef', transition))),
 				author$project$Editor$horizStackCell)));
 };
 var author$project$Main$editorTransitionPlaceholder = function (state) {
@@ -5609,6 +5657,26 @@ var author$project$Main$editor = function (sm) {
 };
 var author$project$Main$StateMachine = {$: 'StateMachine'};
 var author$project$Main$initStateMachine = author$project$Structure$createRoot(author$project$Main$StateMachine);
+var author$project$Editor$dummyOptions = function (target) {
+	return _List_fromArray(
+		[
+			A3(
+			author$project$Structure$addText,
+			'scopeValue',
+			'one',
+			author$project$Structure$createNode(target)),
+			A3(
+			author$project$Structure$addText,
+			'scopeValue',
+			'two',
+			author$project$Structure$createNode(target)),
+			A3(
+			author$project$Structure$addText,
+			'scopeValue',
+			'three',
+			author$project$Structure$createNode(target))
+		]);
+};
 var author$project$Structure$strDefault = 'default';
 var author$project$Structure$getUnder = F2(
 	function (feature, node) {
@@ -5693,7 +5761,7 @@ var elm$core$List$indexedMap = F2(
 				elm$core$List$length(xs) - 1),
 			xs);
 	});
-var author$project$Structure$deleteNodeUnder = F2(
+var author$project$Structure$deleteNodeAt = F2(
 	function (_n0, parent) {
 		var feature = _n0.feature;
 		var index = _n0.index;
@@ -5730,7 +5798,7 @@ var author$project$Structure$deleteNodeRec = F2(
 		if (segments.b) {
 			if (!segments.b.b) {
 				var segment = segments.a;
-				return A2(author$project$Structure$deleteNodeUnder, segment, parent);
+				return A2(author$project$Structure$deleteNodeAt, segment, parent);
 			} else {
 				var segment = segments.a;
 				var tail = segments.b;
@@ -5750,7 +5818,7 @@ var author$project$Structure$dropRootSegment = function (path) {
 		return path;
 	}
 };
-var author$project$Structure$deleteNode = F2(
+var author$project$Structure$deleteNodeUnder = F2(
 	function (path, root) {
 		var _n0 = author$project$Structure$dropRootSegment(path);
 		var segmentsNoRoot = _n0.a;
@@ -5816,7 +5884,7 @@ var author$project$Editor$tryDelete = F5(
 		var path = _n0.path;
 		if (!textLength) {
 			return author$project$Structure$updatePaths(
-				A2(author$project$Structure$deleteNode, path, domainModel));
+				A2(author$project$Structure$deleteNodeUnder, path, domainModel));
 		} else {
 			if (isAtDeletePos) {
 				var mbNext = A2(navFun, domainModel, path);
@@ -5826,7 +5894,7 @@ var author$project$Editor$tryDelete = F5(
 					var next = mbNext.a;
 					return author$project$Structure$updatePaths(
 						A2(
-							author$project$Structure$deleteNode,
+							author$project$Structure$deleteNodeUnder,
 							author$project$Structure$pathOf(next),
 							domainModel));
 				}
@@ -6981,6 +7049,34 @@ var author$project$Structure$insertChildAfterPath = F3(
 		var segmentsNoRoot = _n0.a;
 		return A4(author$project$Structure$insertChildAfterPathRec, nodeNew, path, segmentsNoRoot, root);
 	});
+var author$project$Structure$replaceChildrenForRangeReplace = F6(
+	function (key, rangeNew, pathAt, segment, tailSegments, parent) {
+		var replaceRangeAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, pathAt, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			replaceRangeAt,
+			A2(author$project$Structure$getUnder, segment.feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
+	});
+var author$project$Structure$replaceRangeAtPathRec = F5(
+	function (key, rangeNew, pathAt, segments, parent) {
+		if (!segments.b) {
+			return A3(author$project$Structure$replaceUnderFeature, key, rangeNew, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A6(author$project$Structure$replaceChildrenForRangeReplace, key, rangeNew, pathAt, segment, tail, parent);
+		}
+	});
+var author$project$Structure$replaceRangeAtPath = F4(
+	function (key, rangeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, path, segmentsNoRoot, root);
+	});
 var elm$core$String$toLower = _String_toLower;
 var author$project$Structure$updateProperty = F2(
 	function (_n0, _n1) {
@@ -7047,15 +7143,11 @@ var author$project$Structure$updatePropertyByPath = F3(
 		var segmentsNoRoot = _n0.a;
 		return A3(author$project$Structure$updatePropertyRec, segmentsNoRoot, kvp, root);
 	});
-var elm$core$Debug$log = _Debug_log;
 var author$project$Editor$updateEditor = F3(
 	function (msg, editorModel, domainModel) {
 		switch (msg.$) {
 			case 'NoOp':
-				return A2(
-					elm$core$Debug$log,
-					'NoOp',
-					_Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none));
+				return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 			case 'Swallow':
 				return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 			case 'OnEnter':
@@ -7070,10 +7162,7 @@ var author$project$Editor$updateEditor = F3(
 						isReplace ? author$project$Structure$updatePaths(
 							A4(author$project$Structure$addChildAtPath, feature, nodeToInsert, path, domainModel)) : author$project$Structure$updatePaths(
 							A3(author$project$Structure$insertChildAfterPath, nodeToInsert, path, domainModel)),
-						A2(
-							elm$core$Debug$log,
-							'OnEnter',
-							author$project$Editor$updateSelectionOnEnter(cellContext)));
+						author$project$Editor$updateSelectionOnEnter(cellContext));
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
@@ -7096,7 +7185,7 @@ var author$project$Editor$updateEditor = F3(
 			case 'OnDelete':
 				var effect = msg.a;
 				var cellContext = msg.b;
-				if (effect.$ === 'OnDeleteEffect') {
+				if (effect.$ === 'DeletionEffect') {
 					var effectData = effect.a;
 					var selection = effectData.selection;
 					var textLength = elm$core$String$length(
@@ -7111,7 +7200,7 @@ var author$project$Editor$updateEditor = F3(
 			case 'OnBackspace':
 				var effect = msg.a;
 				var cellContext = msg.b;
-				if (effect.$ === 'OnDeleteEffect') {
+				if (effect.$ === 'DeletionEffect') {
 					var effectData = effect.a;
 					var selection = effectData.selection;
 					var textLength = elm$core$String$length(
@@ -7126,7 +7215,7 @@ var author$project$Editor$updateEditor = F3(
 			case 'OnInput':
 				var effect = msg.a;
 				var value = msg.b;
-				if (effect.$ === 'OnInputEffect') {
+				if (effect.$ === 'InputEffect') {
 					var path = effect.a.path;
 					var key = effect.a.key;
 					return _Utils_Tuple2(
@@ -7140,13 +7229,28 @@ var author$project$Editor$updateEditor = F3(
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
-			default:
+			case 'NavSelection':
 				var effect = msg.a;
 				if (effect.$ === 'NavSelectionEffect') {
 					var navData = effect.a;
 					return _Utils_Tuple2(
 						domainModel,
 						A2(author$project$Editor$updateSelection, editorModel, navData));
+				} else {
+					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
+				}
+			default:
+				var effect = msg.a;
+				if (effect.$ === 'CreateScopeEffect') {
+					var scopeData = effect.a;
+					return _Utils_Tuple2(
+						A4(
+							author$project$Structure$replaceRangeAtPath,
+							'scope',
+							author$project$Editor$dummyOptions(scopeData.target),
+							author$project$Structure$pathOf(scopeData.nodeContext),
+							domainModel),
+						elm$core$Platform$Cmd$none);
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 				}
@@ -7371,6 +7475,18 @@ var author$project$Editor$OnInput = F2(
 	function (a, b) {
 		return {$: 'OnInput', a: a, b: b};
 	});
+var author$project$Editor$UpdateScope = function (a) {
+	return {$: 'UpdateScope', a: a};
+};
+var elm$html$Html$Events$onFocus = function (msg) {
+	return A2(
+		elm$html$Html$Events$on,
+		'focus',
+		elm$json$Json$Decode$succeed(msg));
+};
+var author$project$Editor$effectAttributeFromFocus = function (msg) {
+	return elm$html$Html$Events$onFocus(msg);
+};
 var elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
 };
@@ -7456,14 +7572,14 @@ var author$project$Editor$effectAttributeFromKey = function (dictKeyToMsg) {
 				case 'OnDelete':
 					var effect = msg.a;
 					var cellContext = msg.b;
-					if (effect.$ === 'OnDeleteEffect') {
+					if (effect.$ === 'DeletionEffect') {
 						var effectData = effect.a;
 						return A2(
 							elm$json$Json$Decode$map,
 							function (sel) {
 								return A2(
 									author$project$Editor$OnDelete,
-									author$project$Editor$OnDeleteEffect(
+									author$project$Editor$DeletionEffect(
 										_Utils_update(
 											effectData,
 											{selection: sel})),
@@ -7476,14 +7592,14 @@ var author$project$Editor$effectAttributeFromKey = function (dictKeyToMsg) {
 				case 'OnBackspace':
 					var effect = msg.a;
 					var cellContext = msg.b;
-					if (effect.$ === 'OnDeleteEffect') {
+					if (effect.$ === 'DeletionEffect') {
 						var effectData = effect.a;
 						return A2(
 							elm$json$Json$Decode$map,
 							function (sel) {
 								return A2(
 									author$project$Editor$OnBackspace,
-									author$project$Editor$OnDeleteEffect(
+									author$project$Editor$DeletionEffect(
 										_Utils_update(
 											effectData,
 											{selection: sel})),
@@ -7535,7 +7651,7 @@ var author$project$Editor$inputEffectMap = F2(
 								'Enter',
 								A2(author$project$Editor$OnEnter, effect, cell),
 								dict);
-						case 'OnDeleteEffect':
+						case 'DeletionEffect':
 							return A3(
 								elm$core$Dict$insert,
 								'Delete',
@@ -7552,6 +7668,8 @@ var author$project$Editor$inputEffectMap = F2(
 								author$project$Editor$keyFromDir(dir),
 								author$project$Editor$NavSelection(effect),
 								dict);
+						case 'InputEffect':
+							return dict;
 						default:
 							return dict;
 					}
@@ -7561,23 +7679,37 @@ var author$project$Editor$inputEffectMap = F2(
 	});
 var author$project$Editor$attributeFromEffectGroup = F2(
 	function (cell, effectGroup) {
-		if (effectGroup.$ === 'InputEffectGroup') {
-			var effects = effectGroup.a;
-			if (effects.b && (!effects.b.b)) {
-				var effect = effects.a;
+		switch (effectGroup.$) {
+			case 'InputEffectGroup':
+				var effects = effectGroup.a;
+				if (effects.b && (!effects.b.b)) {
+					var effect = effects.a;
+					return elm$core$Maybe$Just(
+						author$project$Editor$effectAttributeFromInput(
+							author$project$Editor$OnInput(effect)));
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			case 'KeyboardEffectGroup':
+				var effects = effectGroup.a;
 				return elm$core$Maybe$Just(
-					author$project$Editor$effectAttributeFromInput(
-						author$project$Editor$OnInput(effect)));
-			} else {
-				return elm$core$Maybe$Nothing;
-			}
-		} else {
-			var effects = effectGroup.a;
-			return elm$core$Maybe$Just(
-				author$project$Editor$effectAttributeFromKey(
-					A2(author$project$Editor$inputEffectMap, cell, effects)));
+					author$project$Editor$effectAttributeFromKey(
+						A2(author$project$Editor$inputEffectMap, cell, effects)));
+			default:
+				var effects = effectGroup.a;
+				if (effects.b && (!effects.b.b)) {
+					var effect = effects.a;
+					return elm$core$Maybe$Just(
+						author$project$Editor$effectAttributeFromFocus(
+							author$project$Editor$UpdateScope(effect)));
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
 		}
 	});
+var author$project$Editor$FocusEffectGroup = function (a) {
+	return {$: 'FocusEffectGroup', a: a};
+};
 var author$project$Editor$InputEffectGroup = function (a) {
 	return {$: 'InputEffectGroup', a: a};
 };
@@ -7635,6 +7767,11 @@ var author$project$Editor$grouped = function (effectCells) {
 						elm$core$List$cons,
 						author$project$Editor$KeyboardEffectGroup(v),
 						effectGroupList);
+				case 'focus':
+					return A2(
+						elm$core$List$cons,
+						author$project$Editor$FocusEffectGroup(v),
+						effectGroupList);
 				default:
 					return effectGroupList;
 			}
@@ -7646,7 +7783,7 @@ var author$project$Editor$grouped = function (effectCells) {
 			} else {
 				var effect = effectCell.a;
 				switch (effect.$) {
-					case 'OnInputEffect':
+					case 'InputEffect':
 						return A3(
 							elm$core$Dict$update,
 							'input',
@@ -7658,7 +7795,13 @@ var author$project$Editor$grouped = function (effectCells) {
 							'keyboard',
 							updateGroup(effect),
 							groupDict);
-					case 'OnDeleteEffect':
+					case 'DeletionEffect':
+						return A3(
+							elm$core$Dict$update,
+							'keyboard',
+							updateGroup(effect),
+							groupDict);
+					case 'NavSelectionEffect':
 						return A3(
 							elm$core$Dict$update,
 							'keyboard',
@@ -7667,7 +7810,7 @@ var author$project$Editor$grouped = function (effectCells) {
 					default:
 						return A3(
 							elm$core$Dict$update,
-							'keyboard',
+							'focus',
 							updateGroup(effect),
 							groupDict);
 				}
@@ -7694,7 +7837,7 @@ var author$project$Editor$navEffects = function (cell) {
 			A2(author$project$Editor$navEffect, author$project$Editor$R, cell)
 		]);
 };
-var author$project$Editor$createInputCellAttributes = function (cell) {
+var author$project$Editor$inputCellAttributesFromEffects = function (cell) {
 	var effectGroups = author$project$Editor$grouped(
 		_Utils_ap(
 			A2(author$project$Editor$isasUnderCustom, 'effects', cell),
@@ -7744,7 +7887,7 @@ var author$project$Editor$viewInputCell = function (cell) {
 							]),
 						_Utils_ap(
 							author$project$Editor$marginsAndPaddings(cell),
-							author$project$Editor$createInputCellAttributes(cell))),
+							author$project$Editor$inputCellAttributesFromEffects(cell))),
 					_List_Nil)
 				]));
 	} else {
@@ -7784,8 +7927,72 @@ var author$project$Editor$viewPlaceholderCell = function (cell) {
 								author$project$Structure$pathAsIdFromNode(cell))
 							]),
 						_Utils_ap(
-							author$project$Editor$createInputCellAttributes(cell),
+							author$project$Editor$inputCellAttributesFromEffects(cell),
 							author$project$Editor$marginsAndPaddings(cell))),
+					_List_Nil)
+				]));
+	} else {
+		return elm$html$Html$text('');
+	}
+};
+var elm$html$Html$option = _VirtualDom_node('option');
+var author$project$Editor$optionFromScope = function (scopeElement) {
+	var scopeValue = A2(author$project$Structure$textOf, 'constant', scopeElement);
+	return A2(
+		elm$html$Html$option,
+		_List_fromArray(
+			[
+				elm$html$Html$Attributes$value(scopeValue)
+			]),
+		_List_Nil);
+};
+var elm$core$Debug$log = _Debug_log;
+var elm$html$Html$datalist = _VirtualDom_node('datalist');
+var elm$html$Html$Attributes$list = _VirtualDom_attribute('list');
+var author$project$Editor$viewRefCell = function (cell) {
+	var _n0 = author$project$Structure$isaOf(cell);
+	if (_n0.$ === 'ContentCell') {
+		var options = A2(
+			elm$core$List$map,
+			author$project$Editor$optionFromScope,
+			A2(
+				elm$core$Debug$log,
+				'CELL',
+				A2(author$project$Structure$getUnderCustom, 'scope', cell)));
+		var inputValue = A2(author$project$Structure$textOf, 'input', cell);
+		var inputSize = (inputValue === '') ? elm$core$String$length('<no value>') : elm$core$String$length(inputValue);
+		var inputId = author$project$Structure$pathAsIdFromNode(cell);
+		var datalistId = inputId + '-datalist';
+		return A2(
+			elm$html$Html$div,
+			author$project$Editor$divCellAttributes(cell),
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$datalist,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$id(datalistId)
+						]),
+					options),
+					A2(
+					elm$html$Html$input,
+					_Utils_ap(
+						_List_fromArray(
+							[
+								A2(elm$html$Html$Attributes$style, 'border-width', '0px'),
+								A2(elm$html$Html$Attributes$style, 'font-family', 'Consolas'),
+								A2(elm$html$Html$Attributes$style, 'font-size', '16px'),
+								A2(elm$html$Html$Attributes$style, 'border', 'none'),
+								A2(elm$html$Html$Attributes$style, 'outline', 'none'),
+								elm$html$Html$Attributes$placeholder('<no value>'),
+								elm$html$Html$Attributes$size(inputSize),
+								elm$html$Html$Attributes$id(inputId),
+								elm$html$Html$Attributes$list(datalistId)
+							]),
+						_Utils_ap(
+							author$project$Editor$marginsAndPaddings(cell),
+							author$project$Editor$inputCellAttributesFromEffects(cell))),
 					_List_Nil)
 				]));
 	} else {
@@ -7826,8 +8033,10 @@ var author$project$Editor$viewContent = F2(
 						return author$project$Editor$viewStackCell(cell);
 					case 'PlaceholderCell':
 						return author$project$Editor$viewPlaceholderCell(cell);
-					default:
+					case 'ButtonCell':
 						return author$project$Editor$viewButtonCell(cell);
+					default:
+						return author$project$Editor$viewRefCell(cell);
 				}
 			}();
 			return elm$core$List$reverse(
