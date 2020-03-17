@@ -21,12 +21,13 @@ module Structure exposing
     , intOf
     , isaOf
     , nextSibling
+    , nodesOf
     , parentOf
     , pathAsIdFromNode
     , pathOf
     , previousSibling
-    , replaceRangeAtPath
     , replaceChildAtPath
+    , replaceRangeAtPath
     , replaceUnderFeature
     , textOf
     , updatePaths
@@ -340,6 +341,11 @@ getUnderCustom key (Node { features }) =
         |> Maybe.withDefault []
 
 
+getAllUnderCustoms : Node a -> List (Node a)
+getAllUnderCustoms (Node { features }) =
+    Dict.values features.custom |> List.concat
+
+
 addRangeAtPath : String -> List (Node a) -> Path -> Node a -> Node a
 addRangeAtPath key range ((Path segments) as path) root =
     let
@@ -461,7 +467,6 @@ replaceRangeAtPathRec key rangeNew pathAt segments parent =
     case segments of
         [] ->
             replaceUnderFeature key rangeNew parent
-
 
         segment :: tail ->
             replaceChildrenForRangeReplace key rangeNew pathAt segment tail parent
@@ -788,6 +793,25 @@ nodeAt parent segments =
 
         [] ->
             Just parent
+
+
+nodesOf : a -> Node a -> List (Node a)
+nodesOf isa root =
+    nodesOfRec isa root []
+
+
+nodesOfRec isa node result =
+    case isaOf node == isa of
+        True ->
+            node :: result
+
+        False ->
+            let
+                allChildren =
+                    getUnderDefault node
+                        |> List.append (getAllUnderCustoms node)
+            in
+            List.foldl (nodesOfRec isa) result allChildren
 
 
 

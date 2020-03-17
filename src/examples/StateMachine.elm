@@ -175,13 +175,13 @@ editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
-            (refCell Event "eventRef" transition
+            (refCell Event "eventRef" transition Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )
         |> with (constantCell "⇒")
         |> with
-            (inputCell "stateRef" transition
+            (refCell State "stateRef" transition Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )

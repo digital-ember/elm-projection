@@ -11,8 +11,8 @@ module Editor exposing
     , griddify
     , horizStackCell
     , inputCell
-    , insertionEffect
     , inputEffect
+    , insertionEffect
     , placeholderCell
     , refCell
     , replacementEffect
@@ -71,8 +71,9 @@ type EffectCell a
         , selection : Selection
         }
     | CreateScopeEffect
-        { target : a
+        { isa : a
         , nodeContext : Node a
+        , scopeProvider : Maybe (List String)
         }
 
 
@@ -132,13 +133,13 @@ constantCell text =
         |> addText "constant" text
 
 
-refCell : a -> String -> Node a -> Node (Cell a)
-refCell target text nodeContext =
+refCell : a -> String -> Node a -> Maybe (List String) -> Node (Cell a)
+refCell target text nodeContext scopeProvider =
     createNode (ContentCell (RefCell target))
         |> addText "input" (textOf text nodeContext)
         |> addToCustomRange "scope" (List.map (\scopeElement -> constantCell (textOf "scopeValue" scopeElement)) (getUnderCustom "scope" nodeContext))
         |> withEffect (inputEffect (pathOf nodeContext) text)
-        |> withEffect (createScopeEffect target nodeContext)
+        |> withEffect (createScopeEffect target nodeContext scopeProvider)
 
 
 inputCell : String -> Node a -> Node (Cell a)
@@ -260,11 +261,12 @@ inputEffect path key =
         }
 
 
-createScopeEffect : a -> Node a -> EffectCell a
-createScopeEffect target nodeContext =
-     CreateScopeEffect
-        { target = target
+createScopeEffect : a -> Node a -> Maybe (List String) -> EffectCell a
+createScopeEffect target nodeContext scopeProvider =
+    CreateScopeEffect
+        { isa = target
         , nodeContext = nodeContext
+        , scopeProvider = scopeProvider
         }
 
 
@@ -452,15 +454,23 @@ updateEditor msg editorModel domainModel =
         UpdateScope effect ->
             case effect of
                 CreateScopeEffect scopeData ->
-                    ( replaceRangeAtPath "scope" (dummyOptions scopeData.target) (pathOf scopeData.nodeContext) domainModel, Cmd.none )
+                    ( setScopeInformation domainModel scopeData, Cmd.none )
 
                 _ ->
                     ( domainModel, Cmd.none )
 
-dummyOptions target =
-    [createNode target |> addText "scopeValue" "one"
-    ,createNode target |> addText "scopeValue"  "two"
-    ,createNode target |> addText "scopeValue" "three"]
+
+setScopeInformation domainModel scopeData =
+    let
+        optionNodes =
+            nodesOf scopeData.isa domainModel
+                |> List.map (\s -> createNode scopeData.isa |> addText "scopeValue" (textOf "name" s))
+    in
+    replaceRangeAtPath
+        "scope"
+        optionNodes
+        (pathOf scopeData.nodeContext)
+        domainModel
 
 
 tryDelete : Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
@@ -935,10 +945,10 @@ viewRefCell cell =
 
                 inputSize =
                     if inputValue == "" then
-                        String.length "<no value>"
+                        (String.length "<no value>") + 2
 
                     else
-                        String.length inputValue
+                        (String.length inputValue) + 2
             in
             div
                 (divCellAttributes cell)
@@ -1057,7 +1067,6 @@ attributeFromEffectGroup cell effectGroup =
         KeyboardEffectGroup effects ->
             Just (effectAttributeFromKey (inputEffectMap cell effects))
 
-
         FocusEffectGroup effects ->
             case effects of
                 effect :: [] ->
@@ -1065,7 +1074,6 @@ attributeFromEffectGroup cell effectGroup =
 
                 _ ->
                     Nothing
-
 
 
 keyFromDir : Dir -> String
@@ -1087,6 +1095,7 @@ keyFromDir dir =
 effectAttributeFromInput : (String -> Msg a) -> Attribute (Msg a)
 effectAttributeFromInput handler =
     HtmlE.onInput handler
+
 
 effectAttributeFromFocus : Msg a -> Attribute (Msg a)
 effectAttributeFromFocus msg =

@@ -5493,10 +5493,10 @@ var author$project$Editor$RefCell = function (a) {
 var author$project$Editor$CreateScopeEffect = function (a) {
 	return {$: 'CreateScopeEffect', a: a};
 };
-var author$project$Editor$createScopeEffect = F2(
-	function (target, nodeContext) {
+var author$project$Editor$createScopeEffect = F3(
+	function (target, nodeContext, scopeProvider) {
 		return author$project$Editor$CreateScopeEffect(
-			{nodeContext: nodeContext, target: target});
+			{isa: target, nodeContext: nodeContext, scopeProvider: scopeProvider});
 	});
 var author$project$Structure$addToCustomRange = F3(
 	function (key, children, parent) {
@@ -5506,11 +5506,11 @@ var author$project$Structure$addToCustomRange = F3(
 			parent,
 			children);
 	});
-var author$project$Editor$refCell = F3(
-	function (target, text, nodeContext) {
+var author$project$Editor$refCell = F4(
+	function (target, text, nodeContext, scopeProvider) {
 		return A2(
 			author$project$Editor$withEffect,
-			A2(author$project$Editor$createScopeEffect, target, nodeContext),
+			A3(author$project$Editor$createScopeEffect, target, nodeContext, scopeProvider),
 			A2(
 				author$project$Editor$withEffect,
 				A2(
@@ -5554,7 +5554,7 @@ var author$project$Main$editorTransition = function (transition) {
 			A2(
 				author$project$Editor$withEffect,
 				A2(author$project$Editor$insertionEffect, transition, author$project$Main$ctorTransition),
-				A2(author$project$Editor$inputCell, 'stateRef', transition))),
+				A4(author$project$Editor$refCell, author$project$Main$State, 'stateRef', transition, elm$core$Maybe$Nothing))),
 		A2(
 			author$project$Editor$with,
 			author$project$Editor$constantCell('⇒'),
@@ -5566,7 +5566,7 @@ var author$project$Main$editorTransition = function (transition) {
 					A2(
 						author$project$Editor$withEffect,
 						A2(author$project$Editor$insertionEffect, transition, author$project$Main$ctorTransition),
-						A3(author$project$Editor$refCell, author$project$Main$Event, 'eventRef', transition))),
+						A4(author$project$Editor$refCell, author$project$Main$Event, 'eventRef', transition, elm$core$Maybe$Nothing))),
 				author$project$Editor$horizStackCell)));
 };
 var author$project$Main$editorTransitionPlaceholder = function (state) {
@@ -5657,25 +5657,68 @@ var author$project$Main$editor = function (sm) {
 };
 var author$project$Main$StateMachine = {$: 'StateMachine'};
 var author$project$Main$initStateMachine = author$project$Structure$createRoot(author$project$Main$StateMachine);
-var author$project$Editor$dummyOptions = function (target) {
-	return _List_fromArray(
-		[
-			A3(
-			author$project$Structure$addText,
-			'scopeValue',
-			'one',
-			author$project$Structure$createNode(target)),
-			A3(
-			author$project$Structure$addText,
-			'scopeValue',
-			'two',
-			author$project$Structure$createNode(target)),
-			A3(
-			author$project$Structure$addText,
-			'scopeValue',
-			'three',
-			author$project$Structure$createNode(target))
-		]);
+var elm$core$Dict$values = function (dict) {
+	return A3(
+		elm$core$Dict$foldr,
+		F3(
+			function (key, value, valueList) {
+				return A2(elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
+var elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
+		}
+	});
+var elm$core$List$concat = function (lists) {
+	return A3(elm$core$List$foldr, elm$core$List$append, _List_Nil, lists);
+};
+var author$project$Structure$getAllUnderCustoms = function (_n0) {
+	var features = _n0.a.features;
+	return elm$core$List$concat(
+		elm$core$Dict$values(features.custom));
+};
+var author$project$Structure$isaOf = function (_n0) {
+	var isa = _n0.a.isa;
+	return isa;
+};
+var author$project$Structure$nodesOfRec = F3(
+	function (isa, node, result) {
+		var _n0 = _Utils_eq(
+			author$project$Structure$isaOf(node),
+			isa);
+		if (_n0) {
+			return A2(elm$core$List$cons, node, result);
+		} else {
+			var allChildren = A2(
+				elm$core$List$append,
+				author$project$Structure$getAllUnderCustoms(node),
+				author$project$Structure$getUnderDefault(node));
+			return A3(
+				elm$core$List$foldl,
+				author$project$Structure$nodesOfRec(isa),
+				result,
+				allChildren);
+		}
+	});
+var author$project$Structure$nodesOf = F2(
+	function (isa, root) {
+		return A3(author$project$Structure$nodesOfRec, isa, root, _List_Nil);
+	});
+var author$project$Structure$dropRootSegment = function (path) {
+	var segments = path.a;
+	if (segments.b) {
+		var feature = segments.a.feature;
+		var tail = segments.b;
+		return (feature === 'root') ? author$project$Structure$Path(tail) : path;
+	} else {
+		return path;
+	}
 };
 var author$project$Structure$strDefault = 'default';
 var author$project$Structure$getUnder = F2(
@@ -5697,24 +5740,6 @@ var author$project$Structure$replaceUnderFeature = F3(
 			_Utils_update(
 				data,
 				{features: featuresNew}));
-	});
-var elm$core$List$maybeCons = F3(
-	function (f, mx, xs) {
-		var _n0 = f(mx);
-		if (_n0.$ === 'Just') {
-			var x = _n0.a;
-			return A2(elm$core$List$cons, x, xs);
-		} else {
-			return xs;
-		}
-	});
-var elm$core$List$filterMap = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			elm$core$List$maybeCons(f),
-			_List_Nil,
-			xs);
 	});
 var elm$core$Basics$sub = _Basics_sub;
 var elm$core$List$length = function (xs) {
@@ -5759,6 +5784,71 @@ var elm$core$List$indexedMap = F2(
 				elm$core$List$range,
 				0,
 				elm$core$List$length(xs) - 1),
+			xs);
+	});
+var author$project$Structure$replaceChildrenForRangeReplace = F6(
+	function (key, rangeNew, pathAt, segment, tailSegments, parent) {
+		var replaceRangeAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, pathAt, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			replaceRangeAt,
+			A2(author$project$Structure$getUnder, segment.feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
+	});
+var author$project$Structure$replaceRangeAtPathRec = F5(
+	function (key, rangeNew, pathAt, segments, parent) {
+		if (!segments.b) {
+			return A3(author$project$Structure$replaceUnderFeature, key, rangeNew, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A6(author$project$Structure$replaceChildrenForRangeReplace, key, rangeNew, pathAt, segment, tail, parent);
+		}
+	});
+var author$project$Structure$replaceRangeAtPath = F4(
+	function (key, rangeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, path, segmentsNoRoot, root);
+	});
+var author$project$Editor$setScopeInformation = F2(
+	function (domainModel, scopeData) {
+		var optionNodes = A2(
+			elm$core$List$map,
+			function (s) {
+				return A3(
+					author$project$Structure$addText,
+					'scopeValue',
+					A2(author$project$Structure$textOf, 'name', s),
+					author$project$Structure$createNode(scopeData.isa));
+			},
+			A2(author$project$Structure$nodesOf, scopeData.isa, domainModel));
+		return A4(
+			author$project$Structure$replaceRangeAtPath,
+			'scope',
+			optionNodes,
+			author$project$Structure$pathOf(scopeData.nodeContext),
+			domainModel);
+	});
+var elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _n0 = f(mx);
+		if (_n0.$ === 'Just') {
+			var x = _n0.a;
+			return A2(elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			elm$core$List$maybeCons(f),
+			_List_Nil,
 			xs);
 	});
 var author$project$Structure$deleteNodeAt = F2(
@@ -5808,16 +5898,6 @@ var author$project$Structure$deleteNodeRec = F2(
 			return parent;
 		}
 	});
-var author$project$Structure$dropRootSegment = function (path) {
-	var segments = path.a;
-	if (segments.b) {
-		var feature = segments.a.feature;
-		var tail = segments.b;
-		return (feature === 'root') ? author$project$Structure$Path(tail) : path;
-	} else {
-		return path;
-	}
-};
 var author$project$Structure$deleteNodeUnder = F2(
 	function (path, root) {
 		var _n0 = author$project$Structure$dropRootSegment(path);
@@ -5922,10 +6002,6 @@ var author$project$Structure$boolOf = F2(
 				},
 				A2(author$project$Structure$valueOf, key, node)));
 	});
-var author$project$Structure$isaOf = function (_n0) {
-	var isa = _n0.a.isa;
-	return isa;
-};
 var author$project$Structure$nodeAt = F2(
 	function (parent, segments) {
 		nodeAt:
@@ -7049,34 +7125,6 @@ var author$project$Structure$insertChildAfterPath = F3(
 		var segmentsNoRoot = _n0.a;
 		return A4(author$project$Structure$insertChildAfterPathRec, nodeNew, path, segmentsNoRoot, root);
 	});
-var author$project$Structure$replaceChildrenForRangeReplace = F6(
-	function (key, rangeNew, pathAt, segment, tailSegments, parent) {
-		var replaceRangeAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, pathAt, tailSegments, child) : child;
-			});
-		var childrenNew = A2(
-			elm$core$List$indexedMap,
-			replaceRangeAt,
-			A2(author$project$Structure$getUnder, segment.feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
-	});
-var author$project$Structure$replaceRangeAtPathRec = F5(
-	function (key, rangeNew, pathAt, segments, parent) {
-		if (!segments.b) {
-			return A3(author$project$Structure$replaceUnderFeature, key, rangeNew, parent);
-		} else {
-			var segment = segments.a;
-			var tail = segments.b;
-			return A6(author$project$Structure$replaceChildrenForRangeReplace, key, rangeNew, pathAt, segment, tail, parent);
-		}
-	});
-var author$project$Structure$replaceRangeAtPath = F4(
-	function (key, rangeNew, path, root) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, path, segmentsNoRoot, root);
-	});
 var elm$core$String$toLower = _String_toLower;
 var author$project$Structure$updateProperty = F2(
 	function (_n0, _n1) {
@@ -7244,12 +7292,7 @@ var author$project$Editor$updateEditor = F3(
 				if (effect.$ === 'CreateScopeEffect') {
 					var scopeData = effect.a;
 					return _Utils_Tuple2(
-						A4(
-							author$project$Structure$replaceRangeAtPath,
-							'scope',
-							author$project$Editor$dummyOptions(scopeData.target),
-							author$project$Structure$pathOf(scopeData.nodeContext),
-							domainModel),
+						A2(author$project$Editor$setScopeInformation, domainModel, scopeData),
 						elm$core$Platform$Cmd$none);
 				} else {
 					return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
@@ -7960,7 +8003,7 @@ var author$project$Editor$viewRefCell = function (cell) {
 				'CELL',
 				A2(author$project$Structure$getUnderCustom, 'scope', cell)));
 		var inputValue = A2(author$project$Structure$textOf, 'input', cell);
-		var inputSize = (inputValue === '') ? elm$core$String$length('<no value>') : elm$core$String$length(inputValue);
+		var inputSize = (inputValue === '') ? (elm$core$String$length('<no value>') + 2) : (elm$core$String$length(inputValue) + 2);
 		var inputId = author$project$Structure$pathAsIdFromNode(cell);
 		var datalistId = inputId + '-datalist';
 		return A2(
