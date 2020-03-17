@@ -12,8 +12,9 @@ module Editor exposing
     , horizStackCell
     , inputCell
     , insertionEffect
-    , onInputEffect
+    , inputEffect
     , placeholderCell
+    , refCell
     , replacementEffect
     , updateEditor
     , vertGridCell
@@ -35,17 +36,18 @@ import Task as Task
 
 
 type Cell a
-    = ContentCell ContentCell
+    = ContentCell (ContentCell a)
     | EffectCell (EffectCell a)
 
 
-type ContentCell
+type ContentCell a
     = RootCell
     | StackCell
     | ConstantCell
     | InputCell
     | PlaceholderCell
     | ButtonCell
+    | RefCell a
 
 
 type EffectCell a
@@ -59,7 +61,7 @@ type EffectCell a
         { path : Path
         , selection : Selection
         }
-    | OnInputEffect
+    | InputEffect
         { path : Path
         , key : String
         }
@@ -67,6 +69,10 @@ type EffectCell a
         { dir : Dir
         , cellSelected : Node (Cell a)
         , selection : Selection
+        }
+    | CreateScopeEffect
+        { target : a
+        , nodeContext : Node a
         }
 
 
@@ -80,6 +86,7 @@ type alias Selection =
 type EffectGroup a
     = InputEffectGroup (List (EffectCell a))
     | KeyboardEffectGroup (List (EffectCell a))
+    | FocusEffectGroup (List (EffectCell a))
 
 
 type Orientation
@@ -97,6 +104,7 @@ type Msg a
     | OnBackspace (EffectCell a) (Node (Cell a))
     | OnDelete (EffectCell a) (Node (Cell a))
     | OnInput (EffectCell a) String
+    | UpdateScope (EffectCell a)
 
 
 type Dir
@@ -124,11 +132,20 @@ constantCell text =
         |> addText "constant" text
 
 
+refCell : a -> String -> Node a -> Node (Cell a)
+refCell target text nodeContext =
+    createNode (ContentCell (RefCell target))
+        |> addText "input" (textOf text nodeContext)
+        |> addToCustomRange "scope" (List.map (\scopeElement -> constantCell (textOf "scopeValue" scopeElement)) (getUnderCustom "scope" nodeContext))
+        |> withEffect (inputEffect (pathOf nodeContext) text)
+        |> withEffect (createScopeEffect target nodeContext)
+
+
 inputCell : String -> Node a -> Node (Cell a)
 inputCell text nodeContext =
     createNode (ContentCell InputCell)
         |> addText "input" (textOf text nodeContext)
-        |> withEffect (onInputEffect (pathOf nodeContext) text)
+        |> withEffect (inputEffect (pathOf nodeContext) text)
 
 
 horizStackCell : Node (Cell a)
@@ -235,11 +252,19 @@ deletionEffect nodeContext =
         }
 
 
-onInputEffect : Path -> String -> EffectCell a
-onInputEffect path key =
-    OnInputEffect
+inputEffect : Path -> String -> EffectCell a
+inputEffect path key =
+    InputEffect
         { path = path
         , key = key
+        }
+
+
+createScopeEffect : a -> Node a -> EffectCell a
+createScopeEffect target nodeContext =
+     CreateScopeEffect
+        { target = target
+        , nodeContext = nodeContext
         }
 
 
@@ -288,7 +313,7 @@ grouped effectCells =
 
                 EffectCell effect ->
                     case effect of
-                        OnInputEffect _ ->
+                        InputEffect _ ->
                             Dict.update "input" (updateGroup effect) groupDict
 
                         InsertionEffect _ ->
@@ -300,6 +325,9 @@ grouped effectCells =
                         NavSelectionEffect _ ->
                             Dict.update "keyboard" (updateGroup effect) groupDict
 
+                        CreateScopeEffect _ ->
+                            Dict.update "focus" (updateGroup effect) groupDict
+
         dictGrouped =
             List.foldl toDict Dict.empty effectCells
 
@@ -310,6 +338,9 @@ grouped effectCells =
 
                 "keyboard" ->
                     KeyboardEffectGroup v :: effectGroupList
+
+                "focus" ->
+                    FocusEffectGroup v :: effectGroupList
 
                 _ ->
                     effectGroupList
@@ -325,7 +356,7 @@ updateEditor : Msg a -> Node (Cell a) -> Node a -> ( Node a, Cmd (Msg a) )
 updateEditor msg editorModel domainModel =
     case msg of
         NoOp ->
-            ( domainModel, Cmd.none ) |> Debug.log "NoOp"
+            ( domainModel, Cmd.none )
 
         Swallow _ ->
             ( domainModel, Cmd.none )
@@ -338,7 +369,7 @@ updateEditor msg editorModel domainModel =
 
                       else
                         insertChildAfterPath nodeToInsert path domainModel |> updatePaths
-                    , updateSelectionOnEnter cellContext |> Debug.log "OnEnter"
+                    , updateSelectionOnEnter cellContext
                     )
 
                 _ ->
@@ -404,7 +435,7 @@ updateEditor msg editorModel domainModel =
 
         OnInput effect value ->
             case effect of
-                OnInputEffect { path, key } ->
+                InputEffect { path, key } ->
                     ( updatePropertyByPath domainModel path ( key, value ) |> updatePaths, Cmd.none )
 
                 _ ->
@@ -418,11 +449,24 @@ updateEditor msg editorModel domainModel =
                 _ ->
                     ( domainModel, Cmd.none )
 
+        UpdateScope effect ->
+            case effect of
+                CreateScopeEffect scopeData ->
+                    ( replaceRangeAtPath "scope" (dummyOptions scopeData.target) (pathOf scopeData.nodeContext) domainModel, Cmd.none )
+
+                _ ->
+                    ( domainModel, Cmd.none )
+
+dummyOptions target =
+    [createNode target |> addText "scopeValue" "one"
+    ,createNode target |> addText "scopeValue"  "two"
+    ,createNode target |> addText "scopeValue" "three"]
+
 
 tryDelete : Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
 tryDelete domainModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
-        deleteNode path domainModel |> updatePaths
+        deleteNodeUnder path domainModel |> updatePaths
 
     else if isAtDeletePos then
         let
@@ -434,7 +478,7 @@ tryDelete domainModel { path } navFun textLength isAtDeletePos =
                 domainModel
 
             Just next ->
-                deleteNode (pathOf next) domainModel |> updatePaths
+                deleteNodeUnder (pathOf next) domainModel |> updatePaths
 
     else
         domainModel
@@ -673,6 +717,9 @@ viewContent cell html =
 
                         ButtonCell ->
                             viewButtonCell cell
+
+                        RefCell _ ->
+                            viewRefCell cell
             in
             htmlNew :: List.reverse html |> List.reverse
 
@@ -789,7 +836,7 @@ viewInputCell cell =
                      , HtmlA.id (pathAsIdFromNode cell)
                      ]
                         ++ marginsAndPaddings cell
-                        ++ createInputCellAttributes cell
+                        ++ inputCellAttributesFromEffects cell
                     )
                     []
                 ]
@@ -833,7 +880,7 @@ viewPlaceholderCell cell =
                      , HtmlE.onInput Swallow
                      , HtmlA.id (pathAsIdFromNode cell)
                      ]
-                        ++ createInputCellAttributes cell
+                        ++ inputCellAttributesFromEffects cell
                         ++ marginsAndPaddings cell
                     )
                     []
@@ -866,6 +913,69 @@ viewButtonCell cell =
 
         EffectCell _ ->
             text ""
+
+
+viewRefCell : Node (Cell a) -> Html (Msg a)
+viewRefCell cell =
+    case isaOf cell of
+        ContentCell _ ->
+            let
+                options =
+                    (getUnderCustom "scope" cell |> Debug.log "CELL")
+                        |> List.map optionFromScope
+
+                inputId =
+                    pathAsIdFromNode cell
+
+                datalistId =
+                    inputId ++ "-datalist"
+
+                inputValue =
+                    textOf "input" cell
+
+                inputSize =
+                    if inputValue == "" then
+                        String.length "<no value>"
+
+                    else
+                        String.length inputValue
+            in
+            div
+                (divCellAttributes cell)
+                [ datalist
+                    [ HtmlA.id datalistId
+                    ]
+                    options
+                , input
+                    ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "font-family" "Consolas"
+                     , HtmlA.style "font-size" "16px"
+                     , HtmlA.style "border" "none"
+                     , HtmlA.style "outline" "none"
+                     , HtmlA.placeholder "<no value>"
+                     , HtmlA.size inputSize
+                     , HtmlA.id inputId
+                     , HtmlA.list datalistId
+                     ]
+                        ++ marginsAndPaddings cell
+                        ++ inputCellAttributesFromEffects cell
+                    )
+                    []
+                ]
+
+        EffectCell _ ->
+            text ""
+
+
+optionFromScope : Node (Cell a) -> Html (Msg a)
+optionFromScope scopeElement =
+    let
+        scopeValue =
+            textOf "constant" scopeElement
+    in
+    option
+        [ HtmlA.value scopeValue ]
+        []
 
 
 divRowAttributes : Node (Cell a) -> List (Attribute (Msg a))
@@ -921,8 +1031,8 @@ paddings _ =
     HtmlA.style "padding" <| "0px 0px 0px 0px"
 
 
-createInputCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
-createInputCellAttributes cell =
+inputCellAttributesFromEffects : Node (Cell a) -> List (Attribute (Msg a))
+inputCellAttributesFromEffects cell =
     let
         effectGroups =
             grouped <|
@@ -948,6 +1058,16 @@ attributeFromEffectGroup cell effectGroup =
             Just (effectAttributeFromKey (inputEffectMap cell effects))
 
 
+        FocusEffectGroup effects ->
+            case effects of
+                effect :: [] ->
+                    Just (effectAttributeFromFocus (UpdateScope effect))
+
+                _ ->
+                    Nothing
+
+
+
 keyFromDir : Dir -> String
 keyFromDir dir =
     case dir of
@@ -968,6 +1088,10 @@ effectAttributeFromInput : (String -> Msg a) -> Attribute (Msg a)
 effectAttributeFromInput handler =
     HtmlE.onInput handler
 
+effectAttributeFromFocus : Msg a -> Attribute (Msg a)
+effectAttributeFromFocus msg =
+    HtmlE.onFocus msg
+
 
 inputEffectMap : Node (Cell a) -> List (EffectCell a) -> Dict.Dict String (Msg a)
 inputEffectMap cell effects =
@@ -984,7 +1108,10 @@ inputEffectMap cell effects =
                 NavSelectionEffect { dir } ->
                     Dict.insert (keyFromDir dir) (NavSelection effect) dict
 
-                OnInputEffect _ ->
+                InputEffect _ ->
+                    dict
+
+                CreateScopeEffect _ ->
                     dict
         )
         Dict.empty
