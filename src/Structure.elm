@@ -21,6 +21,7 @@ module Structure exposing
     , intOf
     , isaOf
     , nextSibling
+    , nodeAt
     , nodesOf
     , parentOf
     , pathAsIdFromNode
@@ -725,7 +726,7 @@ parentOf root path =
     in
     mbPathToParent
         |> Maybe.map (\(Path segments) -> segments)
-        |> Maybe.andThen (nodeAt root)
+        |> Maybe.andThen (nodeAtI root)
 
 
 previousSibling : Node a -> Path -> Maybe (Node a)
@@ -761,11 +762,19 @@ sibling root path op =
                     , index = op last.index 1
                     }
             in
-            nodeAt root (parentSegments ++ [ lastNew ])
+            nodeAtI root (parentSegments ++ [ lastNew ])
+
+nodeAt : Node a -> Path -> Maybe (Node a)
+nodeAt parent path =
+    let
+        (Path segmentsNoRoot) =
+            dropRootSegment path
+    in
+        nodeAtI parent segmentsNoRoot
 
 
-nodeAt : Node a -> List PathSegment -> Maybe (Node a)
-nodeAt parent segments =
+nodeAtI : Node a -> List PathSegment -> Maybe (Node a)
+nodeAtI parent segments =
     case segments of
         { feature, index } :: tail ->
             let
@@ -786,7 +795,7 @@ nodeAt parent segments =
             in
             case nextChild of
                 child :: [] ->
-                    nodeAt child tail
+                    nodeAtI child tail
 
                 _ ->
                     Nothing

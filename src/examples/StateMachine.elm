@@ -175,7 +175,7 @@ editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
-            (refCell Event "eventRef" transition Nothing
+            (refCell Event "eventRef" (Debug.log "transition" transition)  Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )

@@ -36,45 +36,64 @@ import Task as Task
 
 
 type Cell a
-    = ContentCell (ContentCell a)
+    = ContentCell ContentCell
     | EffectCell (EffectCell a)
 
 
-type ContentCell a
+
+--| DomainContainerCell a
+
+
+type ContentCell
     = RootCell
     | StackCell
     | ConstantCell
     | InputCell
     | PlaceholderCell
     | ButtonCell
-    | RefCell a
+    | RefCell
 
 
 type EffectCell a
-    = InsertionEffect
-        { path : Path
-        , nodeToInsert : Node a
-        , isReplace : Bool
-        , feature : String
-        }
-    | DeletionEffect
-        { path : Path
-        , selection : Selection
-        }
-    | InputEffect
-        { path : Path
-        , key : String
-        }
-    | NavSelectionEffect
-        { dir : Dir
-        , cellSelected : Node (Cell a)
-        , selection : Selection
-        }
-    | CreateScopeEffect
-        { isa : a
-        , nodeContext : Node a
-        , scopeProvider : Maybe (List String)
-        }
+    = InsertionEffect (InsertionEffectData a)
+    | DeletionEffect DeletionEffectData
+    | InputEffect InputEffectData
+    | NavSelectionEffect NavSelectionEffectData
+    | CreateScopeEffect (CreateScopeEffectData a)
+
+
+type alias InsertionEffectData a =
+    { path : Path
+    , nodeToInsert : Node a
+    , isReplace : Bool
+    , feature : String
+    }
+
+
+type alias DeletionEffectData =
+    { path : Path
+    , selection : Selection
+    }
+
+
+type alias InputEffectData =
+    { path : Path
+    , key : String
+    }
+
+
+type alias NavSelectionEffectData =
+    { dir : Dir
+    , pathSelectedCell : Path
+    , selection : Selection
+    }
+
+
+type alias CreateScopeEffectData a =
+    { isa : a
+    , pathContextNode : Path
+    , scopeProvider : Maybe (List String)
+    }
 
 
 type alias Selection =
@@ -130,53 +149,61 @@ createRootCell =
 constantCell : String -> Node (Cell a)
 constantCell text =
     createNode (ContentCell ConstantCell)
-        |> addText "constant" text
+        |> addText propConstant text
 
 
 refCell : a -> String -> Node a -> Maybe (List String) -> Node (Cell a)
 refCell target text nodeContext scopeProvider =
-    createNode (ContentCell (RefCell target))
-        |> addText "input" (textOf text nodeContext)
-        |> addToCustomRange "scope" (List.map (\scopeElement -> constantCell (textOf "scopeValue" scopeElement)) (getUnderCustom "scope" nodeContext))
-        |> withEffect (inputEffect (pathOf nodeContext) text)
-        |> withEffect (createScopeEffect target nodeContext scopeProvider)
+    let
+        pathContext =
+            pathOf nodeContext
+    in
+    createNode (ContentCell RefCell)
+        |> addText propInput (textOf text nodeContext)
+        |> addToCustomRange featScope (createRefScope nodeContext)
+        |> withEffect (inputEffect pathContext text)
+        |> withEffect (createScopeEffect target (pathOf nodeContext) scopeProvider)
+
+
+createRefScope nodeContext =
+    List.map (\scopeElement -> constantCell (textOf propScopeValue scopeElement)) (getUnderCustom featScope nodeContext)
 
 
 inputCell : String -> Node a -> Node (Cell a)
 inputCell text nodeContext =
     createNode (ContentCell InputCell)
-        |> addText "input" (textOf text nodeContext)
+        |> addText propInput (textOf text nodeContext)
         |> withEffect (inputEffect (pathOf nodeContext) text)
 
 
 horizStackCell : Node (Cell a)
 horizStackCell =
     createNode (ContentCell StackCell)
-        |> addBool "isHoriz" True
+        |> addBool propIsHoriz True
 
 
 vertStackCell : Node (Cell a)
 vertStackCell =
     createNode (ContentCell StackCell)
-        |> addBool "isHoriz" False
+        |> addBool propIsHoriz False
 
 
 vertGridCell : Node (Cell a)
 vertGridCell =
     vertStackCell
-        |> addBool "isGrid" True
+        |> addBool propIsGrid True
 
 
 placeholderCell : String -> Node (Cell a)
 placeholderCell text =
     createNode (ContentCell PlaceholderCell)
-        |> addText "placeholder" text
+        |> addText propPlaceholder text
 
 
 buttonCell : String -> Node (Cell a)
 buttonCell text =
     createNode (ContentCell ButtonCell)
-        |> addText "text" text
+        |> addText propText text
 
 
 with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -191,7 +218,7 @@ withRange children =
 
 addIndent : Node (Cell a) -> Node (Cell a)
 addIndent node =
-    addBool "indent" True node
+    addBool propIndent True node
 
 
 addMargin : MarginSide -> Int -> Node (Cell a) -> Node (Cell a)
@@ -200,16 +227,16 @@ addMargin side space node =
         key =
             case side of
                 Top ->
-                    "margin-top"
+                    propMarginTop
 
                 Right ->
-                    "margin-right"
+                    propMarginRight
 
                 Bottom ->
-                    "margin-bottom"
+                    propMarginBottom
 
                 Left ->
-                    "margin-left"
+                    propMarginLeft
     in
     addInt key space node
 
@@ -220,71 +247,55 @@ addMargin side space node =
 
 withEffect : EffectCell a -> Node (Cell a) -> Node (Cell a)
 withEffect effect =
-    addToCustom "effects" <|
+    addToCustom featEffects <|
         createNode <|
             EffectCell effect
 
 
 replacementEffect : String -> Node a -> Node a -> EffectCell a
 replacementEffect feature nodeContext nodeToInsert =
-    InsertionEffect
-        { path = pathOf nodeContext
-        , nodeToInsert = nodeToInsert
-        , isReplace = True
-        , feature = feature
-        }
+    InsertionEffect <|
+        InsertionEffectData (pathOf nodeContext) nodeToInsert True feature
 
 
 insertionEffect : Node a -> Node a -> EffectCell a
 insertionEffect nodeContext nodeToInsert =
-    InsertionEffect
-        { path = pathOf nodeContext
-        , nodeToInsert = nodeToInsert
-        , isReplace = False
-        , feature = ""
-        }
+    InsertionEffect <|
+        InsertionEffectData (pathOf nodeContext) nodeToInsert False ""
 
 
 deletionEffect : Node a -> EffectCell a
 deletionEffect nodeContext =
-    DeletionEffect
-        { path = pathOf nodeContext
-        , selection = emptySelection
-        }
+    DeletionEffect <|
+        DeletionEffectData (pathOf nodeContext) emptySelection
 
 
 inputEffect : Path -> String -> EffectCell a
 inputEffect path key =
-    InputEffect
-        { path = path
-        , key = key
-        }
+    InputEffect <| InputEffectData path key
 
 
-createScopeEffect : a -> Node a -> Maybe (List String) -> EffectCell a
-createScopeEffect target nodeContext scopeProvider =
-    CreateScopeEffect
-        { isa = target
-        , nodeContext = nodeContext
-        , scopeProvider = scopeProvider
-        }
+createScopeEffect : a -> Path -> Maybe (List String) -> EffectCell a
+createScopeEffect target path scopeProvider =
+    CreateScopeEffect <|
+        CreateScopeEffectData target path scopeProvider
 
 
-navEffects : Node (Cell a) -> List (Cell a)
-navEffects cell =
-    [ navEffect U cell
-    , navEffect D cell
-    , navEffect L cell
-    , navEffect R cell
+navEffects : Path -> List (Cell a)
+navEffects path =
+    [ navEffect U path
+    , navEffect D path
+    , navEffect L path
+    , navEffect R path
     ]
 
 
-navEffect : Dir -> Node (Cell a) -> Cell a
-navEffect dir cell =
+navEffect : Dir -> Path -> Cell a
+navEffect dir path =
     EffectCell <|
         NavSelectionEffect
             { dir = dir
-            , cellSelected = cell
+            , pathSelectedCell = path
             , selection = emptySelection
             }
 
@@ -364,116 +375,134 @@ updateEditor msg editorModel domainModel =
             ( domainModel, Cmd.none )
 
         OnEnter effect cellContext ->
-            case effect of
-                InsertionEffect { path, nodeToInsert, isReplace, feature } ->
-                    ( if isReplace then
-                        addChildAtPath feature nodeToInsert path domainModel |> updatePaths
-
-                      else
-                        insertChildAfterPath nodeToInsert path domainModel |> updatePaths
-                    , updateSelectionOnEnter cellContext
-                    )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            updateOnInsertionEffect domainModel effect cellContext
 
         OnClick effect cellContext ->
-            case effect of
-                InsertionEffect { path, nodeToInsert, isReplace, feature } ->
-                    ( if isReplace then
-                        addChildAtPath feature nodeToInsert path domainModel |> updatePaths
-
-                      else
-                        insertChildAfterPath nodeToInsert path domainModel |> updatePaths
-                    , updateSelectionOnEnter cellContext
-                    )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            updateOnInsertionEffect domainModel effect cellContext
 
         OnDelete effect cellContext ->
-            case effect of
-                DeletionEffect ({ selection } as effectData) ->
-                    let
-                        textLength =
-                            textOf "input" cellContext |> String.length
-
-                        isAtDeletePos =
-                            selection.end == textLength
-                    in
-                    ( tryDelete
-                        domainModel
-                        effectData
-                        nextSibling
-                        textLength
-                        isAtDeletePos
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            updateOnDeleteEffect domainModel effect cellContext
 
         OnBackspace effect cellContext ->
-            case effect of
-                DeletionEffect ({ selection } as effectData) ->
-                    let
-                        textLength =
-                            textOf "input" cellContext |> String.length
-
-                        isAtDeletePos =
-                            selection.start == 0
-                    in
-                    ( tryDelete
-                        domainModel
-                        effectData
-                        previousSibling
-                        textLength
-                        isAtDeletePos
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            updateOnBackspaceEffect domainModel effect cellContext
 
         OnInput effect value ->
-            case effect of
-                InputEffect { path, key } ->
-                    ( updatePropertyByPath domainModel path ( key, value ) |> updatePaths, Cmd.none )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            updateOnInputEffect domainModel effect value
 
         NavSelection effect ->
-            case effect of
-                NavSelectionEffect navData ->
-                    ( domainModel, updateSelection editorModel navData )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            ( domainModel, updateOnNavEffect effect editorModel )
 
         UpdateScope effect ->
-            case effect of
-                CreateScopeEffect scopeData ->
-                    ( setScopeInformation domainModel scopeData, Cmd.none )
-
-                _ ->
-                    ( domainModel, Cmd.none )
+            updateOnCreateScopeEffect domainModel effect
 
 
+updateOnInsertionEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
+updateOnInsertionEffect domainModel effect cellContext =
+    case effect of
+        InsertionEffect { path, nodeToInsert, isReplace, feature } ->
+            if isReplace then
+                ( addChildAtPath feature nodeToInsert path domainModel |> updatePaths, Cmd.none )
+
+            else
+                ( insertChildAfterPath nodeToInsert path domainModel |> updatePaths, updateSelectionOnEnter cellContext )
+
+        _ ->
+            ( domainModel, Cmd.none )
+
+
+updateOnDeleteEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
+updateOnDeleteEffect domainModel effect cellContext =
+    case effect of
+        DeletionEffect ({ selection } as effectData) ->
+            let
+                textLength =
+                    textOf propInput cellContext |> String.length
+
+                isAtDeletePos =
+                    selection.end == textLength
+            in
+            ( tryDelete
+                domainModel
+                effectData
+                nextSibling
+                textLength
+                isAtDeletePos
+            , Cmd.none
+            )
+
+        _ ->
+            ( domainModel, Cmd.none )
+
+
+updateOnBackspaceEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
+updateOnBackspaceEffect domainModel effect cellContext =
+    case effect of
+        DeletionEffect ({ selection } as effectData) ->
+            let
+                textLength =
+                    textOf propInput cellContext |> String.length
+
+                isAtDeletePos =
+                    selection.start == 0
+            in
+            ( tryDelete
+                domainModel
+                effectData
+                previousSibling
+                textLength
+                isAtDeletePos
+            , Cmd.none
+            )
+
+        _ ->
+            ( domainModel, Cmd.none )
+
+
+updateOnInputEffect : Node a -> EffectCell a -> String -> ( Node a, Cmd (Msg a) )
+updateOnInputEffect domainModel effect value =
+    case effect of
+        InputEffect { path, key } ->
+            ( updatePropertyByPath domainModel path ( key, value ) |> updatePaths, Cmd.none )
+
+        _ ->
+            ( domainModel, Cmd.none )
+
+
+updateOnNavEffect : EffectCell a -> Node (Cell a) -> Cmd (Msg a)
+updateOnNavEffect effect editorModel =
+    case effect of
+        NavSelectionEffect navData ->
+            updateSelection editorModel navData
+
+        _ ->
+            Cmd.none
+
+
+updateOnCreateScopeEffect : Node a -> EffectCell a -> ( Node a, Cmd (Msg a) )
+updateOnCreateScopeEffect domainModel effect =
+    case effect of
+        CreateScopeEffect scopeData ->
+            ( setScopeInformation domainModel scopeData, Cmd.none )
+
+        _ ->
+            ( domainModel, Cmd.none )
+
+
+setScopeInformation : Node a -> CreateScopeEffectData a -> Node a
 setScopeInformation domainModel scopeData =
     let
         optionNodes =
             nodesOf scopeData.isa domainModel
-                |> List.map (\s -> createNode scopeData.isa |> addText "scopeValue" (textOf "name" s))
+                |> List.map (\s -> createNode scopeData.isa |> addText propScopeValue (textOf propName s))
     in
     replaceRangeAtPath
-        "scope"
+        featScope
         optionNodes
-        (pathOf scopeData.nodeContext)
+        scopeData.pathContextNode
         domainModel
 
 
-tryDelete : Node a -> { path : Path, selection : Selection } -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
+tryDelete : Node a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
 tryDelete domainModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
         deleteNodeUnder path domainModel |> updatePaths
@@ -498,16 +527,21 @@ updateSelectionOnEnter : Node (Cell a) -> Cmd (Msg a)
 updateSelectionOnEnter cellContext =
     Task.perform
         NavSelection
-        (Task.succeed
-            (NavSelectionEffect { dir = D, cellSelected = cellContext, selection = { dir = "", start = 0, end = 0 } })
-        )
+    <|
+        Task.succeed <|
+            NavSelectionEffect <|
+                NavSelectionEffectData D (pathOf cellContext) <|
+                    Selection 0 0 ""
 
 
-updateSelection : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Cmd (Msg a)
+updateSelection : Node (Cell a) -> NavSelectionEffectData -> Cmd (Msg a)
 updateSelection editorModel navData =
     let
+        mbNodeContext =
+            nodeAt editorModel navData.pathSelectedCell
+
         mbOrientation =
-            orientationOf editorModel navData.cellSelected
+            mbNodeContext |> Maybe.andThen (orientationOf editorModel)
     in
     case mbOrientation of
         Nothing ->
@@ -517,37 +551,46 @@ updateSelection editorModel navData =
             updateSelectionByOrientation editorModel navData orientation
 
 
-updateSelectionByOrientation : Node (Cell a) -> { dir : Dir, cellSelected : Node (Cell a), selection : Selection } -> Orientation -> Cmd (Msg a)
-updateSelectionByOrientation editorModel { dir, cellSelected, selection } orientation =
+updateSelectionByOrientation : Node (Cell a) -> NavSelectionEffectData -> Orientation -> Cmd (Msg a)
+updateSelectionByOrientation editorModel navData orientation =
     let
-        moverTask f =
-            Task.attempt
-                (\_ -> NoOp)
-                (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
+        mbCellSelected =
+            nodeAt editorModel navData.pathSelectedCell
     in
-    case ( dir, orientation ) of
-        ( U, Vert ) ->
-            moverTask findPrevInputCell
-
-        ( D, Vert ) ->
-            moverTask findNextInputCell
-
-        ( L, Horiz ) ->
-            if selection.start == 0 then
-                moverTask findPrevInputCell
-
-            else
-                Cmd.none
-
-        ( R, Horiz ) ->
-            if selection.start >= (textOf "input" cellSelected |> String.length) then
-                moverTask findNextInputCell
-
-            else
-                Cmd.none
-
-        _ ->
+    case mbCellSelected of
+        Nothing ->
             Cmd.none
+
+        Just cellSelected ->
+            let
+                moverTask f =
+                    Task.attempt
+                        (\_ -> NoOp)
+                        (Dom.focus <| pathAsIdFromNode (f editorModel cellSelected))
+            in
+            case ( navData.dir, orientation ) of
+                ( U, Vert ) ->
+                    moverTask findPrevInputCell
+
+                ( D, Vert ) ->
+                    moverTask findNextInputCell
+
+                ( L, Horiz ) ->
+                    if navData.selection.start == 0 then
+                        moverTask findPrevInputCell
+
+                    else
+                        Cmd.none
+
+                ( R, Horiz ) ->
+                    if navData.selection.start >= (textOf propInput cellSelected |> String.length) then
+                        moverTask findNextInputCell
+
+                    else
+                        Cmd.none
+
+                _ ->
+                    Cmd.none
 
 
 findPrevInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -728,7 +771,7 @@ viewContent cell html =
                         ButtonCell ->
                             viewButtonCell cell
 
-                        RefCell _ ->
+                        RefCell ->
                             viewRefCell cell
             in
             htmlNew :: List.reverse html |> List.reverse
@@ -743,7 +786,7 @@ viewStackCell cell =
         ContentCell _ ->
             let
                 bO =
-                    boolOf "isHoriz" cell
+                    boolOf propIsHoriz cell
             in
             if bO then
                 viewHorizStackCell cell
@@ -810,7 +853,7 @@ viewConstantCell cell =
                      ]
                         ++ marginsAndPaddings cell
                     )
-                    [ text (textOf "constant" cell) ]
+                    [ text (textOf propConstant cell) ]
                 ]
 
         EffectCell _ ->
@@ -823,7 +866,7 @@ viewInputCell cell =
         ContentCell _ ->
             let
                 inputValue =
-                    textOf "input" cell
+                    textOf propInput cell
 
                 inputSize =
                     if inputValue == "" then
@@ -861,7 +904,7 @@ viewPlaceholderCell cell =
         ContentCell _ ->
             let
                 placeholderValue =
-                    textOf "placeholder" cell
+                    textOf propPlaceholder cell
 
                 inputValue =
                     "<"
@@ -906,7 +949,7 @@ viewButtonCell cell =
         ContentCell _ ->
             let
                 onClick =
-                    isasUnderCustom "effects" cell
+                    isasUnderCustom featEffects cell
                         |> List.head
                         |> Maybe.andThen
                             (\e ->
@@ -919,7 +962,7 @@ viewButtonCell cell =
                             )
                         |> Maybe.withDefault []
             in
-            button (marginsAndPaddings cell ++ onClick) [ text (textOf "text" cell) ]
+            button (marginsAndPaddings cell ++ onClick) [ text (textOf propText cell) ]
 
         EffectCell _ ->
             text ""
@@ -931,7 +974,7 @@ viewRefCell cell =
         ContentCell _ ->
             let
                 options =
-                    (getUnderCustom "scope" cell |> Debug.log "CELL")
+                    getUnderCustom featScope cell
                         |> List.map optionFromScope
 
                 inputId =
@@ -941,14 +984,14 @@ viewRefCell cell =
                     inputId ++ "-datalist"
 
                 inputValue =
-                    textOf "input" cell
+                    textOf propInput cell
 
                 inputSize =
                     if inputValue == "" then
-                        (String.length "<no value>") + 2
+                        String.length "<no value>" + 2
 
                     else
-                        (String.length inputValue) + 2
+                        String.length inputValue + 2
             in
             div
                 (divCellAttributes cell)
@@ -966,6 +1009,7 @@ viewRefCell cell =
                      , HtmlA.size inputSize
                      , HtmlA.id inputId
                      , HtmlA.list datalistId
+                     , HtmlA.value inputValue
                      ]
                         ++ marginsAndPaddings cell
                         ++ inputCellAttributesFromEffects cell
@@ -981,7 +1025,7 @@ optionFromScope : Node (Cell a) -> Html (Msg a)
 optionFromScope scopeElement =
     let
         scopeValue =
-            textOf "constant" scopeElement
+            textOf propConstant scopeElement
     in
     option
         [ HtmlA.value scopeValue ]
@@ -990,7 +1034,7 @@ optionFromScope scopeElement =
 
 divRowAttributes : Node (Cell a) -> List (Attribute (Msg a))
 divRowAttributes cell =
-    if boolOf "isGrid" cell then
+    if boolOf propIsGrid cell then
         [ HtmlA.style "display" "table-row" ]
 
     else
@@ -999,7 +1043,7 @@ divRowAttributes cell =
 
 divCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
 divCellAttributes cell =
-    if boolOf "isGrid" cell then
+    if boolOf propIsGrid cell then
         [ HtmlA.style "display" "table-cell" ]
 
     else
@@ -1015,23 +1059,23 @@ margins : Node (Cell a) -> Attribute (Msg a)
 margins cell =
     let
         indentMarginLeft =
-            if boolOf "indent" cell then
+            if boolOf propIndent cell then
                 20
 
             else
                 0
 
         top =
-            (intOf "margin-top" cell |> String.fromInt) ++ "px "
+            (intOf propMarginTop cell |> String.fromInt) ++ "px "
 
         right =
-            ((intOf "margin-right" cell + 5) |> String.fromInt) ++ "px "
+            ((intOf propMarginRight cell + 5) |> String.fromInt) ++ "px "
 
         bottom =
-            (intOf "margin-bottom" cell |> String.fromInt) ++ "px "
+            (intOf propMarginBottom cell |> String.fromInt) ++ "px "
 
         left =
-            ((intOf "margin-left" cell + indentMarginLeft) |> String.fromInt) ++ "px"
+            ((intOf propMarginLeft cell + indentMarginLeft) |> String.fromInt) ++ "px"
     in
     HtmlA.style "margin" <| top ++ right ++ bottom ++ left
 
@@ -1046,8 +1090,8 @@ inputCellAttributesFromEffects cell =
     let
         effectGroups =
             grouped <|
-                isasUnderCustom "effects" cell
-                    ++ navEffects cell
+                isasUnderCustom featEffects cell
+                    ++ navEffects (pathOf cell)
     in
     List.map (attributeFromEffectGroup cell) effectGroups
         |> List.filterMap identity
@@ -1205,7 +1249,7 @@ orientationOf root cell =
             Just <|
                 let
                     bO =
-                        boolOf "isHoriz" cell
+                        boolOf propIsHoriz cell
                 in
                 if bO then
                     Horiz
@@ -1245,7 +1289,7 @@ griddifyI isGridParent node =
     let
         nodeNew =
             if isGridParent then
-                addBool "isGrid" True node
+                addBool propIsGrid True node
 
             else
                 node
@@ -1254,6 +1298,74 @@ griddifyI isGridParent node =
             getUnderDefault nodeNew
 
         isGrid =
-            boolOf "isGrid" nodeNew
+            boolOf propIsGrid nodeNew
     in
-    replaceUnderFeature "default" (List.map (griddifyI isGrid) children) nodeNew
+    replaceUnderFeature featDefault (List.map (griddifyI isGrid) children) nodeNew
+
+
+
+-- CUSTOM FEATURE AND PROPERTY CONSTANTS
+
+
+featDefault =
+    "default"
+
+
+featScope =
+    "scope"
+
+
+featEffects =
+    "effects"
+
+
+propScopeValue =
+    "scopeValue"
+
+
+propName =
+    "name"
+
+
+propInput =
+    "input"
+
+
+propConstant =
+    "constant"
+
+
+propIsHoriz =
+    "isHoriz"
+
+
+propPlaceholder =
+    "placeholder"
+
+
+propIsGrid =
+    "isGrid"
+
+
+propText =
+    "text"
+
+
+propIndent =
+    "indent"
+
+
+propMarginTop =
+    "margin-top"
+
+
+propMarginBottom =
+    "margin-bottom"
+
+
+propMarginRight =
+    "margin-right"
+
+
+propMarginLeft =
+    "margin-left"

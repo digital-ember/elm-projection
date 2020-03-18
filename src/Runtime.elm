@@ -45,12 +45,12 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        EditorMsg cellModel eMsg ->
+        EditorMsg editorModel eMsg ->
             let
                 ( domainModelNew, editorCmd ) =
-                    updateEditor eMsg cellModel model.domainModel
+                    updateEditor eMsg editorModel model.domainModel
             in
-            ( { model | domainModel = domainModelNew }, Cmd.map (EditorMsg cellModel) editorCmd )
+            ( { model | domainModel = domainModelNew }, Cmd.map (EditorMsg editorModel) editorCmd )
 
 
 view : Model a -> Html (Msg a)
