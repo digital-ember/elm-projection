@@ -11,22 +11,27 @@ import Structure exposing (..)
 
 
 type alias Model a =
-    { domainModel : Node a
-    , xform : Node a -> Node (Cell a)
+    { domainD : Domain a (Node (Cell a))
+    , domainE : Domain (Cell a) (Html (Editor.Msg a))
+    }
+
+type alias Domain a b =
+    { root: Node a
+    , xform : Node a -> b
     }
 
 
 type Msg a
     = NoOp
-    | EditorMsg (Node (Cell a)) (Editor.Msg a)
+    | EditorMsg (Editor.Msg a)
 
 
 projection : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
-projection domainModel xform =
+projection rootD xform =
     let
         init () =
-            ( { domainModel = domainModel |> updatePaths
-              , xform = xform
+            ( { domainD = Domain (rootD |> updatePaths) xform
+              , domainE = Domain (xform rootD |> griddify |> updatePaths) viewEditor
               }
             , Cmd.none
             )
@@ -40,28 +45,33 @@ projection domainModel xform =
 
 
 update : Msg a -> Model a -> ( Model a, Cmd (Msg a) )
-update msg model =
+update msg ({domainD, domainE} as model) =
     case msg of
         NoOp ->
             ( model, Cmd.none )
 
-        EditorMsg editorModel eMsg ->
+        EditorMsg eMsg ->
             let
-                ( domainModelNew, editorCmd ) =
-                    updateEditor eMsg editorModel model.domainModel
+                ( rootDNew, editorCmd ) =
+                    updateEditor eMsg domainE.root domainD.root
+
+                rootENew =
+                    runDomainXform domainD
+
+                domainDNew = { domainD | root = rootDNew }
+
+                domainCNew = { domainE | root = rootENew }
             in
-            ( { model | domainModel = domainModelNew }, Cmd.map (EditorMsg editorModel) editorCmd )
+            ( { model | domainD = domainDNew, domainE = domainCNew }, Cmd.map EditorMsg editorCmd )
 
 
 view : Model a -> Html (Msg a)
 view model =
-    let
-        cellModel =
-            model.xform model.domainModel
-                |> griddify
-                |> updatePaths
-    in
-    Html.map (EditorMsg cellModel) (viewEditor cellModel)
+    Html.map EditorMsg (model.domainE.xform model.domainE.root)
+
+
+runDomainXform domainD =
+    domainD.xform domainD.root |> griddify |> updatePaths
 
 
 

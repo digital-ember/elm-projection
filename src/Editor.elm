@@ -40,10 +40,6 @@ type Cell a
     | EffectCell (EffectCell a)
 
 
-
---| DomainContainerCell a
-
-
 type ContentCell
     = RootCell
     | StackCell
