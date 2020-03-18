@@ -351,7 +351,7 @@ addRangeAtPath : String -> List (Node a) -> Path -> Node a -> Node a
 addRangeAtPath key range ((Path segments) as path) root =
     let
         pathWithOneChild =
-            Path (segments ++ [ PathSegment key 0 ])
+            appendToPath ( key, 0 ) path
 
         add c r =
             case getUnder key r of
@@ -714,6 +714,12 @@ splitLastPathSegment (Path segments) =
             ( Just head, Just <| tailReversed tail )
 
 
+appendToPath : ( String, Int ) -> Path -> Path
+appendToPath ( feature, index ) (Path segments) =
+    Path <|
+        appendTo (PathSegment feature index) segments
+
+
 
 -- TREE NAVIGATION
 
@@ -764,13 +770,14 @@ sibling root path op =
             in
             nodeAtI root (parentSegments ++ [ lastNew ])
 
+
 nodeAt : Node a -> Path -> Maybe (Node a)
 nodeAt parent path =
     let
         (Path segmentsNoRoot) =
             dropRootSegment path
     in
-        nodeAtI parent segmentsNoRoot
+    nodeAtI parent segmentsNoRoot
 
 
 nodeAtI : Node a -> List PathSegment -> Maybe (Node a)

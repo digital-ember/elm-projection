@@ -8215,26 +8215,22 @@ var author$project$Runtime$update = F2(
 	function (msg, model) {
 		var domainD = model.domainD;
 		var domainE = model.domainE;
-		if (msg.$ === 'NoOp') {
-			return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
-		} else {
-			var eMsg = msg.a;
-			var rootENew = author$project$Runtime$runDomainXform(domainD);
-			var domainCNew = _Utils_update(
-				domainE,
-				{root: rootENew});
-			var _n1 = A3(author$project$Editor$updateEditor, eMsg, domainE.root, domainD.root);
-			var rootDNew = _n1.a;
-			var editorCmd = _n1.b;
-			var domainDNew = _Utils_update(
-				domainD,
-				{root: rootDNew});
-			return _Utils_Tuple2(
-				_Utils_update(
-					model,
-					{domainD: domainDNew, domainE: domainCNew}),
-				A2(elm$core$Platform$Cmd$map, author$project$Runtime$EditorMsg, editorCmd));
-		}
+		var eMsg = msg.a;
+		var _n1 = A3(author$project$Editor$updateEditor, eMsg, domainE.root, domainD.root);
+		var rootDNew = _n1.a;
+		var editorCmd = _n1.b;
+		var domainDNew = _Utils_update(
+			domainD,
+			{root: rootDNew});
+		var rootENew = author$project$Runtime$runDomainXform(domainDNew);
+		var domainENew = _Utils_update(
+			domainE,
+			{root: rootENew});
+		return _Utils_Tuple2(
+			_Utils_update(
+				model,
+				{domainD: domainDNew, domainE: domainENew}),
+			A2(elm$core$Platform$Cmd$map, author$project$Runtime$EditorMsg, editorCmd));
 	});
 var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
 var elm$html$Html$map = elm$virtual_dom$VirtualDom$map;

@@ -111,8 +111,7 @@ type Orientation
 
 
 type Msg a
-    = -- will be needed for selection update
-      NoOp
+    = NoOp
     | Swallow String
     | NavSelection (EffectCell a)
     | OnEnter (EffectCell a) (Node (Cell a))
@@ -401,9 +400,9 @@ updateOnInsertionEffect domainModel effect cellContext =
 
             else
                 ( insertChildAfterPath nodeToInsert path domainModel |> updatePaths, updateSelectionOnEnter cellContext )
-
         _ ->
             ( domainModel, Cmd.none )
+
 
 
 updateOnDeleteEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
