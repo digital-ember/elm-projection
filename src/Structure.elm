@@ -9,9 +9,9 @@ module Structure exposing
     , addText
     , addFloat
     , addToCustom
-    , addToCustomRange
+    , addRangeToCustom
     , addToDefault
-    , addToDefaultRange
+    , addRangeToDefault
     , boolOf
     , createNode
     , createRoot
@@ -260,8 +260,8 @@ addProperty ( key, value ) (Node data) =
     Node { data | properties = Dict.insert key value data.properties }
 
 
-addToDefaultRange : List (Node a) -> Node a -> Node a
-addToDefaultRange children parent =
+addRangeToDefault : List (Node a) -> Node a -> Node a
+addRangeToDefault children parent =
     List.foldl addToDefault parent children
 
 
@@ -279,8 +279,8 @@ addToDefault child (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-addToCustomRange : String -> List (Node a) -> Node a -> Node a
-addToCustomRange key children parent =
+addRangeToCustom : String -> List (Node a) -> Node a -> Node a
+addRangeToCustom key children parent =
     List.foldl (addToCustom key) parent children
 
 

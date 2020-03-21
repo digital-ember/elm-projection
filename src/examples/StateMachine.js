@@ -4685,12 +4685,12 @@ var author$project$Editor$vertStackCell = A3(
 	false,
 	author$project$Structure$createNode(
 		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
-var author$project$Structure$addToDefaultRange = F2(
+var author$project$Structure$addRangeToDefault = F2(
 	function (children, parent) {
 		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
 	});
 var author$project$Editor$withRange = function (children) {
-	return author$project$Structure$addToDefaultRange(children);
+	return author$project$Structure$addRangeToDefault(children);
 };
 var author$project$Editor$Bottom = {$: 'Bottom'};
 var author$project$Editor$propIndent = 'indent';
@@ -5540,7 +5540,7 @@ var author$project$Editor$createScopeEffect = F3(
 		return author$project$Editor$CreateScopeEffect(
 			A3(author$project$Editor$CreateScopeEffectData, target, path, scopeProvider));
 	});
-var author$project$Structure$addToCustomRange = F3(
+var author$project$Structure$addRangeToCustom = F3(
 	function (key, children, parent) {
 		return A3(
 			elm$core$List$foldl,
@@ -5562,7 +5562,7 @@ var author$project$Editor$refCell = F4(
 				author$project$Editor$withEffect,
 				A2(author$project$Editor$inputEffect, pathContext, text),
 				A3(
-					author$project$Structure$addToCustomRange,
+					author$project$Structure$addRangeToCustom,
 					author$project$Editor$featScope,
 					author$project$Editor$createRefScope(nodeContext),
 					A3(
@@ -5694,17 +5694,19 @@ var author$project$Main$editorStatesVerticies = function (sm) {
 		author$project$Structure$getUnderDefault(sm));
 };
 var author$project$Editor$EdgeCell = {$: 'EdgeCell'};
+var author$project$Editor$propFrom = 'propFrom';
+var author$project$Editor$propTo = 'propTo';
 var author$project$Editor$edgeCell = F3(
 	function (text, _n0, nodeContext) {
 		var from = _n0.a;
 		var to = _n0.b;
 		return A3(
 			author$project$Structure$addText,
-			'to',
+			author$project$Editor$propTo,
 			to,
 			A3(
 				author$project$Structure$addText,
-				'from',
+				author$project$Editor$propFrom,
 				from,
 				A3(
 					author$project$Structure$addText,
@@ -5777,7 +5779,134 @@ var author$project$Main$editor = function (sm) {
 		author$project$Editor$rootCell);
 };
 var author$project$Main$StateMachine = {$: 'StateMachine'};
-var author$project$Main$initStateMachine = author$project$Structure$createRoot(author$project$Main$StateMachine);
+var author$project$Main$initStateMachine = A2(
+	author$project$Structure$addRangeToDefault,
+	_List_fromArray(
+		[
+			A2(
+			author$project$Structure$addToDefault,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'active',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'doorClosed',
+					author$project$Structure$createNode(author$project$Main$Transition))),
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'idle',
+				author$project$Structure$createNode(author$project$Main$State))),
+			A2(
+			author$project$Structure$addToDefault,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'waitingForDraw',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'lightOn',
+					author$project$Structure$createNode(author$project$Main$Transition))),
+			A2(
+				author$project$Structure$addToDefault,
+				A3(
+					author$project$Structure$addText,
+					'stateRef',
+					'waitingForLight',
+					A3(
+						author$project$Structure$addText,
+						'eventRef',
+						'drawOpened',
+						author$project$Structure$createNode(author$project$Main$Transition))),
+				A3(
+					author$project$Structure$addText,
+					'name',
+					'active',
+					author$project$Structure$createNode(author$project$Main$State)))),
+			A2(
+			author$project$Structure$addToDefault,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'unlockedPanel',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'lightOn',
+					author$project$Structure$createNode(author$project$Main$Transition))),
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'waitingForLight',
+				author$project$Structure$createNode(author$project$Main$State))),
+			A2(
+			author$project$Structure$addToDefault,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'unlockedPanel',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'drawOpened',
+					author$project$Structure$createNode(author$project$Main$Transition))),
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'waitingForDraw',
+				author$project$Structure$createNode(author$project$Main$State))),
+			A2(
+			author$project$Structure$addToDefault,
+			A3(
+				author$project$Structure$addText,
+				'stateRef',
+				'idle',
+				A3(
+					author$project$Structure$addText,
+					'eventRef',
+					'panelClosed',
+					author$project$Structure$createNode(author$project$Main$Transition))),
+			A3(
+				author$project$Structure$addText,
+				'name',
+				'unlockedPanel',
+				author$project$Structure$createNode(author$project$Main$State)))
+		]),
+	A3(
+		author$project$Structure$addRangeToCustom,
+		'events',
+		_List_fromArray(
+			[
+				A3(
+				author$project$Structure$addText,
+				'name',
+				'doorClosed',
+				author$project$Structure$createNode(author$project$Main$Event)),
+				A3(
+				author$project$Structure$addText,
+				'name',
+				'drawOpened',
+				author$project$Structure$createNode(author$project$Main$Event)),
+				A3(
+				author$project$Structure$addText,
+				'name',
+				'lightOn',
+				author$project$Structure$createNode(author$project$Main$Event)),
+				A3(
+				author$project$Structure$addText,
+				'name',
+				'doorOpened',
+				author$project$Structure$createNode(author$project$Main$Event)),
+				A3(
+				author$project$Structure$addText,
+				'name',
+				'panelClosed',
+				author$project$Structure$createNode(author$project$Main$Event))
+			]),
+		author$project$Structure$createRoot(author$project$Main$StateMachine)));
 var author$project$Editor$featDefault = 'default';
 var author$project$Editor$propIsGrid = 'isGrid';
 var author$project$Structure$boolOf = F2(
@@ -6397,20 +6526,6 @@ var author$project$Editor$viewConstantCell = function (cell) {
 		return elm$html$Html$text('');
 	}
 };
-var author$project$Editor$propX = 'x';
-var author$project$Editor$propY = 'y';
-var author$project$Structure$PFloat = function (a) {
-	return {$: 'PFloat', a: a};
-};
-var author$project$Structure$addFloat = F3(
-	function (key, value, node) {
-		return A2(
-			author$project$Structure$addProperty,
-			_Utils_Tuple2(
-				key,
-				author$project$Structure$PFloat(value)),
-			node);
-	});
 var elm$core$Dict$values = function (dict) {
 	return A3(
 		elm$core$Dict$foldr,
@@ -6449,7 +6564,88 @@ var author$project$Structure$nodesOf = F2(
 	function (isa, root) {
 		return A3(author$project$Structure$nodesOfRec, isa, root, _List_Nil);
 	});
-var elm$core$Debug$log = _Debug_log;
+var author$project$Editor$dictNameToVertex = function (cellGraph) {
+	return A3(
+		elm$core$List$foldl,
+		F2(
+			function (v, d) {
+				return A3(
+					elm$core$Dict$insert,
+					A2(author$project$Structure$textOf, author$project$Editor$propText, v),
+					v,
+					d);
+			}),
+		elm$core$Dict$empty,
+		A2(
+			author$project$Structure$nodesOf,
+			author$project$Editor$ContentCell(author$project$Editor$VertexCell),
+			cellGraph));
+};
+var author$project$Editor$edgesFromGraph = function (cellGraph) {
+	var idLookup = function (edge) {
+		var lookupWithDefault = function (key) {
+			return A2(
+				elm$core$Maybe$withDefault,
+				'',
+				A2(
+					elm$core$Maybe$andThen,
+					function (v) {
+						return elm$core$Maybe$Just(
+							author$project$Structure$pathAsIdFromNode(v));
+					},
+					A2(
+						elm$core$Dict$get,
+						key,
+						author$project$Editor$dictNameToVertex(cellGraph))));
+		};
+		var _n0 = _Utils_Tuple2(
+			A2(author$project$Structure$textOf, author$project$Editor$propFrom, edge),
+			A2(author$project$Structure$textOf, author$project$Editor$propTo, edge));
+		var from = _n0.a;
+		var to = _n0.b;
+		return _Utils_Tuple2(
+			lookupWithDefault(from),
+			lookupWithDefault(to));
+	};
+	var edges = A2(
+		author$project$Structure$nodesOf,
+		author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
+		cellGraph);
+	return A2(elm$core$List$map, idLookup, edges);
+};
+var elm$core$Basics$pi = _Basics_pi;
+var elm$core$Basics$sqrt = _Basics_sqrt;
+var author$project$Editor$initialAngle = elm$core$Basics$pi * (3 - elm$core$Basics$sqrt(5));
+var author$project$Editor$initialRadius = 10;
+var elm$core$Basics$cos = _Basics_cos;
+var elm$core$Basics$sin = _Basics_sin;
+var author$project$Editor$entity = F2(
+	function (index, cell) {
+		var radius = elm$core$Basics$sqrt(index) * author$project$Editor$initialRadius;
+		var angle = index * author$project$Editor$initialAngle;
+		return {
+			id: author$project$Structure$pathAsIdFromNode(cell),
+			value: cell,
+			vx: 0.0,
+			vy: 0.0,
+			x: radius * elm$core$Basics$cos(angle),
+			y: radius * elm$core$Basics$sin(angle)
+		};
+	});
+var author$project$Editor$propX = 'x';
+var author$project$Editor$propY = 'y';
+var author$project$Structure$PFloat = function (a) {
+	return {$: 'PFloat', a: a};
+};
+var author$project$Structure$addFloat = F3(
+	function (key, value, node) {
+		return A2(
+			author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PFloat(value)),
+			node);
+	});
 var gampleman$elm_visualization$Force$Center = F2(
 	function (a, b) {
 		return {$: 'Center', a: a, b: b};
@@ -6464,7 +6660,6 @@ var gampleman$elm_visualization$Force$State = function (a) {
 	return {$: 'State', a: a};
 };
 var elm$core$Basics$pow = _Basics_pow;
-var elm$core$Basics$sqrt = _Basics_sqrt;
 var elm$core$Dict$map = F2(
 	function (func, dict) {
 		if (dict.$ === 'RBEmpty_elm_builtin') {
@@ -7305,24 +7500,6 @@ var gampleman$elm_visualization$Force$computeSimulation = F2(
 			}
 		}
 	});
-var elm$core$Basics$cos = _Basics_cos;
-var elm$core$Basics$sin = _Basics_sin;
-var elm$core$Basics$pi = _Basics_pi;
-var gampleman$elm_visualization$Force$initialAngle = elm$core$Basics$pi * (3 - elm$core$Basics$sqrt(5));
-var gampleman$elm_visualization$Force$initialRadius = 10;
-var gampleman$elm_visualization$Force$entity = F2(
-	function (index, a) {
-		var radius = elm$core$Basics$sqrt(index) * gampleman$elm_visualization$Force$initialRadius;
-		var angle = index * gampleman$elm_visualization$Force$initialAngle;
-		return {
-			id: index,
-			value: a,
-			vx: 0.0,
-			vy: 0.0,
-			x: radius * elm$core$Basics$cos(angle),
-			y: radius * elm$core$Basics$sin(angle)
-		};
-	});
 var elm$core$Basics$composeR = F3(
 	function (f, g, x) {
 		return g(
@@ -7454,49 +7631,43 @@ var gampleman$elm_visualization$Force$simulation = function (forces) {
 			velocityDecay: 0.6
 		});
 };
-var author$project$Editor$forceGraph = function (cell) {
+var author$project$Editor$forceGraph = function (cellGraph) {
 	var verticies = A2(
 		author$project$Structure$nodesOf,
 		author$project$Editor$ContentCell(author$project$Editor$VertexCell),
-		cell);
+		cellGraph);
 	var forces = _List_fromArray(
 		[
 			gampleman$elm_visualization$Force$links(
-			_List_fromArray(
-				[
-					_Utils_Tuple2(0, 3),
-					_Utils_Tuple2(1, 4),
-					_Utils_Tuple2(1, 4),
-					_Utils_Tuple2(2, 4),
-					_Utils_Tuple2(3, 4)
-				])),
+			author$project$Editor$edgesFromGraph(cellGraph)),
 			A2(
 			gampleman$elm_visualization$Force$manyBodyStrength,
-			-500,
+			-5000,
 			A2(
-				elm$core$List$indexedMap,
-				F2(
-					function (i, _n1) {
-						return i;
-					}),
+				elm$core$List$map,
+				function (c) {
+					return author$project$Structure$pathAsIdFromNode(c);
+				},
 				verticies)),
-			A2(gampleman$elm_visualization$Force$center, 300, 200)
+			A2(gampleman$elm_visualization$Force$center, 400, 300)
 		]);
+	var edges = A2(
+		author$project$Structure$nodesOf,
+		author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
+		cellGraph);
+	var addPosToCell = function (e) {
+		return A3(
+			author$project$Structure$addFloat,
+			author$project$Editor$propY,
+			e.y,
+			A3(author$project$Structure$addFloat, author$project$Editor$propX, e.x, e.value));
+	};
 	var simResult = A2(
-		elm$core$List$map,
-		function (_n0) {
-			var x = _n0.x;
-			var y = _n0.y;
-			var value = _n0.value;
-			return A3(
-				author$project$Structure$addFloat,
-				author$project$Editor$propY,
-				y,
-				A3(author$project$Structure$addFloat, author$project$Editor$propX, x, value));
-		},
+		elm$core$List$append,
+		edges,
 		A2(
-			elm$core$Debug$log,
-			'simResult',
+			elm$core$List$map,
+			addPosToCell,
 			A2(
 				gampleman$elm_visualization$Force$computeSimulation,
 				gampleman$elm_visualization$Force$simulation(forces),
@@ -7504,10 +7675,10 @@ var author$project$Editor$forceGraph = function (cell) {
 					elm$core$List$indexedMap,
 					F2(
 						function (i, n) {
-							return A2(gampleman$elm_visualization$Force$entity, i, n);
+							return A2(author$project$Editor$entity, i, n);
 						}),
 					verticies))));
-	return A3(author$project$Structure$replaceUnderFeature, 'default', simResult, cell);
+	return A3(author$project$Structure$replaceUnderFeature, 'default', simResult, cellGraph);
 };
 var author$project$Structure$floatOf = F2(
 	function (key, node) {
@@ -7530,7 +7701,6 @@ var avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {
 		return {$: 'RgbaSpace', a: a, b: b, c: c, d: d};
 	});
-var avh4$elm_color$Color$blue = A4(avh4$elm_color$Color$RgbaSpace, 52 / 255, 101 / 255, 164 / 255, 1.0);
 var avh4$elm_color$Color$scaleFrom255 = function (c) {
 	return c / 255;
 };
@@ -7543,15 +7713,12 @@ var avh4$elm_color$Color$rgb255 = F3(
 			avh4$elm_color$Color$scaleFrom255(b),
 			1.0);
 	});
-var elm$core$String$length = _String_length;
 var elm$virtual_dom$VirtualDom$nodeNS = function (tag) {
 	return _VirtualDom_nodeNS(
 		_VirtualDom_noScript(tag));
 };
 var elm_community$typed_svg$TypedSvg$Core$node = elm$virtual_dom$VirtualDom$nodeNS('http://www.w3.org/2000/svg');
-var elm_community$typed_svg$TypedSvg$g = elm_community$typed_svg$TypedSvg$Core$node('g');
-var elm_community$typed_svg$TypedSvg$rect = elm_community$typed_svg$TypedSvg$Core$node('rect');
-var elm_community$typed_svg$TypedSvg$text_ = elm_community$typed_svg$TypedSvg$Core$node('text');
+var elm_community$typed_svg$TypedSvg$line = elm_community$typed_svg$TypedSvg$Core$node('line');
 var elm$virtual_dom$VirtualDom$attribute = F2(
 	function (key, value) {
 		return A2(
@@ -7612,32 +7779,10 @@ var elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString = function (pa
 			return 'none';
 	}
 };
-var elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
-	elm$core$Basics$composeL,
-	elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
-	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
 var elm_community$typed_svg$TypedSvg$Attributes$stroke = A2(
 	elm$core$Basics$composeL,
 	elm_community$typed_svg$TypedSvg$Core$attribute('stroke'),
 	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
-var elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString = function (anchorAlignment) {
-	switch (anchorAlignment.$) {
-		case 'AnchorInherit':
-			return 'inherit';
-		case 'AnchorStart':
-			return 'start';
-		case 'AnchorMiddle':
-			return 'middle';
-		default:
-			return 'end';
-	}
-};
-var elm_community$typed_svg$TypedSvg$Attributes$textAnchor = function (anchorAlignment) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'text-anchor',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString(anchorAlignment));
-};
 var elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString = function (length) {
 	switch (length.$) {
 		case 'Cm':
@@ -7672,16 +7817,159 @@ var elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString = function (l
 			return elm$core$String$fromFloat(x) + 'px';
 	}
 };
-var elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
+var elm_community$typed_svg$TypedSvg$Attributes$strokeWidth = function (length) {
 	return A2(
 		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'height',
+		'stroke-width',
 		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
 };
 var elm_community$typed_svg$TypedSvg$Types$Px = function (a) {
 	return {$: 'Px', a: a};
 };
 var elm_community$typed_svg$TypedSvg$Types$px = elm_community$typed_svg$TypedSvg$Types$Px;
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$strokeWidth(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$x1 = function (position) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'x1',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$x1 = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$x1(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$x2 = function (position) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'x2',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$x2 = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$x2(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$y1 = function (position) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'y1',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$y1 = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$y1(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$y2 = function (position) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'y2',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$y2 = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$y2(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Types$Paint = function (a) {
+	return {$: 'Paint', a: a};
+};
+var author$project$Editor$viewEdgeCell = function (fromTo) {
+	if (fromTo.a.$ === 'Nothing') {
+		var _n1 = fromTo.a;
+		return elm$html$Html$text('');
+	} else {
+		if (fromTo.b.$ === 'Nothing') {
+			var _n2 = fromTo.b;
+			return elm$html$Html$text('');
+		} else {
+			var from = fromTo.a.a;
+			var to = fromTo.b.a;
+			return A2(
+				elm_community$typed_svg$TypedSvg$line,
+				_List_fromArray(
+					[
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(1),
+						elm_community$typed_svg$TypedSvg$Attributes$stroke(
+						elm_community$typed_svg$TypedSvg$Types$Paint(
+							A3(avh4$elm_color$Color$rgb255, 170, 170, 170))),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$x1(
+						A2(author$project$Structure$floatOf, author$project$Editor$propX, from)),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$y1(
+						A2(author$project$Structure$floatOf, author$project$Editor$propY, from)),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$x2(
+						A2(author$project$Structure$floatOf, author$project$Editor$propX, to)),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$y2(
+						A2(author$project$Structure$floatOf, author$project$Editor$propY, to))
+					]),
+				_List_Nil);
+		}
+	}
+};
+var elm$core$Debug$log = _Debug_log;
+var author$project$Editor$viewEdgeCells = function (cellGraph) {
+	var fromToLookup = function (edge) {
+		var lookup = function (key) {
+			return A2(
+				elm$core$Dict$get,
+				key,
+				author$project$Editor$dictNameToVertex(cellGraph));
+		};
+		var _n0 = _Utils_Tuple2(
+			A2(author$project$Structure$textOf, author$project$Editor$propFrom, edge),
+			A2(author$project$Structure$textOf, author$project$Editor$propTo, edge));
+		var from = _n0.a;
+		var to = _n0.b;
+		return _Utils_Tuple2(
+			lookup(from),
+			lookup(to));
+	};
+	var edges = A2(
+		elm$core$Debug$log,
+		'edges',
+		A2(
+			author$project$Structure$nodesOf,
+			author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
+			cellGraph));
+	var fromToPairs = A2(
+		elm$core$Debug$log,
+		'pairs',
+		A2(elm$core$List$map, fromToLookup, edges));
+	return A2(elm$core$List$map, author$project$Editor$viewEdgeCell, fromToPairs);
+};
+var avh4$elm_color$Color$blue = A4(avh4$elm_color$Color$RgbaSpace, 52 / 255, 101 / 255, 164 / 255, 1.0);
+var elm$core$String$length = _String_length;
+var elm_community$typed_svg$TypedSvg$g = elm_community$typed_svg$TypedSvg$Core$node('g');
+var elm_community$typed_svg$TypedSvg$rect = elm_community$typed_svg$TypedSvg$Core$node('rect');
+var elm_community$typed_svg$TypedSvg$text_ = elm_community$typed_svg$TypedSvg$Core$node('text');
+var elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
+	elm$core$Basics$composeL,
+	elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
+	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
+var elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString = function (anchorAlignment) {
+	switch (anchorAlignment.$) {
+		case 'AnchorInherit':
+			return 'inherit';
+		case 'AnchorStart':
+			return 'start';
+		case 'AnchorMiddle':
+			return 'middle';
+		default:
+			return 'end';
+	}
+};
+var elm_community$typed_svg$TypedSvg$Attributes$textAnchor = function (anchorAlignment) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'text-anchor',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString(anchorAlignment));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'height',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
 var elm_community$typed_svg$TypedSvg$Attributes$InPx$height = function (value) {
 	return elm_community$typed_svg$TypedSvg$Attributes$height(
 		elm_community$typed_svg$TypedSvg$Types$px(value));
@@ -7704,16 +7992,6 @@ var elm_community$typed_svg$TypedSvg$Attributes$ry = function (length) {
 };
 var elm_community$typed_svg$TypedSvg$Attributes$InPx$ry = function (value) {
 	return elm_community$typed_svg$TypedSvg$Attributes$ry(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$strokeWidth = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'stroke-width',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$strokeWidth(
 		elm_community$typed_svg$TypedSvg$Types$px(value));
 };
 var elm_community$typed_svg$TypedSvg$Attributes$width = function (length) {
@@ -7747,9 +8025,6 @@ var elm_community$typed_svg$TypedSvg$Attributes$InPx$y = function (value) {
 		elm_community$typed_svg$TypedSvg$Types$px(value));
 };
 var elm_community$typed_svg$TypedSvg$Types$AnchorMiddle = {$: 'AnchorMiddle'};
-var elm_community$typed_svg$TypedSvg$Types$Paint = function (a) {
-	return {$: 'Paint', a: a};
-};
 var author$project$Editor$viewVertexCell = function (cell) {
 	var yPos = A2(author$project$Structure$floatOf, author$project$Editor$propY, cell);
 	var xPos = A2(author$project$Structure$floatOf, author$project$Editor$propX, cell);
@@ -7811,19 +8086,23 @@ var elm_community$typed_svg$TypedSvg$Attributes$viewBox = F4(
 					_List_fromArray(
 						[minX, minY, vWidth, vHeight]))));
 	});
-var author$project$Editor$viewGraphCell = function (cell) {
-	var cellForced = author$project$Editor$forceGraph(cell);
+var author$project$Editor$viewGraphCell = function (cellGraph) {
+	var graphForced = author$project$Editor$forceGraph(cellGraph);
 	return A2(
 		elm_community$typed_svg$TypedSvg$svg,
 		_List_fromArray(
 			[
-				A4(elm_community$typed_svg$TypedSvg$Attributes$viewBox, 0, 0, 600, 400),
-				A2(elm$html$Html$Attributes$style, 'width', '600'),
-				A2(elm$html$Html$Attributes$style, 'height', '400'),
+				A4(elm_community$typed_svg$TypedSvg$Attributes$viewBox, 0, 0, 800, 600),
+				A2(elm$html$Html$Attributes$style, 'width', '800'),
+				A2(elm$html$Html$Attributes$style, 'height', '600'),
 				A2(elm$html$Html$Attributes$style, 'background-color', 'azure')
 			]),
 		_List_fromArray(
 			[
+				A2(
+				elm_community$typed_svg$TypedSvg$g,
+				_List_Nil,
+				author$project$Editor$viewEdgeCells(graphForced)),
 				A2(
 				elm_community$typed_svg$TypedSvg$g,
 				_List_Nil,
@@ -7833,7 +8112,7 @@ var author$project$Editor$viewGraphCell = function (cell) {
 					A2(
 						author$project$Structure$nodesOf,
 						author$project$Editor$ContentCell(author$project$Editor$VertexCell),
-						A2(elm$core$Debug$log, 'vertices', cellForced))))
+						graphForced)))
 			]));
 };
 var author$project$Editor$OnInput = F2(

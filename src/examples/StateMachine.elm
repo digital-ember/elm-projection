@@ -36,6 +36,55 @@ Just an root node of variant StateMachine.
 initStateMachine : Node Domain
 initStateMachine =
     createRoot StateMachine
+        |> addRangeToCustom "events"
+            [ createNode Event |> addText "name" "doorClosed"
+            , createNode Event |> addText "name" "drawOpened"
+            , createNode Event |> addText "name" "lightOn"
+            , createNode Event |> addText "name" "doorOpened"
+            , createNode Event |> addText "name" "panelClosed"
+            ]
+        |> addRangeToDefault
+            [ createNode State
+                |> addText "name" "idle"
+                |> addToDefault
+                    (createNode Transition
+                        |> addText "eventRef" "doorClosed"
+                        |> addText "stateRef" "active"
+                    )
+            , createNode State
+                |> addText "name" "active"
+                |> addToDefault
+                    (createNode Transition
+                        |> addText "eventRef" "drawOpened"
+                        |> addText "stateRef" "waitingForLight"
+                    )
+                |> addToDefault
+                    (createNode Transition
+                        |> addText "eventRef" "lightOn"
+                        |> addText "stateRef" "waitingForDraw"
+                    )
+            , createNode State
+                |> addText "name" "waitingForLight"
+                |> addToDefault
+                    (createNode Transition
+                        |> addText "eventRef" "lightOn"
+                        |> addText "stateRef" "unlockedPanel"
+                    )
+            , createNode State
+                |> addText "name" "waitingForDraw"
+                |> addToDefault
+                    (createNode Transition
+                        |> addText "eventRef" "drawOpened"
+                        |> addText "stateRef" "unlockedPanel"
+                    )
+            , createNode State
+                |> addText "name" "unlockedPanel"
+                |> addToDefault
+                    (createNode Transition
+                        |> addText "eventRef" "panelClosed"
+                        |> addText "stateRef" "idle"
+                    )
+            ]
 
 
 {-| Declarative way of building a "state machine editor".

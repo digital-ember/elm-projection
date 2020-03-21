@@ -42,9 +42,9 @@ import IntDict
 import Json.Decode as JsonD
 import Structure exposing (..)
 import Task as Task
-import TypedSvg exposing (g, rect, svg, text_)
+import TypedSvg exposing (g, line, rect, svg, text_)
 import TypedSvg.Attributes exposing (fill, stroke, textAnchor, viewBox)
-import TypedSvg.Attributes.InPx exposing (height, rx, ry, strokeWidth, width, x, y)
+import TypedSvg.Attributes.InPx exposing (height, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
 
 
@@ -172,7 +172,7 @@ refCell target text nodeContext scopeProvider =
     in
     createNode (ContentCell RefCell)
         |> addText propInput (textOf text nodeContext)
-        |> addToCustomRange featScope (createRefScope nodeContext)
+        |> addRangeToCustom featScope (createRefScope nodeContext)
         |> withEffect (inputEffect pathContext text)
         |> withEffect (createScopeEffect target (pathOf nodeContext) scopeProvider)
 
@@ -244,8 +244,8 @@ edgeCell : String -> ( String, String ) -> Node a -> Node (Cell a)
 edgeCell text ( from, to ) nodeContext =
     createNode (ContentCell EdgeCell)
         |> addText propText (textOf text nodeContext)
-        |> addText "from" from
-        |> addText "to" to
+        |> addText propFrom from
+        |> addText propTo to
 
 
 with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -255,7 +255,7 @@ with node =
 
 withRange : List (Node (Cell a)) -> Node (Cell a) -> Node (Cell a)
 withRange children =
-    addToDefaultRange children
+    addRangeToDefault children
 
 
 addIndent : Node (Cell a) -> Node (Cell a)
@@ -1160,24 +1160,22 @@ viewRefCell cell =
 
 
 viewGraphCell : Node (Cell a) -> Html (Msg a)
-viewGraphCell cell =
+viewGraphCell cellGraph =
     let
-        cellForced =
-            forceGraph cell
+        graphForced =
+            forceGraph cellGraph
     in
     svg
-        [ viewBox 0 0 600 400
-        , HtmlA.style "width" "600"
-        , HtmlA.style "height" "400"
+        [ viewBox 0 0 800 600
+        , HtmlA.style "width" "800"
+        , HtmlA.style "height" "600"
         , HtmlA.style "background-color" "azure"
         ]
-        [ {- g [ ]
-                <| List.map viewEdgeCell <| nodesOf (ContentCell EdgeCell) cell
-             ,
-          -}
-          g [] <|
+        [ g [] <|
+            viewEdgeCells graphForced
+        , g [] <|
             List.map viewVertexCell <|
-                nodesOf (ContentCell VertexCell) (cellForced |> Debug.log "vertices")
+                nodesOf (ContentCell VertexCell) graphForced
         ]
 
 
@@ -1185,47 +1183,125 @@ type alias Entity a =
     Force.Entity Int { value : Node (Cell a) }
 
 
-forceGraph cell =
+initialRadius : Float
+initialRadius =
+    10
+
+
+initialAngle : Float
+initialAngle =
+    pi * (3 - sqrt 5)
+
+
+entity : Int -> Node (Cell a) -> Force.Entity String { value : Node (Cell a) }
+entity index cell =
+    let
+        radius =
+            sqrt (toFloat index) * initialRadius
+
+        angle =
+            toFloat index * initialAngle
+    in
+    { x = radius * cos angle
+    , y = radius * sin angle
+    , vx = 0.0
+    , vy = 0.0
+    , id = pathAsIdFromNode cell
+    , value = cell
+    }
+
+
+forceGraph cellGraph =
     let
         verticies =
-            nodesOf (ContentCell VertexCell) cell
+            nodesOf (ContentCell VertexCell) cellGraph
+
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph
 
         forces =
-            [ Force.links [(0, 3), (1, 4), (1, 4), (2, 4), (3, 4)]
-            , Force.manyBodyStrength -500 <| List.indexedMap (\i _ -> i) <| verticies
-            , Force.center 300 200
+            [ Force.links <| edgesFromGraph cellGraph
+            , Force.manyBodyStrength -5000 <| List.map (\c -> pathAsIdFromNode c) <| verticies
+            , Force.center 400 300
             ]
 
+        addPosToCell e =
+            e.value
+                |> addFloat propX e.x
+                |> addFloat propY e.y
+
         simResult =
-            (Force.computeSimulation (Force.simulation forces) <|
-                List.indexedMap (\i n -> Force.entity i n) verticies
-            )
-                |> Debug.log "simResult"
-                |> List.map (\{ x, y, value } -> value |> addFloat propX x |> addFloat propY y)
+            List.indexedMap (\i n -> entity i n) verticies
+                |> Force.computeSimulation (Force.simulation forces)
+                |> List.map addPosToCell
+                |> List.append edges
     in
-    replaceUnderFeature "default" simResult cell
+    replaceUnderFeature "default" simResult cellGraph
 
 
+dictNameToVertex cellGraph =
+    nodesOf (ContentCell VertexCell) cellGraph
+        |> List.foldl (\v d -> Dict.insert (textOf propText v) v d) Dict.empty
 
-{-
-   viewEdgeCell graph edge =
-       let
-           source =
-               Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.from graph
 
-           target =
-               Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.to graph
-       in
-       line
-           [ strokeWidth 1
-           , stroke <| Paint <| Color.rgb255 170 170 170
-           , x1 source.x
-           , y1 source.y
-           , x2 target.x
-           , y2 target.y
-           ]
-           []
--}
+edgesFromGraph cellGraph =
+    let
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph
+
+        idLookup edge =
+            let
+                ( from, to ) =
+                    ( textOf propFrom edge, textOf propTo edge )
+
+                lookupWithDefault key =
+                    Dict.get key (dictNameToVertex cellGraph)
+                        |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
+                        |> Maybe.withDefault ""
+            in
+            ( lookupWithDefault from, lookupWithDefault to )
+    in
+    List.map idLookup edges
+
+
+viewEdgeCells cellGraph =
+    let
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph |> Debug.log "edges"
+
+        fromToLookup edge =
+            let
+                ( from, to ) =
+                    ( textOf propFrom edge, textOf propTo edge )
+
+                lookup key =
+                    Dict.get key (dictNameToVertex cellGraph)
+
+            in
+            ( lookup from, lookup to )
+
+        fromToPairs = List.map fromToLookup edges |> Debug.log "pairs"
+    in
+        List.map viewEdgeCell fromToPairs
+
+viewEdgeCell fromTo =
+    case fromTo of
+        (Nothing, _) ->
+            text ""
+
+        (_, Nothing) ->
+            text ""
+
+        (Just from, Just to) ->
+            line
+                [ strokeWidth 1
+                , stroke <| Paint <| Color.rgb255 170 170 170
+                , x1 <| floatOf propX from
+                , y1 <| floatOf propY from
+                , x2 <| floatOf propX to
+                , y2 <| floatOf propY to
+                ]
+                []
 
 
 viewVertexCell cell =
@@ -1603,6 +1679,14 @@ propX =
 
 propY =
     "y"
+
+
+propFrom =
+    "propFrom"
+
+
+propTo =
+    "propTo"
 
 
 propIndent =
