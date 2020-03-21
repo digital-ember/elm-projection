@@ -4468,7 +4468,7 @@ var author$project$Structure$createNodeInternal = F2(
 var author$project$Structure$createRoot = function (isa) {
 	return A2(author$project$Structure$createNodeInternal, 'root', isa);
 };
-var author$project$Editor$createRootCell = author$project$Structure$createRoot(
+var author$project$Editor$rootCell = author$project$Structure$createRoot(
 	author$project$Editor$ContentCell(author$project$Editor$RootCell));
 var elm$core$List$foldl = F3(
 	function (func, acc, list) {
@@ -4530,7 +4530,7 @@ var author$project$Structure$addToDefault = F2(
 var author$project$Editor$with = function (node) {
 	return author$project$Structure$addToDefault(node);
 };
-var author$project$Editor$StackCell = {$: 'StackCell'};
+var author$project$Editor$SplitCell = {$: 'SplitCell'};
 var author$project$Editor$propIsHoriz = 'isHoriz';
 var author$project$Structure$PBool = function (a) {
 	return {$: 'PBool', a: a};
@@ -4668,11 +4668,19 @@ var author$project$Structure$addBool = F3(
 var author$project$Structure$createNode = function (isa) {
 	return A2(author$project$Structure$createNodeInternal, '', isa);
 };
-var elm$core$Basics$False = {$: 'False'};
+var elm$core$Basics$True = {$: 'True'};
 var elm$core$Basics$apR = F2(
 	function (x, f) {
 		return f(x);
 	});
+var author$project$Editor$horizSplitCell = A3(
+	author$project$Structure$addBool,
+	author$project$Editor$propIsHoriz,
+	true,
+	author$project$Structure$createNode(
+		author$project$Editor$ContentCell(author$project$Editor$SplitCell)));
+var author$project$Editor$StackCell = {$: 'StackCell'};
+var elm$core$Basics$False = {$: 'False'};
 var author$project$Editor$vertStackCell = A3(
 	author$project$Structure$addBool,
 	author$project$Editor$propIsHoriz,
@@ -4681,7 +4689,6 @@ var author$project$Editor$vertStackCell = A3(
 		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
 var author$project$Editor$Bottom = {$: 'Bottom'};
 var author$project$Editor$propIndent = 'indent';
-var elm$core$Basics$True = {$: 'True'};
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, author$project$Editor$propIndent, true, node);
 };
@@ -5677,20 +5684,23 @@ var author$project$Main$editorStates = function (sm) {
 var author$project$Main$editorStateMachine = function (sm) {
 	return A2(
 		author$project$Editor$with,
-		author$project$Main$editorStates(sm),
 		A2(
 			author$project$Editor$with,
-			author$project$Main$editorEvents(sm),
+			author$project$Main$editorStates(sm),
 			A2(
 				author$project$Editor$with,
-				author$project$Main$editorStateMachineName(sm),
-				author$project$Editor$vertStackCell)));
+				author$project$Main$editorEvents(sm),
+				A2(
+					author$project$Editor$with,
+					author$project$Main$editorStateMachineName(sm),
+					author$project$Editor$vertStackCell))),
+		author$project$Editor$horizSplitCell);
 };
 var author$project$Main$editor = function (sm) {
 	return A2(
 		author$project$Editor$with,
 		author$project$Main$editorStateMachine(sm),
-		author$project$Editor$createRootCell);
+		author$project$Editor$rootCell);
 };
 var author$project$Main$StateMachine = {$: 'StateMachine'};
 var author$project$Main$initStateMachine = author$project$Structure$createRoot(author$project$Main$StateMachine);
@@ -6865,17 +6875,18 @@ var author$project$Editor$viewRefCell = function (cell) {
 		return elm$html$Html$text('');
 	}
 };
+var elm$html$Html$Attributes$class = elm$html$Html$Attributes$stringProperty('className');
 var author$project$Editor$viewCell = function (cell) {
-	var _n5 = author$project$Structure$isaOf(cell);
-	if (_n5.$ === 'ContentCell') {
-		var _n6 = author$project$Structure$getUnderDefault(cell);
-		if (!_n6.b) {
+	var _n14 = author$project$Structure$isaOf(cell);
+	if (_n14.$ === 'ContentCell') {
+		var _n15 = author$project$Structure$getUnderDefault(cell);
+		if (!_n15.b) {
 			return _List_fromArray(
 				[
 					elm$html$Html$text('')
 				]);
 		} else {
-			var children = _n6;
+			var children = _n15;
 			return A3(elm$core$List$foldl, author$project$Editor$viewContent, _List_Nil, children);
 		}
 	} else {
@@ -6884,11 +6895,13 @@ var author$project$Editor$viewCell = function (cell) {
 };
 var author$project$Editor$viewContent = F2(
 	function (cell, html) {
-		var _n3 = author$project$Structure$isaOf(cell);
-		if (_n3.$ === 'ContentCell') {
-			var ccell = _n3.a;
+		var _n12 = author$project$Structure$isaOf(cell);
+		if (_n12.$ === 'ContentCell') {
+			var ccell = _n12.a;
 			var htmlNew = function () {
 				switch (ccell.$) {
+					case 'SplitCell':
+						return author$project$Editor$viewSplitCell(cell);
 					case 'RootCell':
 						return author$project$Editor$viewStackCell(cell);
 					case 'ConstantCell':
@@ -6914,9 +6927,69 @@ var author$project$Editor$viewContent = F2(
 			return _List_Nil;
 		}
 	});
+var author$project$Editor$viewHorizSplit = function (cell) {
+	var _n8 = author$project$Structure$isaOf(cell);
+	if (_n8.$ === 'ContentCell') {
+		var _n9 = function () {
+			var _n10 = author$project$Structure$getUnderDefault(cell);
+			if (!_n10.b) {
+				return _Utils_Tuple2(
+					_List_fromArray(
+						[
+							elm$html$Html$text('Completely empty split cell')
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text('')
+						]));
+			} else {
+				if (!_n10.b.b) {
+					var first = _n10.a;
+					return _Utils_Tuple2(
+						author$project$Editor$viewCell(first),
+						_List_fromArray(
+							[
+								elm$html$Html$text('Empty bottom side')
+							]));
+				} else {
+					var first = _n10.a;
+					var _n11 = _n10.b;
+					var second = _n11.a;
+					return _Utils_Tuple2(
+						author$project$Editor$viewCell(first),
+						author$project$Editor$viewCell(second));
+				}
+			}
+		}();
+		var top = _n9.a;
+		var bottom = _n9.b;
+		return A2(
+			elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('split top')
+						]),
+					top),
+					A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('split bottom')
+						]),
+					bottom)
+				]));
+	} else {
+		return elm$html$Html$text('');
+	}
+};
 var author$project$Editor$viewHorizStackCell = function (cell) {
-	var _n2 = author$project$Structure$isaOf(cell);
-	if (_n2.$ === 'ContentCell') {
+	var _n7 = author$project$Structure$isaOf(cell);
+	if (_n7.$ === 'ContentCell') {
 		var displayAttrs = author$project$Editor$divRowAttributes(cell);
 		return A2(
 			elm$html$Html$div,
@@ -6935,11 +7008,80 @@ var author$project$Editor$viewHorizStackCell = function (cell) {
 		return elm$html$Html$text('');
 	}
 };
+var author$project$Editor$viewSplitCell = function (cell) {
+	var _n6 = author$project$Structure$isaOf(cell);
+	if (_n6.$ === 'ContentCell') {
+		var bO = A2(author$project$Structure$boolOf, author$project$Editor$propIsHoriz, cell);
+		return bO ? author$project$Editor$viewHorizSplit(cell) : author$project$Editor$viewVertSplit(cell);
+	} else {
+		return elm$html$Html$text('');
+	}
+};
 var author$project$Editor$viewStackCell = function (cell) {
-	var _n1 = author$project$Structure$isaOf(cell);
-	if (_n1.$ === 'ContentCell') {
+	var _n5 = author$project$Structure$isaOf(cell);
+	if (_n5.$ === 'ContentCell') {
 		var bO = A2(author$project$Structure$boolOf, author$project$Editor$propIsHoriz, cell);
 		return bO ? author$project$Editor$viewHorizStackCell(cell) : author$project$Editor$viewVertStackCell(cell);
+	} else {
+		return elm$html$Html$text('');
+	}
+};
+var author$project$Editor$viewVertSplit = function (cell) {
+	var _n1 = author$project$Structure$isaOf(cell);
+	if (_n1.$ === 'ContentCell') {
+		var _n2 = function () {
+			var _n3 = author$project$Structure$getUnderDefault(cell);
+			if (!_n3.b) {
+				return _Utils_Tuple2(
+					_List_fromArray(
+						[
+							elm$html$Html$text('Completely empty split cell')
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text('')
+						]));
+			} else {
+				if (!_n3.b.b) {
+					var first = _n3.a;
+					return _Utils_Tuple2(
+						author$project$Editor$viewCell(first),
+						_List_fromArray(
+							[
+								elm$html$Html$text('Empty right side')
+							]));
+				} else {
+					var first = _n3.a;
+					var _n4 = _n3.b;
+					var second = _n4.a;
+					return _Utils_Tuple2(
+						author$project$Editor$viewCell(first),
+						author$project$Editor$viewCell(second));
+				}
+			}
+		}();
+		var left = _n2.a;
+		var right = _n2.b;
+		return A2(
+			elm$html$Html$div,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('split left')
+						]),
+					left),
+					A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('split right')
+						]),
+					right)
+				]));
 	} else {
 		return elm$html$Html$text('');
 	}

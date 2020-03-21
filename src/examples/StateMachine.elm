@@ -1,12 +1,15 @@
 --module StateMachine exposing (main)
 
-import Structure exposing (..)
+
+module Main exposing (Domain(..), ctorEvent, ctorState, ctorTransition, editor, editorEvent, editorEventPlaceholder, editorEvents, editorState, editorStateHead, editorStateMachine, editorStateMachineName, editorStates, editorStatesPlaceholder, editorTransition, editorTransitionPlaceholder, initStateMachine, main)
+
 import Editor exposing (..)
 import Runtime exposing (Model, projection)
+import Structure exposing (..)
 
 
 {-| We need to define a custom domain type.
-It contains constructors for each "domain concept" to tag Node_s with via API.
+It contains constructors for each "domain concept" to tag Node\_s with via API.
 -}
 type Domain
     = StateMachine
@@ -17,8 +20,10 @@ type Domain
 
 {-| Program is created by the Runtime.program function.
 It requires:
-- initial root node (initStateMachine)
-- editor (top-level function to transform a domain model to a cell model)
+
+  - initial root node (initStateMachine)
+  - editor (top-level function to transform a domain model to a cell model)
+
 -}
 main : Program () (Model Domain) (Runtime.Msg Domain)
 main =
@@ -38,27 +43,34 @@ Using the Editor-API, one can stick together cell-based editors.
 -}
 editor : Node Domain -> Node (Cell Domain)
 editor sm =
-    createRootCell
+    rootCell
         |> with (editorStateMachine sm)
 
 
 {-| A vertical stack of cells
-  * with the editor for the state machine name
-  * with the editor for the events
+
+  - with the editor for the state machine name
+  - with the editor for the events
+
 -}
 editorStateMachine : Node Domain -> Node (Cell Domain)
 editorStateMachine sm =
-    vertStackCell
-        |> with (editorStateMachineName sm)
-        |> with (editorEvents sm)
-        |> with (editorStates sm)
+    vertSplitCell
+        |> with
+            (vertStackCell
+                |> with (editorStateMachineName sm)
+                |> with (editorEvents sm)
+                |> with (editorStates sm)
+            )
 
 
 {-| A horizontal stack of cells
-  * with a constant cell containing "name:"
-  * with an input cell containing the "name" property of the state machine
-      * input has an onInputEffect node
+
+  - with a constant cell containing "name:"
+  - with an input cell containing the "name" property of the state machine
+      - input has an onInputEffect node
         Carries the input parameters and the update function itself to be evaluated in the editor update
+
 -}
 editorStateMachineName : Node Domain -> Node (Cell Domain)
 editorStateMachineName sm =
@@ -83,15 +95,15 @@ editorEvents sm =
                 events ->
                     List.map editorEvent events
     in
-        vertStackCell
-            |> with (constantCell "events")
-            |> with
-                (vertStackCell
-                    |> addIndent
-                    |> withRange editorEventsResult
-                )
-            |> with (constantCell "end")
-            |> addMargin Bottom 20
+    vertStackCell
+        |> with (constantCell "events")
+        |> with
+            (vertStackCell
+                |> addIndent
+                |> withRange editorEventsResult
+            )
+        |> with (constantCell "end")
+        |> addMargin Bottom 20
 
 
 editorEvent : Node Domain -> Node (Cell Domain)
@@ -118,8 +130,8 @@ editorStates sm =
                 states ->
                     List.map editorState states
     in
-        vertStackCell
-            |> withRange editorStatesResult
+    vertStackCell
+        |> withRange editorStatesResult
 
 
 editorStatesPlaceholder : Node Domain -> Node (Cell Domain)
@@ -139,19 +151,19 @@ editorState state =
                 transitions ->
                     List.map editorTransition transitions
     in
-        vertStackCell
-            |> with (editorStateHead state)
-            |> with
-                (vertStackCell
-                    |> addIndent
-                    |> withRange editorTransitionsResult
-                )
-            |> with (constantCell "end")
-            |> with
-                (buttonCell "+"
-                    |> withEffect (insertionEffect state ctorState)
-                )
-            |> addMargin Bottom 20
+    vertStackCell
+        |> with (editorStateHead state)
+        |> with
+            (vertStackCell
+                |> addIndent
+                |> withRange editorTransitionsResult
+            )
+        |> with (constantCell "end")
+        |> with
+            (buttonCell "+"
+                |> withEffect (insertionEffect state ctorState)
+            )
+        |> addMargin Bottom 20
 
 
 editorStateHead : Node Domain -> Node (Cell Domain)
@@ -175,7 +187,7 @@ editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
-            (refCell Event "eventRef" (Debug.log "transition" transition)  Nothing
+            (refCell Event "eventRef" (Debug.log "transition" transition) Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )
@@ -208,5 +220,3 @@ ctorTransition =
     createNode Transition
         |> addText "eventRef" ""
         |> addText "stateRef" ""
-
-

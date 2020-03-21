@@ -21,7 +21,7 @@ initFaction =
 
 editorFaction : Node Domain -> Node (Cell Domain)
 editorFaction faction =
-    createRootCell
+    rootCell
         |> with (editorFactionName faction)
         |> with (editorTanks faction)
 

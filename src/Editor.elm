@@ -6,7 +6,7 @@ module Editor exposing
     , addMargin
     , buttonCell
     , constantCell
-    , createRootCell
+    , rootCell
     , deletionEffect
     , griddify
     , horizStackCell
@@ -16,6 +16,8 @@ module Editor exposing
     , placeholderCell
     , refCell
     , replacementEffect
+    , horizSplitCell
+    , vertSplitCell
     , updateEditor
     , vertGridCell
     , vertStackCell
@@ -41,7 +43,8 @@ type Cell a
 
 
 type ContentCell
-    = RootCell
+    = SplitCell
+    | RootCell
     | StackCell
     | ConstantCell
     | InputCell
@@ -136,8 +139,10 @@ type MarginSide
     | Left
 
 
-createRootCell : Node (Cell a)
-createRootCell =
+
+
+rootCell : Node (Cell a)
+rootCell =
     createRoot (ContentCell RootCell)
 
 
@@ -182,6 +187,15 @@ vertStackCell =
     createNode (ContentCell StackCell)
         |> addBool propIsHoriz False
 
+
+vertSplitCell : Node (Cell a)
+vertSplitCell =
+    createNode (ContentCell SplitCell)
+
+horizSplitCell : Node (Cell a)
+horizSplitCell =
+    createNode (ContentCell SplitCell)
+        |> addBool propIsHoriz True
 
 vertGridCell : Node (Cell a)
 vertGridCell =
@@ -400,9 +414,9 @@ updateOnInsertionEffect domainModel effect cellContext =
 
             else
                 ( insertChildAfterPath nodeToInsert path domainModel |> updatePaths, updateSelectionOnEnter cellContext )
+
         _ ->
             ( domainModel, Cmd.none )
-
 
 
 updateOnDeleteEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
@@ -748,6 +762,9 @@ viewContent cell html =
             let
                 htmlNew =
                     case ccell of
+                        SplitCell ->
+                            viewSplitCell cell
+
                         RootCell ->
                             viewStackCell cell
 
@@ -773,6 +790,90 @@ viewContent cell html =
 
         EffectCell _ ->
             []
+
+
+viewSplitCell : Node (Cell a) -> Html (Msg a)
+viewSplitCell cell =
+    case isaOf cell of
+        ContentCell _ ->
+            let
+                bO =
+                    boolOf propIsHoriz cell
+            in
+            if bO then
+                viewHorizSplit cell
+
+            else
+                viewVertSplit cell
+
+        EffectCell _ ->
+            text ""
+
+
+viewVertSplit : Node (Cell a) -> Html (Msg a)
+viewVertSplit cell =
+    case isaOf cell of
+        ContentCell _ ->
+            let
+                ( left, right ) =
+                    case getUnderDefault cell of
+                        [] ->
+                            ( [ text "Completely empty split cell" ], [ text "" ] )
+
+                        first :: [] ->
+                            ( viewCell first
+                            , [ text "Empty right side" ]
+                            )
+
+                        first :: (second :: _) ->
+                            ( viewCell first
+                            , viewCell second
+                            )
+            in
+            div []
+                [ div
+                    [ HtmlA.class "split left" ]
+                    left
+                , div
+                    [ HtmlA.class "split right" ]
+                    right
+                ]
+
+        EffectCell _ ->
+            text ""
+
+
+viewHorizSplit : Node (Cell a) -> Html (Msg a)
+viewHorizSplit cell =
+    case isaOf cell of
+            ContentCell _ ->
+                let
+                    ( top, bottom ) =
+                        case getUnderDefault cell of
+                            [] ->
+                                ( [ text "Completely empty split cell" ], [ text "" ] )
+
+                            first :: [] ->
+                                ( viewCell first
+                                , [ text "Empty bottom side" ]
+                                )
+
+                            first :: (second :: _) ->
+                                ( viewCell first
+                                , viewCell second
+                                )
+                in
+                div []
+                    [ div
+                        [ HtmlA.class "split top" ]
+                        top
+                    , div
+                        [ HtmlA.class "split bottom" ]
+                        bottom
+                    ]
+
+            EffectCell _ ->
+                text ""
 
 
 viewStackCell : Node (Cell a) -> Html (Msg a)

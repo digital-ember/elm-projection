@@ -1,3 +1,35 @@
-label:focus {
-    outline: 2px solid blue;
+/* Split the screen in half */
+.split {
+  z-index: 1;
+  top: 0;
+  overflow-x: hidden;
+  padding: 2%;
+}
+
+.top {
+    width: 100%;
+    height: 48%;
+}
+
+.bottom {
+  border-top: solid;
+    width: 100%;
+    height: 48%;
+}
+
+/* Control the left side */
+.left {
+  left: 0;
+  position: fixed;
+    height: 100%;
+    width: 48%;
+}
+
+/* Control the right side */
+.right {
+  right: 0;
+  border-left: solid;
+  position: fixed;
+    height: 100%;
+    width: 48%;
 }
