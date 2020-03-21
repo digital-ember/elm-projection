@@ -6,9 +6,11 @@ module Editor exposing
     , addMargin
     , buttonCell
     , constantCell
-    , rootCell
     , deletionEffect
+    , edgeCell
+    , graphCell
     , griddify
+    , horizSplitCell
     , horizStackCell
     , inputCell
     , inputEffect
@@ -16,11 +18,12 @@ module Editor exposing
     , placeholderCell
     , refCell
     , replacementEffect
-    , horizSplitCell
-    , vertSplitCell
+    , rootCell
     , updateEditor
     , vertGridCell
+    , vertSplitCell
     , vertStackCell
+    , vertexCell
     , viewEditor
     , with
     , withEffect
@@ -28,13 +31,21 @@ module Editor exposing
     )
 
 import Browser.Dom as Dom
+import Color
 import Dict as Dict
+import Force exposing (Entity)
+import Graph
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
+import IntDict
 import Json.Decode as JsonD
 import Structure exposing (..)
 import Task as Task
+import TypedSvg exposing (g, rect, svg, text_)
+import TypedSvg.Attributes exposing (fill, stroke, textAnchor, viewBox)
+import TypedSvg.Attributes.InPx exposing (height, rx, ry, strokeWidth, width, x, y)
+import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
 
 
 type Cell a
@@ -51,6 +62,9 @@ type ContentCell
     | PlaceholderCell
     | ButtonCell
     | RefCell
+    | GraphCell
+    | VertexCell
+    | EdgeCell
 
 
 type EffectCell a
@@ -139,8 +153,6 @@ type MarginSide
     | Left
 
 
-
-
 rootCell : Node (Cell a)
 rootCell =
     createRoot (ContentCell RootCell)
@@ -192,10 +204,12 @@ vertSplitCell : Node (Cell a)
 vertSplitCell =
     createNode (ContentCell SplitCell)
 
+
 horizSplitCell : Node (Cell a)
 horizSplitCell =
     createNode (ContentCell SplitCell)
         |> addBool propIsHoriz True
+
 
 vertGridCell : Node (Cell a)
 vertGridCell =
@@ -213,6 +227,25 @@ buttonCell : String -> Node (Cell a)
 buttonCell text =
     createNode (ContentCell ButtonCell)
         |> addText propText text
+
+
+graphCell : Node (Cell a)
+graphCell =
+    createNode (ContentCell GraphCell)
+
+
+vertexCell : String -> Node a -> Node (Cell a)
+vertexCell text nodeContext =
+    createNode (ContentCell VertexCell)
+        |> addText propText (textOf text nodeContext)
+
+
+edgeCell : String -> ( String, String ) -> Node a -> Node (Cell a)
+edgeCell text ( from, to ) nodeContext =
+    createNode (ContentCell EdgeCell)
+        |> addText propText (textOf text nodeContext)
+        |> addText "from" from
+        |> addText "to" to
 
 
 with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -785,6 +818,15 @@ viewContent cell html =
 
                         RefCell ->
                             viewRefCell cell
+
+                        GraphCell ->
+                            viewGraphCell cell
+
+                        VertexCell ->
+                            text ""
+
+                        EdgeCell ->
+                            text ""
             in
             htmlNew :: List.reverse html |> List.reverse
 
@@ -821,13 +863,13 @@ viewVertSplit cell =
                             ( [ text "Completely empty split cell" ], [ text "" ] )
 
                         first :: [] ->
-                            ( viewCell first
+                            ( viewContent first []
                             , [ text "Empty right side" ]
                             )
 
                         first :: (second :: _) ->
-                            ( viewCell first
-                            , viewCell second
+                            ( viewContent first []
+                            , viewContent second []
                             )
             in
             div []
@@ -846,34 +888,34 @@ viewVertSplit cell =
 viewHorizSplit : Node (Cell a) -> Html (Msg a)
 viewHorizSplit cell =
     case isaOf cell of
-            ContentCell _ ->
-                let
-                    ( top, bottom ) =
-                        case getUnderDefault cell of
-                            [] ->
-                                ( [ text "Completely empty split cell" ], [ text "" ] )
+        ContentCell _ ->
+            let
+                ( top, bottom ) =
+                    case getUnderDefault cell of
+                        [] ->
+                            ( [ text "Completely empty split cell" ], [ text "" ] )
 
-                            first :: [] ->
-                                ( viewCell first
-                                , [ text "Empty bottom side" ]
-                                )
+                        first :: [] ->
+                            ( viewCell first
+                            , [ text "Empty bottom side" ]
+                            )
 
-                            first :: (second :: _) ->
-                                ( viewCell first
-                                , viewCell second
-                                )
-                in
-                div []
-                    [ div
-                        [ HtmlA.class "split top" ]
-                        top
-                    , div
-                        [ HtmlA.class "split bottom" ]
-                        bottom
-                    ]
+                        first :: (second :: _) ->
+                            ( viewCell first
+                            , viewCell second
+                            )
+            in
+            div []
+                [ div
+                    [ HtmlA.class "split top" ]
+                    top
+                , div
+                    [ HtmlA.class "split bottom" ]
+                    bottom
+                ]
 
-            EffectCell _ ->
-                text ""
+        EffectCell _ ->
+            text ""
 
 
 viewStackCell : Node (Cell a) -> Html (Msg a)
@@ -1115,6 +1157,114 @@ viewRefCell cell =
 
         EffectCell _ ->
             text ""
+
+
+viewGraphCell : Node (Cell a) -> Html (Msg a)
+viewGraphCell cell =
+    let
+        cellForced =
+            forceGraph cell
+    in
+    svg
+        [ viewBox 0 0 600 400
+        , HtmlA.style "width" "600"
+        , HtmlA.style "height" "400"
+        , HtmlA.style "background-color" "azure"
+        ]
+        [ {- g [ ]
+                <| List.map viewEdgeCell <| nodesOf (ContentCell EdgeCell) cell
+             ,
+          -}
+          g [] <|
+            List.map viewVertexCell <|
+                nodesOf (ContentCell VertexCell) (cellForced |> Debug.log "vertices")
+        ]
+
+
+type alias Entity a =
+    Force.Entity Int { value : Node (Cell a) }
+
+
+forceGraph cell =
+    let
+        verticies =
+            nodesOf (ContentCell VertexCell) cell
+
+        forces =
+            [ Force.links [(0, 3), (1, 4), (1, 4), (2, 4), (3, 4)]
+            , Force.manyBodyStrength -500 <| List.indexedMap (\i _ -> i) <| verticies
+            , Force.center 300 200
+            ]
+
+        simResult =
+            (Force.computeSimulation (Force.simulation forces) <|
+                List.indexedMap (\i n -> Force.entity i n) verticies
+            )
+                |> Debug.log "simResult"
+                |> List.map (\{ x, y, value } -> value |> addFloat propX x |> addFloat propY y)
+    in
+    replaceUnderFeature "default" simResult cell
+
+
+
+{-
+   viewEdgeCell graph edge =
+       let
+           source =
+               Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.from graph
+
+           target =
+               Maybe.withDefault (Force.entity 0 "") <| Maybe.map (.node >> .label) <| Graph.get edge.to graph
+       in
+       line
+           [ strokeWidth 1
+           , stroke <| Paint <| Color.rgb255 170 170 170
+           , x1 source.x
+           , y1 source.y
+           , x2 target.x
+           , y2 target.y
+           ]
+           []
+-}
+
+
+viewVertexCell cell =
+    let
+        wRect =
+            (toFloat <| String.length <| textOf propText cell) * 10
+
+        hRect =
+            40
+
+        xPos =
+            floatOf propX cell
+
+        xPosMiddle =
+            xPos - (wRect / 2)
+
+        yPos =
+            floatOf propY cell
+
+        yPosMiddle =
+            yPos - (hRect / 2)
+    in
+    g []
+        [ rect
+            [ width wRect
+            , height hRect
+            , fill <| Paint <| Color.rgb255 155 173 255
+            , stroke <| Paint <| Color.blue
+            , strokeWidth 2
+
+            --, onMouseDown cell.id
+            , x xPosMiddle
+            , y yPosMiddle
+            , rx 4
+            , ry 4
+            ]
+            []
+        , text_ [ x xPos, y yPos, textAnchor AnchorMiddle ] [ text <| textOf propText cell ]
+        ]
 
 
 optionFromScope : Node (Cell a) -> Html (Msg a)
@@ -1445,6 +1595,14 @@ propIsGrid =
 
 propText =
     "text"
+
+
+propX =
+    "x"
+
+
+propY =
+    "y"
 
 
 propIndent =

@@ -4530,7 +4530,16 @@ var author$project$Structure$addToDefault = F2(
 var author$project$Editor$with = function (node) {
 	return author$project$Structure$addToDefault(node);
 };
+var author$project$Editor$GraphCell = {$: 'GraphCell'};
+var author$project$Structure$createNode = function (isa) {
+	return A2(author$project$Structure$createNodeInternal, '', isa);
+};
+var author$project$Editor$graphCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(author$project$Editor$GraphCell));
 var author$project$Editor$SplitCell = {$: 'SplitCell'};
+var author$project$Editor$vertSplitCell = author$project$Structure$createNode(
+	author$project$Editor$ContentCell(author$project$Editor$SplitCell));
+var author$project$Editor$StackCell = {$: 'StackCell'};
 var author$project$Editor$propIsHoriz = 'isHoriz';
 var author$project$Structure$PBool = function (a) {
 	return {$: 'PBool', a: a};
@@ -4665,30 +4674,27 @@ var author$project$Structure$addBool = F3(
 				author$project$Structure$PBool(value)),
 			node);
 	});
-var author$project$Structure$createNode = function (isa) {
-	return A2(author$project$Structure$createNodeInternal, '', isa);
-};
-var elm$core$Basics$True = {$: 'True'};
+var elm$core$Basics$False = {$: 'False'};
 var elm$core$Basics$apR = F2(
 	function (x, f) {
 		return f(x);
 	});
-var author$project$Editor$horizSplitCell = A3(
-	author$project$Structure$addBool,
-	author$project$Editor$propIsHoriz,
-	true,
-	author$project$Structure$createNode(
-		author$project$Editor$ContentCell(author$project$Editor$SplitCell)));
-var author$project$Editor$StackCell = {$: 'StackCell'};
-var elm$core$Basics$False = {$: 'False'};
 var author$project$Editor$vertStackCell = A3(
 	author$project$Structure$addBool,
 	author$project$Editor$propIsHoriz,
 	false,
 	author$project$Structure$createNode(
 		author$project$Editor$ContentCell(author$project$Editor$StackCell)));
+var author$project$Structure$addToDefaultRange = F2(
+	function (children, parent) {
+		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
+	});
+var author$project$Editor$withRange = function (children) {
+	return author$project$Structure$addToDefaultRange(children);
+};
 var author$project$Editor$Bottom = {$: 'Bottom'};
 var author$project$Editor$propIndent = 'indent';
+var elm$core$Basics$True = {$: 'True'};
 var author$project$Editor$addIndent = function (node) {
 	return A3(author$project$Structure$addBool, author$project$Editor$propIndent, true, node);
 };
@@ -4745,13 +4751,6 @@ var author$project$Editor$constantCell = function (text) {
 		text,
 		author$project$Structure$createNode(
 			author$project$Editor$ContentCell(author$project$Editor$ConstantCell)));
-};
-var author$project$Structure$addToDefaultRange = F2(
-	function (children, parent) {
-		return A3(elm$core$List$foldl, author$project$Structure$addToDefault, parent, children);
-	});
-var author$project$Editor$withRange = function (children) {
-	return author$project$Structure$addToDefaultRange(children);
 };
 var author$project$Editor$DeletionEffect = function (a) {
 	return {$: 'DeletionEffect', a: a};
@@ -5583,7 +5582,6 @@ var author$project$Main$ctorTransition = A3(
 		'eventRef',
 		'',
 		author$project$Structure$createNode(author$project$Main$Transition)));
-var elm$core$Debug$log = _Debug_log;
 var author$project$Main$editorTransition = function (transition) {
 	return A2(
 		author$project$Editor$with,
@@ -5605,12 +5603,7 @@ var author$project$Main$editorTransition = function (transition) {
 					A2(
 						author$project$Editor$withEffect,
 						A2(author$project$Editor$insertionEffect, transition, author$project$Main$ctorTransition),
-						A4(
-							author$project$Editor$refCell,
-							author$project$Main$Event,
-							'eventRef',
-							A2(elm$core$Debug$log, 'transition', transition),
-							elm$core$Maybe$Nothing))),
+						A4(author$project$Editor$refCell, author$project$Main$Event, 'eventRef', transition, elm$core$Maybe$Nothing))),
 				author$project$Editor$horizStackCell)));
 };
 var author$project$Main$editorTransitionPlaceholder = function (state) {
@@ -5681,20 +5674,101 @@ var author$project$Main$editorStates = function (sm) {
 	}();
 	return A2(author$project$Editor$withRange, editorStatesResult, author$project$Editor$vertStackCell);
 };
+var author$project$Editor$VertexCell = {$: 'VertexCell'};
+var author$project$Editor$vertexCell = F2(
+	function (text, nodeContext) {
+		return A3(
+			author$project$Structure$addText,
+			author$project$Editor$propText,
+			A2(author$project$Structure$textOf, text, nodeContext),
+			author$project$Structure$createNode(
+				author$project$Editor$ContentCell(author$project$Editor$VertexCell)));
+	});
+var author$project$Main$editorStateVertex = function (state) {
+	return A2(author$project$Editor$vertexCell, 'name', state);
+};
+var author$project$Main$editorStatesVerticies = function (sm) {
+	return A2(
+		elm$core$List$map,
+		author$project$Main$editorStateVertex,
+		author$project$Structure$getUnderDefault(sm));
+};
+var author$project$Editor$EdgeCell = {$: 'EdgeCell'};
+var author$project$Editor$edgeCell = F3(
+	function (text, _n0, nodeContext) {
+		var from = _n0.a;
+		var to = _n0.b;
+		return A3(
+			author$project$Structure$addText,
+			'to',
+			to,
+			A3(
+				author$project$Structure$addText,
+				'from',
+				from,
+				A3(
+					author$project$Structure$addText,
+					author$project$Editor$propText,
+					A2(author$project$Structure$textOf, text, nodeContext),
+					author$project$Structure$createNode(
+						author$project$Editor$ContentCell(author$project$Editor$EdgeCell)))));
+	});
+var author$project$Main$editorTransitionEdge = function (state) {
+	var edge = function (transition) {
+		return A3(
+			author$project$Editor$edgeCell,
+			'eventRef',
+			_Utils_Tuple2(
+				A2(author$project$Structure$textOf, 'name', state),
+				A2(author$project$Structure$textOf, 'stateRef', transition)),
+			transition);
+	};
+	return A2(
+		elm$core$List$map,
+		edge,
+		author$project$Structure$getUnderDefault(state));
+};
+var elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
+		}
+	});
+var elm$core$List$concat = function (lists) {
+	return A3(elm$core$List$foldr, elm$core$List$append, _List_Nil, lists);
+};
+var author$project$Main$editorTransitionsEdges = function (sm) {
+	return elm$core$List$concat(
+		A2(
+			elm$core$List$map,
+			author$project$Main$editorTransitionEdge,
+			author$project$Structure$getUnderDefault(sm)));
+};
 var author$project$Main$editorStateMachine = function (sm) {
 	return A2(
 		author$project$Editor$with,
 		A2(
+			author$project$Editor$withRange,
+			author$project$Main$editorTransitionsEdges(sm),
+			A2(
+				author$project$Editor$withRange,
+				author$project$Main$editorStatesVerticies(sm),
+				author$project$Editor$graphCell)),
+		A2(
 			author$project$Editor$with,
-			author$project$Main$editorStates(sm),
 			A2(
 				author$project$Editor$with,
-				author$project$Main$editorEvents(sm),
+				author$project$Main$editorStates(sm),
 				A2(
 					author$project$Editor$with,
-					author$project$Main$editorStateMachineName(sm),
-					author$project$Editor$vertStackCell))),
-		author$project$Editor$horizSplitCell);
+					author$project$Main$editorEvents(sm),
+					A2(
+						author$project$Editor$with,
+						author$project$Main$editorStateMachineName(sm),
+						author$project$Editor$vertStackCell))),
+			author$project$Editor$vertSplitCell));
 };
 var author$project$Main$editor = function (sm) {
 	return A2(
@@ -6323,6 +6397,1445 @@ var author$project$Editor$viewConstantCell = function (cell) {
 		return elm$html$Html$text('');
 	}
 };
+var author$project$Editor$propX = 'x';
+var author$project$Editor$propY = 'y';
+var author$project$Structure$PFloat = function (a) {
+	return {$: 'PFloat', a: a};
+};
+var author$project$Structure$addFloat = F3(
+	function (key, value, node) {
+		return A2(
+			author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				key,
+				author$project$Structure$PFloat(value)),
+			node);
+	});
+var elm$core$Dict$values = function (dict) {
+	return A3(
+		elm$core$Dict$foldr,
+		F3(
+			function (key, value, valueList) {
+				return A2(elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
+var author$project$Structure$getAllUnderCustoms = function (_n0) {
+	var features = _n0.a.features;
+	return elm$core$List$concat(
+		elm$core$Dict$values(features.custom));
+};
+var author$project$Structure$nodesOfRec = F3(
+	function (isa, node, result) {
+		var _n0 = _Utils_eq(
+			author$project$Structure$isaOf(node),
+			isa);
+		if (_n0) {
+			return A2(elm$core$List$cons, node, result);
+		} else {
+			var allChildren = A2(
+				elm$core$List$append,
+				author$project$Structure$getAllUnderCustoms(node),
+				author$project$Structure$getUnderDefault(node));
+			return A3(
+				elm$core$List$foldl,
+				author$project$Structure$nodesOfRec(isa),
+				result,
+				allChildren);
+		}
+	});
+var author$project$Structure$nodesOf = F2(
+	function (isa, root) {
+		return A3(author$project$Structure$nodesOfRec, isa, root, _List_Nil);
+	});
+var elm$core$Debug$log = _Debug_log;
+var gampleman$elm_visualization$Force$Center = F2(
+	function (a, b) {
+		return {$: 'Center', a: a, b: b};
+	});
+var gampleman$elm_visualization$Force$center = gampleman$elm_visualization$Force$Center;
+var gampleman$elm_visualization$Force$isCompleted = function (_n0) {
+	var alpha = _n0.a.alpha;
+	var minAlpha = _n0.a.minAlpha;
+	return _Utils_cmp(alpha, minAlpha) < 1;
+};
+var gampleman$elm_visualization$Force$State = function (a) {
+	return {$: 'State', a: a};
+};
+var elm$core$Basics$pow = _Basics_pow;
+var elm$core$Basics$sqrt = _Basics_sqrt;
+var elm$core$Dict$map = F2(
+	function (func, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return elm$core$Dict$RBEmpty_elm_builtin;
+		} else {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			return A5(
+				elm$core$Dict$RBNode_elm_builtin,
+				color,
+				key,
+				A2(func, key, value),
+				A2(elm$core$Dict$map, func, left),
+				A2(elm$core$Dict$map, func, right));
+		}
+	});
+var elm$core$Dict$sizeHelp = F2(
+	function (n, dict) {
+		sizeHelp:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return n;
+			} else {
+				var left = dict.d;
+				var right = dict.e;
+				var $temp$n = A2(elm$core$Dict$sizeHelp, n + 1, right),
+					$temp$dict = left;
+				n = $temp$n;
+				dict = $temp$dict;
+				continue sizeHelp;
+			}
+		}
+	});
+var elm$core$Dict$size = function (dict) {
+	return A2(elm$core$Dict$sizeHelp, 0, dict);
+};
+var elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var gampleman$elm_visualization$Force$nTimes = F3(
+	function (fn, times, input) {
+		nTimes:
+		while (true) {
+			if (times <= 0) {
+				return input;
+			} else {
+				var $temp$fn = fn,
+					$temp$times = times - 1,
+					$temp$input = fn(input);
+				fn = $temp$fn;
+				times = $temp$times;
+				input = $temp$input;
+				continue nTimes;
+			}
+		}
+	});
+var elm$core$Basics$isNaN = _Basics_isNaN;
+var ianmackenzie$elm_geometry$BoundingBox2d$maxX = function (_n0) {
+	var boundingBox = _n0.a;
+	return boundingBox.maxX;
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$maxY = function (_n0) {
+	var boundingBox = _n0.a;
+	return boundingBox.maxY;
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$minX = function (_n0) {
+	var boundingBox = _n0.a;
+	return boundingBox.minX;
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$minY = function (_n0) {
+	var boundingBox = _n0.a;
+	return boundingBox.minY;
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$dimensions = function (boundingBox) {
+	return _Utils_Tuple2(
+		ianmackenzie$elm_geometry$BoundingBox2d$maxX(boundingBox) - ianmackenzie$elm_geometry$BoundingBox2d$minX(boundingBox),
+		ianmackenzie$elm_geometry$BoundingBox2d$maxY(boundingBox) - ianmackenzie$elm_geometry$BoundingBox2d$minY(boundingBox));
+};
+var ianmackenzie$elm_geometry$Bootstrap$Point2d$coordinates = function (_n0) {
+	var coordinates_ = _n0.a;
+	return coordinates_;
+};
+var ianmackenzie$elm_geometry$Geometry$Types$Vector2d = function (a) {
+	return {$: 'Vector2d', a: a};
+};
+var ianmackenzie$elm_geometry$Vector2d$fromComponents = ianmackenzie$elm_geometry$Geometry$Types$Vector2d;
+var ianmackenzie$elm_geometry$Vector2d$from = F2(
+	function (firstPoint, secondPoint) {
+		var _n0 = ianmackenzie$elm_geometry$Bootstrap$Point2d$coordinates(secondPoint);
+		var x2 = _n0.a;
+		var y2 = _n0.b;
+		var _n1 = ianmackenzie$elm_geometry$Bootstrap$Point2d$coordinates(firstPoint);
+		var x1 = _n1.a;
+		var y1 = _n1.b;
+		return ianmackenzie$elm_geometry$Vector2d$fromComponents(
+			_Utils_Tuple2(x2 - x1, y2 - y1));
+	});
+var ianmackenzie$elm_geometry$Vector2d$components = function (_n0) {
+	var components_ = _n0.a;
+	return components_;
+};
+var ianmackenzie$elm_geometry$Vector2d$squaredLength = function (vector) {
+	var _n0 = ianmackenzie$elm_geometry$Vector2d$components(vector);
+	var x = _n0.a;
+	var y = _n0.b;
+	return (x * x) + (y * y);
+};
+var ianmackenzie$elm_geometry$Point2d$squaredDistanceFrom = F2(
+	function (firstPoint, secondPoint) {
+		return ianmackenzie$elm_geometry$Vector2d$squaredLength(
+			A2(ianmackenzie$elm_geometry$Vector2d$from, firstPoint, secondPoint));
+	});
+var ianmackenzie$elm_geometry$Point2d$distanceFrom = F2(
+	function (firstPoint, secondPoint) {
+		return elm$core$Basics$sqrt(
+			A2(ianmackenzie$elm_geometry$Point2d$squaredDistanceFrom, firstPoint, secondPoint));
+	});
+var ianmackenzie$elm_geometry$Vector2d$scaleBy = F2(
+	function (scale, vector) {
+		var _n0 = ianmackenzie$elm_geometry$Vector2d$components(vector);
+		var x = _n0.a;
+		var y = _n0.b;
+		return ianmackenzie$elm_geometry$Vector2d$fromComponents(
+			_Utils_Tuple2(x * scale, y * scale));
+	});
+var ianmackenzie$elm_geometry$Vector2d$sum = F2(
+	function (firstVector, secondVector) {
+		var _n0 = ianmackenzie$elm_geometry$Vector2d$components(secondVector);
+		var x2 = _n0.a;
+		var y2 = _n0.b;
+		var _n1 = ianmackenzie$elm_geometry$Vector2d$components(firstVector);
+		var x1 = _n1.a;
+		var y1 = _n1.b;
+		return ianmackenzie$elm_geometry$Vector2d$fromComponents(
+			_Utils_Tuple2(x1 + x2, y1 + y2));
+	});
+var ianmackenzie$elm_geometry$Vector2d$zero = ianmackenzie$elm_geometry$Vector2d$fromComponents(
+	_Utils_Tuple2(0, 0));
+var gampleman$elm_visualization$Force$ManyBody$applyForce = F4(
+	function (alpha, theta, qtree, vertex) {
+		var isFarAway = function (treePart) {
+			var distance = A2(ianmackenzie$elm_geometry$Point2d$distanceFrom, vertex.position, treePart.aggregate.position);
+			var _n2 = ianmackenzie$elm_geometry$BoundingBox2d$dimensions(treePart.boundingBox);
+			var width = _n2.a;
+			return _Utils_cmp(width / distance, theta) < 0;
+		};
+		var calculateVelocity = F2(
+			function (target, source) {
+				var delta = A2(ianmackenzie$elm_geometry$Vector2d$from, target.position, source.position);
+				var weight = (source.strength * alpha) / ianmackenzie$elm_geometry$Vector2d$squaredLength(delta);
+				return elm$core$Basics$isNaN(weight) ? ianmackenzie$elm_geometry$Vector2d$zero : A2(ianmackenzie$elm_geometry$Vector2d$scaleBy, weight, delta);
+			});
+		var useAggregate = function (treePart) {
+			return A2(calculateVelocity, vertex, treePart.aggregate);
+		};
+		switch (qtree.$) {
+			case 'Empty':
+				return ianmackenzie$elm_geometry$Vector2d$zero;
+			case 'Leaf':
+				var leaf = qtree.a;
+				if (isFarAway(leaf)) {
+					return useAggregate(leaf);
+				} else {
+					var applyForceFromPoint = F2(
+						function (point, accum) {
+							return _Utils_eq(point.key, vertex.key) ? accum : A2(
+								ianmackenzie$elm_geometry$Vector2d$sum,
+								A2(calculateVelocity, vertex, point),
+								accum);
+						});
+					var _n1 = leaf.children;
+					var first = _n1.a;
+					var rest = _n1.b;
+					return A3(
+						elm$core$List$foldl,
+						applyForceFromPoint,
+						ianmackenzie$elm_geometry$Vector2d$zero,
+						A2(elm$core$List$cons, first, rest));
+				}
+			default:
+				var node = qtree.a;
+				if (isFarAway(node)) {
+					return useAggregate(node);
+				} else {
+					var helper = function (tree) {
+						return A4(gampleman$elm_visualization$Force$ManyBody$applyForce, alpha, theta, tree, vertex);
+					};
+					return A2(
+						ianmackenzie$elm_geometry$Vector2d$sum,
+						helper(node.sw),
+						A2(
+							ianmackenzie$elm_geometry$Vector2d$sum,
+							helper(node.se),
+							A2(
+								ianmackenzie$elm_geometry$Vector2d$sum,
+								helper(node.ne),
+								helper(node.nw))));
+				}
+		}
+	});
+var ianmackenzie$elm_geometry$Point2d$coordinates = function (_n0) {
+	var coordinates_ = _n0.a;
+	return coordinates_;
+};
+var ianmackenzie$elm_geometry$Geometry$Types$Point2d = function (a) {
+	return {$: 'Point2d', a: a};
+};
+var ianmackenzie$elm_geometry$Point2d$fromCoordinates = ianmackenzie$elm_geometry$Geometry$Types$Point2d;
+var gampleman$elm_visualization$Force$ManyBody$constructSuperPoint = F2(
+	function (first, rest) {
+		var initialStrength = first.strength;
+		var initialPoint = ianmackenzie$elm_geometry$Point2d$coordinates(first.position);
+		var folder = F2(
+			function (point, _n3) {
+				var _n4 = _n3.a;
+				var accumX = _n4.a;
+				var accumY = _n4.b;
+				var strength = _n3.b;
+				var size = _n3.c;
+				var _n2 = ianmackenzie$elm_geometry$Point2d$coordinates(point.position);
+				var x = _n2.a;
+				var y = _n2.b;
+				return _Utils_Tuple3(
+					_Utils_Tuple2(accumX + x, accumY + y),
+					strength + point.strength,
+					size + 1);
+			});
+		var _n0 = A3(
+			elm$core$List$foldl,
+			folder,
+			_Utils_Tuple3(initialPoint, initialStrength, 1),
+			rest);
+		var _n1 = _n0.a;
+		var totalX = _n1.a;
+		var totalY = _n1.b;
+		var totalStrength = _n0.b;
+		var totalSize = _n0.c;
+		return {
+			position: ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+				_Utils_Tuple2(totalX / totalSize, totalY / totalSize)),
+			strength: totalStrength
+		};
+	});
+var gampleman$elm_visualization$Force$ManyBody$config = {
+	combineAggregates: gampleman$elm_visualization$Force$ManyBody$constructSuperPoint,
+	combineVertices: gampleman$elm_visualization$Force$ManyBody$constructSuperPoint,
+	toPoint: function ($) {
+		return $.position;
+	}
+};
+var gampleman$elm_visualization$Force$QuadTree$Empty = {$: 'Empty'};
+var gampleman$elm_visualization$Force$QuadTree$empty = gampleman$elm_visualization$Force$QuadTree$Empty;
+var elm$core$Basics$ge = _Utils_ge;
+var gampleman$elm_visualization$Force$QuadTree$Leaf = function (a) {
+	return {$: 'Leaf', a: a};
+};
+var gampleman$elm_visualization$Force$QuadTree$Node = function (a) {
+	return {$: 'Node', a: a};
+};
+var gampleman$elm_visualization$Force$QuadTree$NE = {$: 'NE'};
+var gampleman$elm_visualization$Force$QuadTree$NW = {$: 'NW'};
+var gampleman$elm_visualization$Force$QuadTree$SE = {$: 'SE'};
+var gampleman$elm_visualization$Force$QuadTree$SW = {$: 'SW'};
+var ianmackenzie$elm_geometry$BoundingBox2d$midX = function (_n0) {
+	var boundingBox = _n0.a;
+	return boundingBox.minX + (0.5 * (boundingBox.maxX - boundingBox.minX));
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$midY = function (_n0) {
+	var boundingBox = _n0.a;
+	return boundingBox.minY + (0.5 * (boundingBox.maxY - boundingBox.minY));
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$centerPoint = function (boundingBox) {
+	return ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+		_Utils_Tuple2(
+			ianmackenzie$elm_geometry$BoundingBox2d$midX(boundingBox),
+			ianmackenzie$elm_geometry$BoundingBox2d$midY(boundingBox)));
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$centroid = function (boundingBox) {
+	return ianmackenzie$elm_geometry$BoundingBox2d$centerPoint(boundingBox);
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$extrema = function (_n0) {
+	var extrema_ = _n0.a;
+	return extrema_;
+};
+var gampleman$elm_visualization$Force$QuadTree$quadrant = F2(
+	function (boundingBox, point) {
+		var _n0 = ianmackenzie$elm_geometry$Point2d$coordinates(point);
+		var x = _n0.a;
+		var y = _n0.b;
+		var _n1 = ianmackenzie$elm_geometry$Point2d$coordinates(
+			ianmackenzie$elm_geometry$BoundingBox2d$centroid(boundingBox));
+		var midX = _n1.a;
+		var midY = _n1.b;
+		var _n2 = ianmackenzie$elm_geometry$BoundingBox2d$extrema(boundingBox);
+		var minX = _n2.minX;
+		var minY = _n2.minY;
+		var maxX = _n2.maxX;
+		var maxY = _n2.maxY;
+		return (_Utils_cmp(y, midY) > -1) ? ((_Utils_cmp(x, midX) > -1) ? gampleman$elm_visualization$Force$QuadTree$NE : gampleman$elm_visualization$Force$QuadTree$NW) : ((_Utils_cmp(x, midX) > -1) ? gampleman$elm_visualization$Force$QuadTree$SE : gampleman$elm_visualization$Force$QuadTree$SW);
+	});
+var elm$core$Basics$min = F2(
+	function (x, y) {
+		return (_Utils_cmp(x, y) < 0) ? x : y;
+	});
+var ianmackenzie$elm_geometry$Geometry$Types$BoundingBox2d = function (a) {
+	return {$: 'BoundingBox2d', a: a};
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema = function (extrema_) {
+	return ((_Utils_cmp(extrema_.minX, extrema_.maxX) < 1) && (_Utils_cmp(extrema_.minY, extrema_.maxY) < 1)) ? ianmackenzie$elm_geometry$Geometry$Types$BoundingBox2d(extrema_) : ianmackenzie$elm_geometry$Geometry$Types$BoundingBox2d(
+		{
+			maxX: A2(elm$core$Basics$max, extrema_.minX, extrema_.maxX),
+			maxY: A2(elm$core$Basics$max, extrema_.minY, extrema_.maxY),
+			minX: A2(elm$core$Basics$min, extrema_.minX, extrema_.maxX),
+			minY: A2(elm$core$Basics$min, extrema_.minY, extrema_.maxY)
+		});
+};
+var ianmackenzie$elm_geometry$BoundingBox2d$singleton = function (point) {
+	var _n0 = ianmackenzie$elm_geometry$Point2d$coordinates(point);
+	var x = _n0.a;
+	var y = _n0.b;
+	return ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema(
+		{maxX: x, maxY: y, minX: x, minY: y});
+};
+var gampleman$elm_visualization$Force$QuadTree$singleton = F2(
+	function (toPoint, vertex) {
+		return gampleman$elm_visualization$Force$QuadTree$Leaf(
+			{
+				aggregate: _Utils_Tuple0,
+				boundingBox: ianmackenzie$elm_geometry$BoundingBox2d$singleton(
+					toPoint(vertex)),
+				children: _Utils_Tuple2(vertex, _List_Nil)
+			});
+	});
+var ianmackenzie$elm_geometry$BoundingBox2d$contains = F2(
+	function (point, boundingBox) {
+		var _n0 = ianmackenzie$elm_geometry$Point2d$coordinates(point);
+		var x = _n0.a;
+		var y = _n0.b;
+		return ((_Utils_cmp(
+			ianmackenzie$elm_geometry$BoundingBox2d$minX(boundingBox),
+			x) < 1) && (_Utils_cmp(
+			x,
+			ianmackenzie$elm_geometry$BoundingBox2d$maxX(boundingBox)) < 1)) && ((_Utils_cmp(
+			ianmackenzie$elm_geometry$BoundingBox2d$minY(boundingBox),
+			y) < 1) && (_Utils_cmp(
+			y,
+			ianmackenzie$elm_geometry$BoundingBox2d$maxY(boundingBox)) < 1));
+	});
+var ianmackenzie$elm_geometry$BoundingBox2d$hull = F2(
+	function (firstBox, secondBox) {
+		return ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema(
+			{
+				maxX: A2(
+					elm$core$Basics$max,
+					ianmackenzie$elm_geometry$BoundingBox2d$maxX(firstBox),
+					ianmackenzie$elm_geometry$BoundingBox2d$maxX(secondBox)),
+				maxY: A2(
+					elm$core$Basics$max,
+					ianmackenzie$elm_geometry$BoundingBox2d$maxY(firstBox),
+					ianmackenzie$elm_geometry$BoundingBox2d$maxY(secondBox)),
+				minX: A2(
+					elm$core$Basics$min,
+					ianmackenzie$elm_geometry$BoundingBox2d$minX(firstBox),
+					ianmackenzie$elm_geometry$BoundingBox2d$minX(secondBox)),
+				minY: A2(
+					elm$core$Basics$min,
+					ianmackenzie$elm_geometry$BoundingBox2d$minY(firstBox),
+					ianmackenzie$elm_geometry$BoundingBox2d$minY(secondBox))
+			});
+	});
+var gampleman$elm_visualization$Force$QuadTree$insertBy = F3(
+	function (toPoint, vertex, qtree) {
+		switch (qtree.$) {
+			case 'Empty':
+				return gampleman$elm_visualization$Force$QuadTree$Leaf(
+					{
+						aggregate: _Utils_Tuple0,
+						boundingBox: ianmackenzie$elm_geometry$BoundingBox2d$singleton(
+							toPoint(vertex)),
+						children: _Utils_Tuple2(vertex, _List_Nil)
+					});
+			case 'Leaf':
+				var leaf = qtree.a;
+				var maxSize = 32;
+				var _n1 = leaf.children;
+				var first = _n1.a;
+				var rest = _n1.b;
+				var newSize = 2 + elm$core$List$length(rest);
+				if (_Utils_cmp(newSize, maxSize) > -1) {
+					var initial = gampleman$elm_visualization$Force$QuadTree$Node(
+						{
+							aggregate: _Utils_Tuple0,
+							boundingBox: A2(
+								ianmackenzie$elm_geometry$BoundingBox2d$hull,
+								leaf.boundingBox,
+								ianmackenzie$elm_geometry$BoundingBox2d$singleton(
+									toPoint(vertex))),
+							ne: gampleman$elm_visualization$Force$QuadTree$Empty,
+							nw: gampleman$elm_visualization$Force$QuadTree$Empty,
+							se: gampleman$elm_visualization$Force$QuadTree$Empty,
+							sw: gampleman$elm_visualization$Force$QuadTree$Empty
+						});
+					return A3(
+						elm$core$List$foldl,
+						gampleman$elm_visualization$Force$QuadTree$insertBy(toPoint),
+						initial,
+						A2(elm$core$List$cons, first, rest));
+				} else {
+					return gampleman$elm_visualization$Force$QuadTree$Leaf(
+						{
+							aggregate: _Utils_Tuple0,
+							boundingBox: A2(
+								ianmackenzie$elm_geometry$BoundingBox2d$hull,
+								leaf.boundingBox,
+								ianmackenzie$elm_geometry$BoundingBox2d$singleton(
+									toPoint(vertex))),
+							children: _Utils_Tuple2(
+								vertex,
+								A2(elm$core$List$cons, first, rest))
+						});
+				}
+			default:
+				var node = qtree.a;
+				var point = toPoint(vertex);
+				if (A2(ianmackenzie$elm_geometry$BoundingBox2d$contains, point, node.boundingBox)) {
+					var _n2 = A2(gampleman$elm_visualization$Force$QuadTree$quadrant, node.boundingBox, point);
+					switch (_n2.$) {
+						case 'NE':
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: node.aggregate,
+									boundingBox: node.boundingBox,
+									ne: A3(gampleman$elm_visualization$Force$QuadTree$insertBy, toPoint, vertex, node.ne),
+									nw: node.nw,
+									se: node.se,
+									sw: node.sw
+								});
+						case 'SE':
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: node.aggregate,
+									boundingBox: node.boundingBox,
+									ne: node.ne,
+									nw: node.nw,
+									se: A3(gampleman$elm_visualization$Force$QuadTree$insertBy, toPoint, vertex, node.se),
+									sw: node.sw
+								});
+						case 'NW':
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: node.aggregate,
+									boundingBox: node.boundingBox,
+									ne: node.ne,
+									nw: A3(gampleman$elm_visualization$Force$QuadTree$insertBy, toPoint, vertex, node.nw),
+									se: node.se,
+									sw: node.sw
+								});
+						default:
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: node.aggregate,
+									boundingBox: node.boundingBox,
+									ne: node.ne,
+									nw: node.nw,
+									se: node.se,
+									sw: A3(gampleman$elm_visualization$Force$QuadTree$insertBy, toPoint, vertex, node.sw)
+								});
+					}
+				} else {
+					var _n3 = ianmackenzie$elm_geometry$BoundingBox2d$extrema(node.boundingBox);
+					var minX = _n3.minX;
+					var minY = _n3.minY;
+					var maxX = _n3.maxX;
+					var maxY = _n3.maxY;
+					var _n4 = ianmackenzie$elm_geometry$BoundingBox2d$dimensions(node.boundingBox);
+					var width = _n4.a;
+					var height = _n4.b;
+					var _n5 = A2(gampleman$elm_visualization$Force$QuadTree$quadrant, node.boundingBox, point);
+					switch (_n5.$) {
+						case 'NE':
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: _Utils_Tuple0,
+									boundingBox: ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema(
+										{maxX: maxX + width, maxY: maxY + height, minX: minX, minY: minY}),
+									ne: A2(gampleman$elm_visualization$Force$QuadTree$singleton, toPoint, vertex),
+									nw: gampleman$elm_visualization$Force$QuadTree$Empty,
+									se: gampleman$elm_visualization$Force$QuadTree$Empty,
+									sw: qtree
+								});
+						case 'SE':
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: _Utils_Tuple0,
+									boundingBox: ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema(
+										{maxX: maxX + width, maxY: maxY, minX: minX, minY: minY - height}),
+									ne: gampleman$elm_visualization$Force$QuadTree$Empty,
+									nw: qtree,
+									se: A2(gampleman$elm_visualization$Force$QuadTree$singleton, toPoint, vertex),
+									sw: gampleman$elm_visualization$Force$QuadTree$Empty
+								});
+						case 'NW':
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: _Utils_Tuple0,
+									boundingBox: ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema(
+										{maxX: maxX, maxY: maxY + height, minX: minX - width, minY: minY}),
+									ne: gampleman$elm_visualization$Force$QuadTree$Empty,
+									nw: A2(gampleman$elm_visualization$Force$QuadTree$singleton, toPoint, vertex),
+									se: qtree,
+									sw: gampleman$elm_visualization$Force$QuadTree$Empty
+								});
+						default:
+							return gampleman$elm_visualization$Force$QuadTree$Node(
+								{
+									aggregate: _Utils_Tuple0,
+									boundingBox: ianmackenzie$elm_geometry$BoundingBox2d$fromExtrema(
+										{maxX: maxX, maxY: maxY, minX: minX - width, minY: minY - height}),
+									ne: qtree,
+									nw: gampleman$elm_visualization$Force$QuadTree$Empty,
+									se: gampleman$elm_visualization$Force$QuadTree$Empty,
+									sw: A2(gampleman$elm_visualization$Force$QuadTree$singleton, toPoint, vertex)
+								});
+					}
+				}
+		}
+	});
+var gampleman$elm_visualization$Force$QuadTree$fromList = function (toPoint) {
+	return A2(
+		elm$core$List$foldl,
+		gampleman$elm_visualization$Force$QuadTree$insertBy(toPoint),
+		gampleman$elm_visualization$Force$QuadTree$empty);
+};
+var elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _n0 = f(mx);
+		if (_n0.$ === 'Just') {
+			var x = _n0.a;
+			return A2(elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var gampleman$elm_visualization$Force$QuadTree$getAggregate = function (qtree) {
+	switch (qtree.$) {
+		case 'Empty':
+			return elm$core$Maybe$Nothing;
+		case 'Leaf':
+			var aggregate = qtree.a.aggregate;
+			return elm$core$Maybe$Just(aggregate);
+		default:
+			var aggregate = qtree.a.aggregate;
+			return elm$core$Maybe$Just(aggregate);
+	}
+};
+var gampleman$elm_visualization$Force$QuadTree$performAggregate = F2(
+	function (config, vanillaQuadTree) {
+		var combineAggregates = config.combineAggregates;
+		var combineVertices = config.combineVertices;
+		switch (vanillaQuadTree.$) {
+			case 'Empty':
+				return gampleman$elm_visualization$Force$QuadTree$Empty;
+			case 'Leaf':
+				var leaf = vanillaQuadTree.a;
+				var _n1 = leaf.children;
+				var first = _n1.a;
+				var rest = _n1.b;
+				return gampleman$elm_visualization$Force$QuadTree$Leaf(
+					{
+						aggregate: A2(combineVertices, first, rest),
+						boundingBox: leaf.boundingBox,
+						children: _Utils_Tuple2(first, rest)
+					});
+			default:
+				var node = vanillaQuadTree.a;
+				var newSw = A2(gampleman$elm_visualization$Force$QuadTree$performAggregate, config, node.sw);
+				var newSe = A2(gampleman$elm_visualization$Force$QuadTree$performAggregate, config, node.se);
+				var newNw = A2(gampleman$elm_visualization$Force$QuadTree$performAggregate, config, node.nw);
+				var newNe = A2(gampleman$elm_visualization$Force$QuadTree$performAggregate, config, node.ne);
+				var subresults = A2(
+					elm$core$List$filterMap,
+					gampleman$elm_visualization$Force$QuadTree$getAggregate,
+					_List_fromArray(
+						[newNw, newSw, newNe, newSe]));
+				if (!subresults.b) {
+					return gampleman$elm_visualization$Force$QuadTree$Empty;
+				} else {
+					var x = subresults.a;
+					var xs = subresults.b;
+					return gampleman$elm_visualization$Force$QuadTree$Node(
+						{
+							aggregate: A2(combineAggregates, x, xs),
+							boundingBox: node.boundingBox,
+							ne: newNe,
+							nw: newNw,
+							se: newSe,
+							sw: newSw
+						});
+				}
+		}
+	});
+var gampleman$elm_visualization$Force$ManyBody$manyBody = F3(
+	function (alpha, theta, vertices) {
+		var withAggregates = A2(
+			gampleman$elm_visualization$Force$QuadTree$performAggregate,
+			gampleman$elm_visualization$Force$ManyBody$config,
+			A2(
+				gampleman$elm_visualization$Force$QuadTree$fromList,
+				function ($) {
+					return $.position;
+				},
+				vertices));
+		var updateVertex = function (vertex) {
+			return _Utils_update(
+				vertex,
+				{
+					velocity: A2(
+						ianmackenzie$elm_geometry$Vector2d$sum,
+						vertex.velocity,
+						A4(gampleman$elm_visualization$Force$ManyBody$applyForce, alpha, theta, withAggregates, vertex))
+				});
+		};
+		return A2(elm$core$List$map, updateVertex, vertices);
+	});
+var gampleman$elm_visualization$Force$ManyBody$wrapper = F4(
+	function (alpha, theta, strengths, points) {
+		var vertices = A2(
+			elm$core$List$map,
+			function (_n2) {
+				var key = _n2.a;
+				var point = _n2.b;
+				var x = point.x;
+				var y = point.y;
+				var strength = A2(
+					elm$core$Maybe$withDefault,
+					0,
+					A2(elm$core$Dict$get, key, strengths));
+				return {
+					key: key,
+					position: ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+						_Utils_Tuple2(x, y)),
+					strength: strength,
+					velocity: ianmackenzie$elm_geometry$Vector2d$zero
+				};
+			},
+			elm$core$Dict$toList(points));
+		var updater = F2(
+			function (newVertex, maybePoint) {
+				if (maybePoint.$ === 'Nothing') {
+					return elm$core$Maybe$Nothing;
+				} else {
+					var point = maybePoint.a;
+					var _n1 = ianmackenzie$elm_geometry$Vector2d$components(newVertex.velocity);
+					var dvx = _n1.a;
+					var dvy = _n1.b;
+					return elm$core$Maybe$Just(
+						_Utils_update(
+							point,
+							{vx: point.vx + dvx, vy: point.vy + dvy}));
+				}
+			});
+		var newVertices = A3(gampleman$elm_visualization$Force$ManyBody$manyBody, alpha, theta, vertices);
+		var folder = F2(
+			function (newVertex, pointsDict) {
+				return A3(
+					elm$core$Dict$update,
+					newVertex.key,
+					updater(newVertex),
+					pointsDict);
+			});
+		return A3(elm$core$List$foldl, folder, points, newVertices);
+	});
+var gampleman$elm_visualization$Force$applyForce = F3(
+	function (alpha, force, entities) {
+		switch (force.$) {
+			case 'Center':
+				var x = force.a;
+				var y = force.b;
+				var n = elm$core$Dict$size(entities);
+				var _n1 = A3(
+					elm$core$Dict$foldr,
+					F3(
+						function (_n2, ent, _n3) {
+							var sx0 = _n3.a;
+							var sy0 = _n3.b;
+							return _Utils_Tuple2(sx0 + ent.x, sy0 + ent.y);
+						}),
+					_Utils_Tuple2(0, 0),
+					entities);
+				var sumx = _n1.a;
+				var sumy = _n1.b;
+				var sx = (sumx / n) - x;
+				var sy = (sumy / n) - y;
+				return A2(
+					elm$core$Dict$map,
+					F2(
+						function (_n4, ent) {
+							return _Utils_update(
+								ent,
+								{x: ent.x - sx, y: ent.y - sy});
+						}),
+					entities);
+			case 'Collision':
+				var _float = force.a;
+				var collisionParamidDict = force.b;
+				return entities;
+			case 'Links':
+				var iters = force.a;
+				var lnks = force.b;
+				return A3(
+					gampleman$elm_visualization$Force$nTimes,
+					function (entitiesList) {
+						return A3(
+							elm$core$List$foldl,
+							F2(
+								function (_n5, ents) {
+									var source = _n5.source;
+									var target = _n5.target;
+									var distance = _n5.distance;
+									var strength = _n5.strength;
+									var bias = _n5.bias;
+									var _n6 = _Utils_Tuple2(
+										A2(elm$core$Dict$get, source, ents),
+										A2(elm$core$Dict$get, target, ents));
+									if ((_n6.a.$ === 'Just') && (_n6.b.$ === 'Just')) {
+										var sourceNode = _n6.a.a;
+										var targetNode = _n6.b.a;
+										var y = ((targetNode.y + targetNode.vy) - sourceNode.y) - sourceNode.vy;
+										var x = ((targetNode.x + targetNode.vx) - sourceNode.x) - sourceNode.vx;
+										var d = elm$core$Basics$sqrt(
+											A2(elm$core$Basics$pow, x, 2) + A2(elm$core$Basics$pow, y, 2));
+										var l = (((d - distance) / d) * alpha) * strength;
+										return A3(
+											elm$core$Dict$update,
+											source,
+											elm$core$Maybe$map(
+												function (tn) {
+													return _Utils_update(
+														tn,
+														{vx: tn.vx + ((x * l) * (1 - bias)), vy: tn.vy + ((y * l) * (1 - bias))});
+												}),
+											A3(
+												elm$core$Dict$update,
+												target,
+												elm$core$Maybe$map(
+													function (sn) {
+														return _Utils_update(
+															sn,
+															{vx: sn.vx - ((x * l) * bias), vy: sn.vy - ((y * l) * bias)});
+													}),
+												ents));
+									} else {
+										var otherwise = _n6;
+										return ents;
+									}
+								}),
+							entitiesList,
+							lnks);
+					},
+					iters,
+					entities);
+			case 'ManyBody':
+				var theta = force.a;
+				var entityStrengths = force.b;
+				return A4(gampleman$elm_visualization$Force$ManyBody$wrapper, alpha, theta, entityStrengths, entities);
+			case 'X':
+				var directionalParamidDict = force.a;
+				return entities;
+			default:
+				var directionalParamidDict = force.a;
+				return entities;
+		}
+	});
+var gampleman$elm_visualization$Force$tick = F2(
+	function (_n0, nodes) {
+		var state = _n0.a;
+		var updateEntity = function (ent) {
+			return _Utils_update(
+				ent,
+				{vx: ent.vx * state.velocityDecay, vy: ent.vy * state.velocityDecay, x: ent.x + (ent.vx * state.velocityDecay), y: ent.y + (ent.vy * state.velocityDecay)});
+		};
+		var dictNodes = A3(
+			elm$core$List$foldl,
+			function (node) {
+				return A2(elm$core$Dict$insert, node.id, node);
+			},
+			elm$core$Dict$empty,
+			nodes);
+		var alpha = state.alpha + ((state.alphaTarget - state.alpha) * state.alphaDecay);
+		var newNodes = A3(
+			elm$core$List$foldl,
+			gampleman$elm_visualization$Force$applyForce(alpha),
+			dictNodes,
+			state.forces);
+		return _Utils_Tuple2(
+			gampleman$elm_visualization$Force$State(
+				_Utils_update(
+					state,
+					{alpha: alpha})),
+			A2(
+				elm$core$List$map,
+				updateEntity,
+				elm$core$Dict$values(newNodes)));
+	});
+var gampleman$elm_visualization$Force$computeSimulation = F2(
+	function (state, entities) {
+		computeSimulation:
+		while (true) {
+			if (gampleman$elm_visualization$Force$isCompleted(state)) {
+				return entities;
+			} else {
+				var _n0 = A2(gampleman$elm_visualization$Force$tick, state, entities);
+				var newState = _n0.a;
+				var newEntities = _n0.b;
+				var $temp$state = newState,
+					$temp$entities = newEntities;
+				state = $temp$state;
+				entities = $temp$entities;
+				continue computeSimulation;
+			}
+		}
+	});
+var elm$core$Basics$cos = _Basics_cos;
+var elm$core$Basics$sin = _Basics_sin;
+var elm$core$Basics$pi = _Basics_pi;
+var gampleman$elm_visualization$Force$initialAngle = elm$core$Basics$pi * (3 - elm$core$Basics$sqrt(5));
+var gampleman$elm_visualization$Force$initialRadius = 10;
+var gampleman$elm_visualization$Force$entity = F2(
+	function (index, a) {
+		var radius = elm$core$Basics$sqrt(index) * gampleman$elm_visualization$Force$initialRadius;
+		var angle = index * gampleman$elm_visualization$Force$initialAngle;
+		return {
+			id: index,
+			value: a,
+			vx: 0.0,
+			vy: 0.0,
+			x: radius * elm$core$Basics$cos(angle),
+			y: radius * elm$core$Basics$sin(angle)
+		};
+	});
+var elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var gampleman$elm_visualization$Force$Links = F2(
+	function (a, b) {
+		return {$: 'Links', a: a, b: b};
+	});
+var gampleman$elm_visualization$Force$customLinks = F2(
+	function (iters, list) {
+		var counts = A3(
+			elm$core$List$foldr,
+			F2(
+				function (_n1, d) {
+					var source = _n1.source;
+					var target = _n1.target;
+					return A3(
+						elm$core$Dict$update,
+						target,
+						A2(
+							elm$core$Basics$composeL,
+							A2(
+								elm$core$Basics$composeL,
+								elm$core$Maybe$Just,
+								elm$core$Maybe$withDefault(1)),
+							elm$core$Maybe$map(
+								elm$core$Basics$add(1))),
+						A3(
+							elm$core$Dict$update,
+							source,
+							A2(
+								elm$core$Basics$composeL,
+								A2(
+									elm$core$Basics$composeL,
+									elm$core$Maybe$Just,
+									elm$core$Maybe$withDefault(1)),
+								elm$core$Maybe$map(
+									elm$core$Basics$add(1))),
+							d));
+				}),
+			elm$core$Dict$empty,
+			list);
+		var count = function (key) {
+			return A2(
+				elm$core$Maybe$withDefault,
+				0,
+				A2(elm$core$Dict$get, key, counts));
+		};
+		return A2(
+			gampleman$elm_visualization$Force$Links,
+			iters,
+			A2(
+				elm$core$List$map,
+				function (_n0) {
+					var source = _n0.source;
+					var target = _n0.target;
+					var distance = _n0.distance;
+					var strength = _n0.strength;
+					return {
+						bias: count(source) / (count(source) + count(target)),
+						distance: distance,
+						source: source,
+						strength: A2(
+							elm$core$Maybe$withDefault,
+							1 / A2(
+								elm$core$Basics$min,
+								count(source),
+								count(target)),
+							strength),
+						target: target
+					};
+				},
+				list));
+	});
+var gampleman$elm_visualization$Force$links = A2(
+	elm$core$Basics$composeR,
+	elm$core$List$map(
+		function (_n0) {
+			var source = _n0.a;
+			var target = _n0.b;
+			return {distance: 30, source: source, strength: elm$core$Maybe$Nothing, target: target};
+		}),
+	gampleman$elm_visualization$Force$customLinks(1));
+var elm$core$Dict$fromList = function (assocs) {
+	return A3(
+		elm$core$List$foldl,
+		F2(
+			function (_n0, dict) {
+				var key = _n0.a;
+				var value = _n0.b;
+				return A3(elm$core$Dict$insert, key, value, dict);
+			}),
+		elm$core$Dict$empty,
+		assocs);
+};
+var gampleman$elm_visualization$Force$ManyBody = F2(
+	function (a, b) {
+		return {$: 'ManyBody', a: a, b: b};
+	});
+var gampleman$elm_visualization$Force$customManyBody = function (theta) {
+	return A2(
+		elm$core$Basics$composeR,
+		elm$core$Dict$fromList,
+		gampleman$elm_visualization$Force$ManyBody(theta));
+};
+var gampleman$elm_visualization$Force$manyBodyStrength = function (strength) {
+	return A2(
+		elm$core$Basics$composeL,
+		gampleman$elm_visualization$Force$customManyBody(0.9),
+		elm$core$List$map(
+			function (key) {
+				return _Utils_Tuple2(key, strength);
+			}));
+};
+var gampleman$elm_visualization$Force$simulation = function (forces) {
+	return gampleman$elm_visualization$Force$State(
+		{
+			alpha: 1.0,
+			alphaDecay: 1 - A2(elm$core$Basics$pow, 1.0e-3, 1 / 300),
+			alphaTarget: 0.0,
+			forces: forces,
+			minAlpha: 1.0e-3,
+			velocityDecay: 0.6
+		});
+};
+var author$project$Editor$forceGraph = function (cell) {
+	var verticies = A2(
+		author$project$Structure$nodesOf,
+		author$project$Editor$ContentCell(author$project$Editor$VertexCell),
+		cell);
+	var forces = _List_fromArray(
+		[
+			gampleman$elm_visualization$Force$links(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(0, 3),
+					_Utils_Tuple2(1, 4),
+					_Utils_Tuple2(1, 4),
+					_Utils_Tuple2(2, 4),
+					_Utils_Tuple2(3, 4)
+				])),
+			A2(
+			gampleman$elm_visualization$Force$manyBodyStrength,
+			-500,
+			A2(
+				elm$core$List$indexedMap,
+				F2(
+					function (i, _n1) {
+						return i;
+					}),
+				verticies)),
+			A2(gampleman$elm_visualization$Force$center, 300, 200)
+		]);
+	var simResult = A2(
+		elm$core$List$map,
+		function (_n0) {
+			var x = _n0.x;
+			var y = _n0.y;
+			var value = _n0.value;
+			return A3(
+				author$project$Structure$addFloat,
+				author$project$Editor$propY,
+				y,
+				A3(author$project$Structure$addFloat, author$project$Editor$propX, x, value));
+		},
+		A2(
+			elm$core$Debug$log,
+			'simResult',
+			A2(
+				gampleman$elm_visualization$Force$computeSimulation,
+				gampleman$elm_visualization$Force$simulation(forces),
+				A2(
+					elm$core$List$indexedMap,
+					F2(
+						function (i, n) {
+							return A2(gampleman$elm_visualization$Force$entity, i, n);
+						}),
+					verticies))));
+	return A3(author$project$Structure$replaceUnderFeature, 'default', simResult, cell);
+};
+var author$project$Structure$floatOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$withDefault,
+			0,
+			A2(
+				elm$core$Maybe$andThen,
+				function (prop) {
+					if (prop.$ === 'PFloat') {
+						var v = prop.a;
+						return elm$core$Maybe$Just(v);
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				A2(author$project$Structure$valueOf, key, node)));
+	});
+var avh4$elm_color$Color$RgbaSpace = F4(
+	function (a, b, c, d) {
+		return {$: 'RgbaSpace', a: a, b: b, c: c, d: d};
+	});
+var avh4$elm_color$Color$blue = A4(avh4$elm_color$Color$RgbaSpace, 52 / 255, 101 / 255, 164 / 255, 1.0);
+var avh4$elm_color$Color$scaleFrom255 = function (c) {
+	return c / 255;
+};
+var avh4$elm_color$Color$rgb255 = F3(
+	function (r, g, b) {
+		return A4(
+			avh4$elm_color$Color$RgbaSpace,
+			avh4$elm_color$Color$scaleFrom255(r),
+			avh4$elm_color$Color$scaleFrom255(g),
+			avh4$elm_color$Color$scaleFrom255(b),
+			1.0);
+	});
+var elm$core$String$length = _String_length;
+var elm$virtual_dom$VirtualDom$nodeNS = function (tag) {
+	return _VirtualDom_nodeNS(
+		_VirtualDom_noScript(tag));
+};
+var elm_community$typed_svg$TypedSvg$Core$node = elm$virtual_dom$VirtualDom$nodeNS('http://www.w3.org/2000/svg');
+var elm_community$typed_svg$TypedSvg$g = elm_community$typed_svg$TypedSvg$Core$node('g');
+var elm_community$typed_svg$TypedSvg$rect = elm_community$typed_svg$TypedSvg$Core$node('rect');
+var elm_community$typed_svg$TypedSvg$text_ = elm_community$typed_svg$TypedSvg$Core$node('text');
+var elm$virtual_dom$VirtualDom$attribute = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_attribute,
+			_VirtualDom_noOnOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlUri(value));
+	});
+var elm_community$typed_svg$TypedSvg$Core$attribute = elm$virtual_dom$VirtualDom$attribute;
+var elm$core$Basics$round = _Basics_round;
+var elm$core$String$concat = function (strings) {
+	return A2(elm$core$String$join, '', strings);
+};
+var elm$core$String$fromFloat = _String_fromNumber;
+var avh4$elm_color$Color$toCssString = function (_n0) {
+	var r = _n0.a;
+	var g = _n0.b;
+	var b = _n0.c;
+	var a = _n0.d;
+	var roundTo = function (x) {
+		return elm$core$Basics$round(x * 1000) / 1000;
+	};
+	var pct = function (x) {
+		return elm$core$Basics$round(x * 10000) / 100;
+	};
+	return elm$core$String$concat(
+		_List_fromArray(
+			[
+				'rgba(',
+				elm$core$String$fromFloat(
+				pct(r)),
+				'%,',
+				elm$core$String$fromFloat(
+				pct(g)),
+				'%,',
+				elm$core$String$fromFloat(
+				pct(b)),
+				'%,',
+				elm$core$String$fromFloat(
+				roundTo(a)),
+				')'
+			]));
+};
+var elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString = function (paint) {
+	switch (paint.$) {
+		case 'Paint':
+			var color = paint.a;
+			return avh4$elm_color$Color$toCssString(color);
+		case 'Reference':
+			var string = paint.a;
+			return elm$core$String$concat(
+				_List_fromArray(
+					['url(#', string, ')']));
+		case 'ContextFill':
+			return 'context-fill';
+		case 'ContextStroke':
+			return 'context-stroke';
+		default:
+			return 'none';
+	}
+};
+var elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
+	elm$core$Basics$composeL,
+	elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
+	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
+var elm_community$typed_svg$TypedSvg$Attributes$stroke = A2(
+	elm$core$Basics$composeL,
+	elm_community$typed_svg$TypedSvg$Core$attribute('stroke'),
+	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
+var elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString = function (anchorAlignment) {
+	switch (anchorAlignment.$) {
+		case 'AnchorInherit':
+			return 'inherit';
+		case 'AnchorStart':
+			return 'start';
+		case 'AnchorMiddle':
+			return 'middle';
+		default:
+			return 'end';
+	}
+};
+var elm_community$typed_svg$TypedSvg$Attributes$textAnchor = function (anchorAlignment) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'text-anchor',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString(anchorAlignment));
+};
+var elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString = function (length) {
+	switch (length.$) {
+		case 'Cm':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'cm';
+		case 'Em':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'em';
+		case 'Ex':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'ex';
+		case 'In':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'in';
+		case 'Mm':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'mm';
+		case 'Num':
+			var x = length.a;
+			return elm$core$String$fromFloat(x);
+		case 'Pc':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'pc';
+		case 'Percent':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + '%';
+		case 'Pt':
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'pt';
+		default:
+			var x = length.a;
+			return elm$core$String$fromFloat(x) + 'px';
+	}
+};
+var elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'height',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Types$Px = function (a) {
+	return {$: 'Px', a: a};
+};
+var elm_community$typed_svg$TypedSvg$Types$px = elm_community$typed_svg$TypedSvg$Types$Px;
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$height = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$height(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$rx = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'rx',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$rx = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$rx(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$ry = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'ry',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$ry = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$ry(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$strokeWidth = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'stroke-width',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$strokeWidth(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$width = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'width',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$width = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$width(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$x = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'x',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$x = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$x(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$y = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'y',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$y = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$y(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Types$AnchorMiddle = {$: 'AnchorMiddle'};
+var elm_community$typed_svg$TypedSvg$Types$Paint = function (a) {
+	return {$: 'Paint', a: a};
+};
+var author$project$Editor$viewVertexCell = function (cell) {
+	var yPos = A2(author$project$Structure$floatOf, author$project$Editor$propY, cell);
+	var xPos = A2(author$project$Structure$floatOf, author$project$Editor$propX, cell);
+	var wRect = elm$core$String$length(
+		A2(author$project$Structure$textOf, author$project$Editor$propText, cell)) * 10;
+	var xPosMiddle = xPos - (wRect / 2);
+	var hRect = 40;
+	var yPosMiddle = yPos - (hRect / 2);
+	return A2(
+		elm_community$typed_svg$TypedSvg$g,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				elm_community$typed_svg$TypedSvg$rect,
+				_List_fromArray(
+					[
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect),
+						elm_community$typed_svg$TypedSvg$Attributes$fill(
+						elm_community$typed_svg$TypedSvg$Types$Paint(
+							A3(avh4$elm_color$Color$rgb255, 155, 173, 255))),
+						elm_community$typed_svg$TypedSvg$Attributes$stroke(
+						elm_community$typed_svg$TypedSvg$Types$Paint(avh4$elm_color$Color$blue)),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosMiddle),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosMiddle),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
+					]),
+				_List_Nil),
+				A2(
+				elm_community$typed_svg$TypedSvg$text_,
+				_List_fromArray(
+					[
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPos),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPos),
+						elm_community$typed_svg$TypedSvg$Attributes$textAnchor(elm_community$typed_svg$TypedSvg$Types$AnchorMiddle)
+					]),
+				_List_fromArray(
+					[
+						elm$html$Html$text(
+						A2(author$project$Structure$textOf, author$project$Editor$propText, cell))
+					]))
+			]));
+};
+var elm_community$typed_svg$TypedSvg$svg = elm_community$typed_svg$TypedSvg$Core$node('svg');
+var elm_community$typed_svg$TypedSvg$Attributes$viewBox = F4(
+	function (minX, minY, vWidth, vHeight) {
+		return A2(
+			elm_community$typed_svg$TypedSvg$Core$attribute,
+			'viewBox',
+			A2(
+				elm$core$String$join,
+				' ',
+				A2(
+					elm$core$List$map,
+					elm$core$String$fromFloat,
+					_List_fromArray(
+						[minX, minY, vWidth, vHeight]))));
+	});
+var author$project$Editor$viewGraphCell = function (cell) {
+	var cellForced = author$project$Editor$forceGraph(cell);
+	return A2(
+		elm_community$typed_svg$TypedSvg$svg,
+		_List_fromArray(
+			[
+				A4(elm_community$typed_svg$TypedSvg$Attributes$viewBox, 0, 0, 600, 400),
+				A2(elm$html$Html$Attributes$style, 'width', '600'),
+				A2(elm$html$Html$Attributes$style, 'height', '400'),
+				A2(elm$html$Html$Attributes$style, 'background-color', 'azure')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				elm_community$typed_svg$TypedSvg$g,
+				_List_Nil,
+				A2(
+					elm$core$List$map,
+					author$project$Editor$viewVertexCell,
+					A2(
+						author$project$Structure$nodesOf,
+						author$project$Editor$ContentCell(author$project$Editor$VertexCell),
+						A2(elm$core$Debug$log, 'vertices', cellForced))))
+			]));
+};
 var author$project$Editor$OnInput = F2(
 	function (a, b) {
 		return {$: 'OnInput', a: a, b: b};
@@ -6696,24 +8209,6 @@ var author$project$Editor$navEffects = function (path) {
 			A2(author$project$Editor$navEffect, author$project$Editor$R, path)
 		]);
 };
-var elm$core$List$maybeCons = F3(
-	function (f, mx, xs) {
-		var _n0 = f(mx);
-		if (_n0.$ === 'Just') {
-			var x = _n0.a;
-			return A2(elm$core$List$cons, x, xs);
-		} else {
-			return xs;
-		}
-	});
-var elm$core$List$filterMap = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			elm$core$List$maybeCons(f),
-			_List_Nil,
-			xs);
-	});
 var author$project$Editor$inputCellAttributesFromEffects = function (cell) {
 	var effectGroups = author$project$Editor$grouped(
 		_Utils_ap(
@@ -6728,7 +8223,6 @@ var author$project$Editor$inputCellAttributesFromEffects = function (cell) {
 			author$project$Editor$attributeFromEffectGroup(cell),
 			effectGroups));
 };
-var elm$core$String$length = _String_length;
 var elm$html$Html$input = _VirtualDom_node('input');
 var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
 var elm$html$Html$Attributes$size = function (n) {
@@ -6914,8 +8408,14 @@ var author$project$Editor$viewContent = F2(
 						return author$project$Editor$viewPlaceholderCell(cell);
 					case 'ButtonCell':
 						return author$project$Editor$viewButtonCell(cell);
-					default:
+					case 'RefCell':
 						return author$project$Editor$viewRefCell(cell);
+					case 'GraphCell':
+						return author$project$Editor$viewGraphCell(cell);
+					case 'VertexCell':
+						return elm$html$Html$text('');
+					default:
+						return elm$html$Html$text('');
 				}
 			}();
 			return elm$core$List$reverse(
@@ -7045,7 +8545,7 @@ var author$project$Editor$viewVertSplit = function (cell) {
 				if (!_n3.b.b) {
 					var first = _n3.a;
 					return _Utils_Tuple2(
-						author$project$Editor$viewCell(first),
+						A2(author$project$Editor$viewContent, first, _List_Nil),
 						_List_fromArray(
 							[
 								elm$html$Html$text('Empty right side')
@@ -7055,8 +8555,8 @@ var author$project$Editor$viewVertSplit = function (cell) {
 					var _n4 = _n3.b;
 					var second = _n4.a;
 					return _Utils_Tuple2(
-						author$project$Editor$viewCell(first),
-						author$project$Editor$viewCell(second));
+						A2(author$project$Editor$viewContent, first, _List_Nil),
+						A2(author$project$Editor$viewContent, second, _List_Nil));
 				}
 			}
 		}();
@@ -7190,25 +8690,6 @@ var author$project$Structure$deleteNodeUnder = F2(
 		var _n0 = author$project$Structure$dropRootSegment(path);
 		var segmentsNoRoot = _n0.a;
 		return A2(author$project$Structure$deleteNodeRec, segmentsNoRoot, root);
-	});
-var elm$core$Dict$map = F2(
-	function (func, dict) {
-		if (dict.$ === 'RBEmpty_elm_builtin') {
-			return elm$core$Dict$RBEmpty_elm_builtin;
-		} else {
-			var color = dict.a;
-			var key = dict.b;
-			var value = dict.c;
-			var left = dict.d;
-			var right = dict.e;
-			return A5(
-				elm$core$Dict$RBNode_elm_builtin,
-				color,
-				key,
-				A2(func, key, value),
-				A2(elm$core$Dict$map, func, left),
-				A2(elm$core$Dict$map, func, right));
-		}
 	});
 var author$project$Structure$addFeaturePath = F2(
 	function (parentPath, _n2) {
@@ -7382,55 +8863,6 @@ var author$project$Editor$updateOnBackspaceEffect = F3(
 		}
 	});
 var author$project$Editor$propName = 'name';
-var elm$core$Dict$values = function (dict) {
-	return A3(
-		elm$core$Dict$foldr,
-		F3(
-			function (key, value, valueList) {
-				return A2(elm$core$List$cons, value, valueList);
-			}),
-		_List_Nil,
-		dict);
-};
-var elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
-		}
-	});
-var elm$core$List$concat = function (lists) {
-	return A3(elm$core$List$foldr, elm$core$List$append, _List_Nil, lists);
-};
-var author$project$Structure$getAllUnderCustoms = function (_n0) {
-	var features = _n0.a.features;
-	return elm$core$List$concat(
-		elm$core$Dict$values(features.custom));
-};
-var author$project$Structure$nodesOfRec = F3(
-	function (isa, node, result) {
-		var _n0 = _Utils_eq(
-			author$project$Structure$isaOf(node),
-			isa);
-		if (_n0) {
-			return A2(elm$core$List$cons, node, result);
-		} else {
-			var allChildren = A2(
-				elm$core$List$append,
-				author$project$Structure$getAllUnderCustoms(node),
-				author$project$Structure$getUnderDefault(node));
-			return A3(
-				elm$core$List$foldl,
-				author$project$Structure$nodesOfRec(isa),
-				result,
-				allChildren);
-		}
-	});
-var author$project$Structure$nodesOf = F2(
-	function (isa, root) {
-		return A3(author$project$Structure$nodesOfRec, isa, root, _List_Nil);
-	});
 var author$project$Structure$replaceChildrenForRangeReplace = F6(
 	function (key, rangeNew, pathAt, segment, tailSegments, parent) {
 		var replaceRangeAt = F2(
@@ -7503,6 +8935,7 @@ var author$project$Editor$updateOnDeleteEffect = F3(
 			return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
 		}
 	});
+var elm$core$String$toFloat = _String_toFloat;
 var elm$core$String$toInt = _String_toInt;
 var elm$core$String$toLower = _String_toLower;
 var author$project$Structure$updateProperty = F2(
@@ -7529,8 +8962,19 @@ var author$project$Structure$updateProperty = F2(
 									author$project$Structure$PInt(i));
 							},
 							elm$core$String$toInt(value)));
-				default:
+				case 'PBool':
 					return (elm$core$String$toLower(value) === 'true') ? author$project$Structure$PBool(true) : ((elm$core$String$toLower(value) === 'false') ? author$project$Structure$PBool(false) : primitiveOld);
+				default:
+					return A2(
+						elm$core$Maybe$withDefault,
+						primitiveOld,
+						A2(
+							elm$core$Maybe$andThen,
+							function (f) {
+								return elm$core$Maybe$Just(
+									author$project$Structure$PFloat(f));
+							},
+							elm$core$String$toFloat(value)));
 			}
 		}();
 		return author$project$Structure$Node(
@@ -7835,16 +9279,6 @@ var author$project$Editor$updateOnInsertionEffect = F3(
 	});
 var author$project$Editor$Horiz = {$: 'Horiz'};
 var author$project$Editor$Vert = {$: 'Vert'};
-var elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return elm$core$Maybe$Nothing;
-		}
-	});
 var author$project$Structure$parentOf = F2(
 	function (root, path) {
 		var _n0 = author$project$Structure$splitLastPathSegment(
@@ -8205,12 +9639,6 @@ var elm$url$Url$fromString = function (str) {
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$Dom$focus = _Browser_call('focus');
-var elm$core$Basics$ge = _Utils_ge;
-var elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
 var elm$core$Task$onError = _Scheduler_onError;
 var elm$core$Task$attempt = F2(
 	function (resultToMessage, task) {

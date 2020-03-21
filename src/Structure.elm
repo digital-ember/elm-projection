@@ -7,6 +7,7 @@ module Structure exposing
     , addProperty
     , addRangeAtPath
     , addText
+    , addFloat
     , addToCustom
     , addToCustomRange
     , addToDefault
@@ -15,6 +16,7 @@ module Structure exposing
     , createNode
     , createRoot
     , deleteNodeUnder
+    , floatOf
     , getUnderCustom
     , getUnderDefault
     , insertChildAfterPath
@@ -25,6 +27,8 @@ module Structure exposing
     , nodesOf
     , parentOf
     , pathAsIdFromNode
+    , pathIndiciesAsId
+    , pathIndiciesAsIdFromNode
     , pathOf
     , previousSibling
     , replaceChildAtPath
@@ -69,7 +73,8 @@ type alias Property =
 
 
 type Primitive
-    = PInt Int
+    = PFloat Float
+    | PInt Int
     | PString String
     | PBool Bool
 
@@ -91,6 +96,22 @@ isaOf (Node { isa }) =
 pathOf : Node a -> Path
 pathOf (Node { path }) =
     path
+
+
+pathIndiciesAsIdFromNode : Node a -> Int
+pathIndiciesAsIdFromNode (Node { path }) =
+    pathIndiciesAsId path
+
+
+pathIndiciesAsId : Path -> Int
+pathIndiciesAsId (Path segments) =
+    List.foldl pathIndexAsId "1" segments |> String.toInt |> Maybe.withDefault -1
+
+
+pathIndexAsId : PathSegment -> String -> String
+pathIndexAsId { feature, index } idPart =
+    idPart
+        ++ String.fromInt index
 
 
 pathAsIdFromNode : Node a -> String
@@ -153,6 +174,21 @@ intOf key node =
         |> Maybe.withDefault 0
 
 
+floatOf : String -> Node a -> Float
+floatOf key node =
+    valueOf key node
+        |> Maybe.andThen
+            (\prop ->
+                case prop of
+                    PFloat v ->
+                        Just v
+
+                    _ ->
+                        Nothing
+            )
+        |> Maybe.withDefault 0
+
+
 boolOf : String -> Node a -> Bool
 boolOf key node =
     valueOf key node
@@ -207,6 +243,11 @@ addText key text node =
 addInt : String -> Int -> Node a -> Node a
 addInt key value node =
     addProperty ( key, PInt value ) node
+
+
+addFloat : String -> Float -> Node a -> Node a
+addFloat key value node =
+    addProperty ( key, PFloat value ) node
 
 
 addBool : String -> Bool -> Node a -> Node a
@@ -655,6 +696,11 @@ updateProperty ( key, value ) (Node data) =
 
                     else
                         primitiveOld
+
+                PFloat _ ->
+                    String.toFloat value
+                        |> Maybe.andThen (\f -> Just <| PFloat f)
+                        |> Maybe.withDefault primitiveOld
     in
     Node { data | properties = Dict.insert key primitiveNew data.properties }
 

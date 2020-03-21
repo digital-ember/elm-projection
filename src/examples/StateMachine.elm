@@ -62,6 +62,11 @@ editorStateMachine sm =
                 |> with (editorEvents sm)
                 |> with (editorStates sm)
             )
+        |> with
+            (graphCell
+                |> withRange (editorStatesVerticies sm)
+                |> withRange (editorTransitionsEdges sm)
+            )
 
 
 {-| A horizontal stack of cells
@@ -187,7 +192,7 @@ editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
-            (refCell Event "eventRef" (Debug.log "transition" transition) Nothing
+            (refCell Event "eventRef" transition Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )
@@ -197,6 +202,30 @@ editorTransition transition =
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )
+
+
+editorStatesVerticies : Node Domain -> List (Node (Cell Domain))
+editorStatesVerticies sm =
+    List.map editorStateVertex <| getUnderDefault sm
+
+
+editorStateVertex state =
+    vertexCell "name" state
+
+
+editorTransitionsEdges : Node Domain -> List (Node (Cell Domain))
+editorTransitionsEdges sm =
+    List.concat <|
+        List.map editorTransitionEdge <|
+            getUnderDefault sm
+
+
+editorTransitionEdge state =
+    let
+        edge transition =
+            edgeCell "eventRef" ( textOf "name" state, textOf "stateRef" transition ) transition
+    in
+    List.map edge <| getUnderDefault state
 
 
 
