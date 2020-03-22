@@ -33,9 +33,10 @@ type Msg a
 projection : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
 projection rootD xform =
     let
+        rootDWithPaths = rootD |> updatePaths
         init () =
-            ( { domain = Domain (rootD |> updatePaths) xform
-              , editorModel = initEditorModel rootD (xform rootD |> griddify |> updatePaths)
+            ( { domain = Domain rootDWithPaths xform
+              , editorModel = initEditorModel rootDWithPaths (xform rootDWithPaths |> griddify |> updatePaths)
               }
             , Cmd.none
             )

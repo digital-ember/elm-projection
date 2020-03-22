@@ -26,6 +26,7 @@ module Structure exposing
     , nodeAt
     , nodesOf
     , parentOf
+    , pathAsId
     , pathAsIdFromNode
     , pathIndiciesAsId
     , pathIndiciesAsIdFromNode

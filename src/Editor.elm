@@ -45,6 +45,7 @@ import Task as Task
 import TypedSvg exposing (g, line, rect, svg, text_)
 import TypedSvg.Attributes exposing (fill, stroke, textAnchor, viewBox)
 import TypedSvg.Attributes.InPx exposing (height, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
+import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
 
 
@@ -254,6 +255,7 @@ vertexCell : String -> Node a -> Node (Cell a)
 vertexCell text nodeContext =
     createNode (ContentCell VertexCell)
         |> addText propText (textOf text nodeContext)
+        |> withEffect (inputEffect (pathOf nodeContext) text)
 
 
 edgeCell : String -> ( String, String ) -> Node a -> Node (Cell a)
@@ -330,6 +332,11 @@ deletionEffect nodeContext =
 
 inputEffect : Path -> String -> EffectCell a
 inputEffect path key =
+    let
+        p =
+            Debug.log "path" path
+    in
+        
     InputEffect <| InputEffectData path key
 
 
@@ -585,6 +592,13 @@ updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( Bool, EditorM
 updateOnInputEffect editorModel effect value =
     case effect of
         InputEffect { path, key } ->
+            let
+                p =
+                    Debug.log "path" (pathAsId path)
+                k = Debug.log "key " key
+                v = Debug.log "val " value
+            in
+
             ( True, { editorModel | dRoot = updatePropertyByPath editorModel.dRoot path ( key, value ) |> updatePaths }, Cmd.none )
 
         _ ->
@@ -1249,7 +1263,7 @@ viewGraphCell cellGraph =
     svg
         [ HtmlA.style "width" "100%"
         , HtmlA.style "height" "100%"
-        , HtmlA.style "background-color" "azure"
+        , HtmlA.style "background-color" "AliceBlue"
         ]
         [ g [] <|
             viewEdgeCells cellGraph
@@ -1398,8 +1412,8 @@ viewEdgeCell fromTo =
 
         ( Just from, Just to ) ->
             line
-                [ strokeWidth 1
-                , stroke <| Paint <| Color.rgb255 170 170 170
+                [ strokeWidth 2
+                , stroke <| Paint <| Color.rgb255 17 77 175
                 , x1 <| floatOf propX from
                 , y1 <| floatOf propY from
                 , x2 <| floatOf propX to
@@ -1422,7 +1436,7 @@ viewVertexCell cell =
                 name
 
         wRect =
-            (toFloat <| String.length <| nameNotEmpty) * 10
+            (toFloat <| String.length <| nameNotEmpty) * 8.797 + 18
 
         hRect =
             40
@@ -1430,31 +1444,67 @@ viewVertexCell cell =
         xPos =
             floatOf propX cell
 
-        xPosMiddle =
+        xPosRect =
             xPos - (wRect / 2)
+
+        xPosInput =
+            xPosRect + 9
 
         yPos =
             floatOf propY cell
 
-        yPosMiddle =
+        yPosRect =
             yPos - (hRect / 2)
+
+        yPosInput =
+            yPosRect + 9
+
+        textWidth =
+            if nameNotEmpty == "" then
+                String.length "<no value>"
+
+            else
+                String.length nameNotEmpty
     in
     g []
         [ rect
             [ width wRect
             , height hRect
-            , fill <| Paint <| Color.rgb255 155 173 255
-            , stroke <| Paint <| Color.blue
+            , fill <| Paint <| Color.white
+            , stroke <| Paint <| Color.rgb255 17 77 175
             , strokeWidth 2
 
             --, onMouseDown cell.id
-            , x xPosMiddle
-            , y yPosMiddle
+            , x xPosRect
+            , y yPosRect
             , rx 4
             , ry 4
             ]
             []
-        , text_ [ x xPos, y yPos, textAnchor AnchorMiddle ] [ text nameNotEmpty ]
+
+        , foreignObject
+            [ x xPosInput
+            , y yPosInput
+            , width wRect
+            , height hRect
+            ]
+            [ form []
+                [ input
+                    ([ HtmlA.style "border-width" "0px"
+                     , HtmlA.style "font-family" "Consolas"
+                     , HtmlA.style "font-size" "16px"
+                     , HtmlA.style "border" "none"
+                     , HtmlA.style "outline" "none"
+                     , HtmlA.placeholder "<no value>"
+                     , HtmlA.value nameNotEmpty
+                     , HtmlA.size textWidth
+                     , HtmlA.style "background-color" "transparent"
+                     ]
+                     ++ inputCellAttributesFromEffects cell
+                    )
+                    []
+                ]
+            ]
         ]
 
 

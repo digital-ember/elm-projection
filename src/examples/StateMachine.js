@@ -4786,8 +4786,10 @@ var author$project$Editor$InputEffectData = F2(
 	function (path, key) {
 		return {key: key, path: path};
 	});
+var elm$core$Debug$log = _Debug_log;
 var author$project$Editor$inputEffect = F2(
 	function (path, key) {
+		var p = A2(elm$core$Debug$log, 'path', path);
 		return author$project$Editor$InputEffect(
 			A2(author$project$Editor$InputEffectData, path, key));
 	});
@@ -5681,12 +5683,18 @@ var author$project$Main$editorStates = function (sm) {
 var author$project$Editor$VertexCell = {$: 'VertexCell'};
 var author$project$Editor$vertexCell = F2(
 	function (text, nodeContext) {
-		return A3(
-			author$project$Structure$addText,
-			author$project$Editor$propText,
-			A2(author$project$Structure$textOf, text, nodeContext),
-			author$project$Structure$createNode(
-				author$project$Editor$ContentCell(author$project$Editor$VertexCell)));
+		return A2(
+			author$project$Editor$withEffect,
+			A2(
+				author$project$Editor$inputEffect,
+				author$project$Structure$pathOf(nodeContext),
+				text),
+			A3(
+				author$project$Structure$addText,
+				author$project$Editor$propText,
+				A2(author$project$Structure$textOf, text, nodeContext),
+				author$project$Structure$createNode(
+					author$project$Editor$ContentCell(author$project$Editor$VertexCell))));
 	});
 var author$project$Main$editorStateVertex = function (state) {
 	return A2(author$project$Editor$vertexCell, 'name', state);
@@ -7011,7 +7019,6 @@ var author$project$Structure$replaceChildAtPath = F3(
 		var segmentsNoRoot = _n0.a;
 		return A4(author$project$Structure$replaceChildAtPathRec, nodeNew, path, segmentsNoRoot, root);
 	});
-var elm$core$Debug$log = _Debug_log;
 var elm$core$List$head = function (list) {
 	if (list.b) {
 		var x = list.a;
@@ -7985,26 +7992,23 @@ var author$project$Editor$tickGraphSimulations = function (editorModel) {
 				author$project$Structure$nodesOf,
 				author$project$Editor$ContentCell(author$project$Editor$VertexCell),
 				cellGraph);
-			var forces = A2(
-				elm$core$Debug$log,
-				'forces',
-				_List_fromArray(
-					[
-						A2(
-						gampleman$elm_visualization$Force$customLinks,
-						1,
-						author$project$Editor$customEdgeForcesFromGraph(cellGraph)),
-						A2(
-						gampleman$elm_visualization$Force$manyBodyStrength,
-						-1000,
-						A2(
-							elm$core$List$map,
-							function (v) {
-								return author$project$Structure$pathAsIdFromNode(v);
-							},
-							verticies)),
-						A2(gampleman$elm_visualization$Force$center, 400, 300)
-					]));
+			var forces = _List_fromArray(
+				[
+					A2(
+					gampleman$elm_visualization$Force$customLinks,
+					1,
+					author$project$Editor$customEdgeForcesFromGraph(cellGraph)),
+					A2(
+					gampleman$elm_visualization$Force$manyBodyStrength,
+					-1000,
+					A2(
+						elm$core$List$map,
+						function (v) {
+							return author$project$Structure$pathAsIdFromNode(v);
+						},
+						verticies)),
+					A2(gampleman$elm_visualization$Force$center, 400, 300)
+				]);
 			return _Utils_Tuple3(
 				false,
 				_Utils_update(
@@ -8454,6 +8458,12 @@ var author$project$Editor$updateOnInputEffect = F3(
 		if (effect.$ === 'InputEffect') {
 			var path = effect.a.path;
 			var key = effect.a.key;
+			var v = A2(elm$core$Debug$log, 'val ', value);
+			var p = A2(
+				elm$core$Debug$log,
+				'path',
+				author$project$Structure$pathAsId(path));
+			var k = A2(elm$core$Debug$log, 'key ', key);
 			return _Utils_Tuple3(
 				true,
 				_Utils_update(
@@ -9430,10 +9440,10 @@ var author$project$Editor$viewEdgeCell = function (fromTo) {
 				elm_community$typed_svg$TypedSvg$line,
 				_List_fromArray(
 					[
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(1),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
 						elm_community$typed_svg$TypedSvg$Attributes$stroke(
 						elm_community$typed_svg$TypedSvg$Types$Paint(
-							A3(avh4$elm_color$Color$rgb255, 170, 170, 170))),
+							A3(avh4$elm_color$Color$rgb255, 17, 77, 175))),
 						elm_community$typed_svg$TypedSvg$Attributes$InPx$x1(
 						A2(author$project$Structure$floatOf, author$project$Editor$propX, from)),
 						elm_community$typed_svg$TypedSvg$Attributes$InPx$y1(
@@ -9470,170 +9480,6 @@ var author$project$Editor$viewEdgeCells = function (cellGraph) {
 		cellGraph);
 	var fromToPairs = A2(elm$core$List$map, fromToLookup, edges);
 	return A2(elm$core$List$map, author$project$Editor$viewEdgeCell, fromToPairs);
-};
-var avh4$elm_color$Color$blue = A4(avh4$elm_color$Color$RgbaSpace, 52 / 255, 101 / 255, 164 / 255, 1.0);
-var elm_community$typed_svg$TypedSvg$g = elm_community$typed_svg$TypedSvg$Core$node('g');
-var elm_community$typed_svg$TypedSvg$rect = elm_community$typed_svg$TypedSvg$Core$node('rect');
-var elm_community$typed_svg$TypedSvg$text_ = elm_community$typed_svg$TypedSvg$Core$node('text');
-var elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
-	elm$core$Basics$composeL,
-	elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
-	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
-var elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString = function (anchorAlignment) {
-	switch (anchorAlignment.$) {
-		case 'AnchorInherit':
-			return 'inherit';
-		case 'AnchorStart':
-			return 'start';
-		case 'AnchorMiddle':
-			return 'middle';
-		default:
-			return 'end';
-	}
-};
-var elm_community$typed_svg$TypedSvg$Attributes$textAnchor = function (anchorAlignment) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'text-anchor',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$anchorAlignmentToString(anchorAlignment));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'height',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$height = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$height(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$rx = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'rx',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$rx = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$rx(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$ry = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'ry',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$ry = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$ry(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$width = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'width',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$width = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$width(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$x = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'x',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$x = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$x(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$y = function (length) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$Core$attribute,
-		'y',
-		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
-};
-var elm_community$typed_svg$TypedSvg$Attributes$InPx$y = function (value) {
-	return elm_community$typed_svg$TypedSvg$Attributes$y(
-		elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var elm_community$typed_svg$TypedSvg$Types$AnchorMiddle = {$: 'AnchorMiddle'};
-var author$project$Editor$viewVertexCell = function (cell) {
-	var yPos = A2(author$project$Structure$floatOf, author$project$Editor$propY, cell);
-	var xPos = A2(author$project$Structure$floatOf, author$project$Editor$propX, cell);
-	var name = A2(
-		elm$core$Maybe$withDefault,
-		'<no name>',
-		A2(author$project$Structure$tryTextOf, author$project$Editor$propText, cell));
-	var nameNotEmpty = (name === '') ? '<no name>' : name;
-	var wRect = elm$core$String$length(nameNotEmpty) * 10;
-	var xPosMiddle = xPos - (wRect / 2);
-	var hRect = 40;
-	var yPosMiddle = yPos - (hRect / 2);
-	return A2(
-		elm_community$typed_svg$TypedSvg$g,
-		_List_Nil,
-		_List_fromArray(
-			[
-				A2(
-				elm_community$typed_svg$TypedSvg$rect,
-				_List_fromArray(
-					[
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect),
-						elm_community$typed_svg$TypedSvg$Attributes$fill(
-						elm_community$typed_svg$TypedSvg$Types$Paint(
-							A3(avh4$elm_color$Color$rgb255, 155, 173, 255))),
-						elm_community$typed_svg$TypedSvg$Attributes$stroke(
-						elm_community$typed_svg$TypedSvg$Types$Paint(avh4$elm_color$Color$blue)),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosMiddle),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosMiddle),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
-					]),
-				_List_Nil),
-				A2(
-				elm_community$typed_svg$TypedSvg$text_,
-				_List_fromArray(
-					[
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPos),
-						elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPos),
-						elm_community$typed_svg$TypedSvg$Attributes$textAnchor(elm_community$typed_svg$TypedSvg$Types$AnchorMiddle)
-					]),
-				_List_fromArray(
-					[
-						elm$html$Html$text(nameNotEmpty)
-					]))
-			]));
-};
-var elm_community$typed_svg$TypedSvg$svg = elm_community$typed_svg$TypedSvg$Core$node('svg');
-var author$project$Editor$viewGraphCell = function (cellGraph) {
-	return A2(
-		elm_community$typed_svg$TypedSvg$svg,
-		_List_fromArray(
-			[
-				A2(elm$html$Html$Attributes$style, 'width', '100%'),
-				A2(elm$html$Html$Attributes$style, 'height', '100%'),
-				A2(elm$html$Html$Attributes$style, 'background-color', 'azure')
-			]),
-		_List_fromArray(
-			[
-				A2(
-				elm_community$typed_svg$TypedSvg$g,
-				_List_Nil,
-				author$project$Editor$viewEdgeCells(cellGraph)),
-				A2(
-				elm_community$typed_svg$TypedSvg$g,
-				_List_Nil,
-				A2(
-					elm$core$List$map,
-					author$project$Editor$viewVertexCell,
-					A2(
-						author$project$Structure$nodesOf,
-						author$project$Editor$ContentCell(author$project$Editor$VertexCell),
-						cellGraph)))
-			]));
 };
 var author$project$Editor$OnInput = F2(
 	function (a, b) {
@@ -10015,6 +9861,8 @@ var author$project$Editor$inputCellAttributesFromEffects = function (cell) {
 			author$project$Editor$attributeFromEffectGroup(cell),
 			effectGroups));
 };
+var avh4$elm_color$Color$white = A4(avh4$elm_color$Color$RgbaSpace, 255 / 255, 255 / 255, 255 / 255, 1.0);
+var elm$html$Html$form = _VirtualDom_node('form');
 var elm$html$Html$input = _VirtualDom_node('input');
 var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
 var elm$html$Html$Attributes$size = function (n) {
@@ -10024,6 +9872,176 @@ var elm$html$Html$Attributes$size = function (n) {
 		elm$core$String$fromInt(n));
 };
 var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
+var elm_community$typed_svg$TypedSvg$g = elm_community$typed_svg$TypedSvg$Core$node('g');
+var elm_community$typed_svg$TypedSvg$rect = elm_community$typed_svg$TypedSvg$Core$node('rect');
+var elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
+	elm$core$Basics$composeL,
+	elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
+	elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
+var elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'height',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$height = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$height(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$rx = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'rx',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$rx = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$rx(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$ry = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'ry',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$ry = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$ry(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$width = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'width',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$width = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$width(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$x = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'x',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$x = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$x(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$y = function (length) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$Core$attribute,
+		'y',
+		elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
+var elm_community$typed_svg$TypedSvg$Attributes$InPx$y = function (value) {
+	return elm_community$typed_svg$TypedSvg$Attributes$y(
+		elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var elm_community$typed_svg$TypedSvg$Core$foreignObject = elm_community$typed_svg$TypedSvg$Core$node('foreignObject');
+var author$project$Editor$viewVertexCell = function (cell) {
+	var yPos = A2(author$project$Structure$floatOf, author$project$Editor$propY, cell);
+	var xPos = A2(author$project$Structure$floatOf, author$project$Editor$propX, cell);
+	var name = A2(
+		elm$core$Maybe$withDefault,
+		'<no name>',
+		A2(author$project$Structure$tryTextOf, author$project$Editor$propText, cell));
+	var nameNotEmpty = (name === '') ? '<no name>' : name;
+	var textWidth = (nameNotEmpty === '') ? elm$core$String$length('<no value>') : elm$core$String$length(nameNotEmpty);
+	var wRect = (elm$core$String$length(nameNotEmpty) * 8.797) + 18;
+	var xPosRect = xPos - (wRect / 2);
+	var xPosInput = xPosRect + 9;
+	var hRect = 40;
+	var yPosRect = yPos - (hRect / 2);
+	var yPosInput = yPosRect + 9;
+	return A2(
+		elm_community$typed_svg$TypedSvg$g,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				elm_community$typed_svg$TypedSvg$rect,
+				_List_fromArray(
+					[
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect),
+						elm_community$typed_svg$TypedSvg$Attributes$fill(
+						elm_community$typed_svg$TypedSvg$Types$Paint(avh4$elm_color$Color$white)),
+						elm_community$typed_svg$TypedSvg$Attributes$stroke(
+						elm_community$typed_svg$TypedSvg$Types$Paint(
+							A3(avh4$elm_color$Color$rgb255, 17, 77, 175))),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosRect),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosRect),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
+					]),
+				_List_Nil),
+				A2(
+				elm_community$typed_svg$TypedSvg$Core$foreignObject,
+				_List_fromArray(
+					[
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosInput),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosInput),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
+						elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect)
+					]),
+				_List_fromArray(
+					[
+						A2(
+						elm$html$Html$form,
+						_List_Nil,
+						_List_fromArray(
+							[
+								A2(
+								elm$html$Html$input,
+								_Utils_ap(
+									_List_fromArray(
+										[
+											A2(elm$html$Html$Attributes$style, 'border-width', '0px'),
+											A2(elm$html$Html$Attributes$style, 'font-family', 'Consolas'),
+											A2(elm$html$Html$Attributes$style, 'font-size', '16px'),
+											A2(elm$html$Html$Attributes$style, 'border', 'none'),
+											A2(elm$html$Html$Attributes$style, 'outline', 'none'),
+											elm$html$Html$Attributes$placeholder('<no value>'),
+											elm$html$Html$Attributes$value(nameNotEmpty),
+											elm$html$Html$Attributes$size(textWidth),
+											A2(elm$html$Html$Attributes$style, 'background-color', 'transparent')
+										]),
+									author$project$Editor$inputCellAttributesFromEffects(cell)),
+								_List_Nil)
+							]))
+					]))
+			]));
+};
+var elm_community$typed_svg$TypedSvg$svg = elm_community$typed_svg$TypedSvg$Core$node('svg');
+var author$project$Editor$viewGraphCell = function (cellGraph) {
+	return A2(
+		elm_community$typed_svg$TypedSvg$svg,
+		_List_fromArray(
+			[
+				A2(elm$html$Html$Attributes$style, 'width', '100%'),
+				A2(elm$html$Html$Attributes$style, 'height', '100%'),
+				A2(elm$html$Html$Attributes$style, 'background-color', 'AliceBlue')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				elm_community$typed_svg$TypedSvg$g,
+				_List_Nil,
+				author$project$Editor$viewEdgeCells(cellGraph)),
+				A2(
+				elm_community$typed_svg$TypedSvg$g,
+				_List_Nil,
+				A2(
+					elm$core$List$map,
+					author$project$Editor$viewVertexCell,
+					A2(
+						author$project$Structure$nodesOf,
+						author$project$Editor$ContentCell(author$project$Editor$VertexCell),
+						cellGraph)))
+			]));
+};
 var author$project$Editor$viewInputCell = function (cell) {
 	var _n0 = author$project$Structure$isaOf(cell);
 	if (_n0.$ === 'ContentCell') {
@@ -10423,19 +10441,17 @@ var author$project$Runtime$view = function (model) {
 var elm$browser$Browser$element = _Browser_element;
 var author$project$Runtime$projection = F2(
 	function (rootD, xform) {
+		var rootDWithPaths = author$project$Structure$updatePaths(rootD);
 		var init = function (_n0) {
 			return _Utils_Tuple2(
 				{
-					domain: A2(
-						author$project$Runtime$Domain,
-						author$project$Structure$updatePaths(rootD),
-						xform),
+					domain: A2(author$project$Runtime$Domain, rootDWithPaths, xform),
 					editorModel: A2(
 						author$project$Editor$initEditorModel,
-						rootD,
+						rootDWithPaths,
 						author$project$Structure$updatePaths(
 							author$project$Editor$griddify(
-								xform(rootD))))
+								xform(rootDWithPaths))))
 				},
 				elm$core$Platform$Cmd$none);
 		};
