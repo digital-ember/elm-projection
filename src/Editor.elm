@@ -479,7 +479,6 @@ tickGraphSimulations editorModel =
                             , Force.manyBodyStrength -1000 <| List.map (\v -> pathAsIdFromNode v) <| verticies
                             , Force.center 400 300
                             ]
-                                |> Debug.log "forces"
                     in
                     ( False, { editorModel | mbSimulation = Just <| Force.simulation forces }, Cmd.none )
 
@@ -1340,6 +1339,7 @@ edgeForcesFromGraph cellGraph =
     in
     List.map idLookup edges
 
+
 customEdgeForcesFromGraph : Node (Cell a) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
 customEdgeForcesFromGraph cellGraph =
     let
@@ -1414,7 +1414,12 @@ viewVertexCell cell =
         name =
             tryTextOf propText cell |> Maybe.withDefault "<no name>"
 
-        nameNotEmpty = if name == "" then "<no name>" else name
+        nameNotEmpty =
+            if name == "" then
+                "<no name>"
+
+            else
+                name
 
         wRect =
             (toFloat <| String.length <| nameNotEmpty) * 10
