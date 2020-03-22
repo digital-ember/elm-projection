@@ -853,6 +853,197 @@ var _Basics_xor = F2(function(a, b) { return a !== b; });
 
 
 
+// TASKS
+
+function _Scheduler_succeed(value)
+{
+	return {
+		$: 0,
+		a: value
+	};
+}
+
+function _Scheduler_fail(error)
+{
+	return {
+		$: 1,
+		a: error
+	};
+}
+
+function _Scheduler_binding(callback)
+{
+	return {
+		$: 2,
+		b: callback,
+		c: null
+	};
+}
+
+var _Scheduler_andThen = F2(function(callback, task)
+{
+	return {
+		$: 3,
+		b: callback,
+		d: task
+	};
+});
+
+var _Scheduler_onError = F2(function(callback, task)
+{
+	return {
+		$: 4,
+		b: callback,
+		d: task
+	};
+});
+
+function _Scheduler_receive(callback)
+{
+	return {
+		$: 5,
+		b: callback
+	};
+}
+
+
+// PROCESSES
+
+var _Scheduler_guid = 0;
+
+function _Scheduler_rawSpawn(task)
+{
+	var proc = {
+		$: 0,
+		e: _Scheduler_guid++,
+		f: task,
+		g: null,
+		h: []
+	};
+
+	_Scheduler_enqueue(proc);
+
+	return proc;
+}
+
+function _Scheduler_spawn(task)
+{
+	return _Scheduler_binding(function(callback) {
+		callback(_Scheduler_succeed(_Scheduler_rawSpawn(task)));
+	});
+}
+
+function _Scheduler_rawSend(proc, msg)
+{
+	proc.h.push(msg);
+	_Scheduler_enqueue(proc);
+}
+
+var _Scheduler_send = F2(function(proc, msg)
+{
+	return _Scheduler_binding(function(callback) {
+		_Scheduler_rawSend(proc, msg);
+		callback(_Scheduler_succeed(_Utils_Tuple0));
+	});
+});
+
+function _Scheduler_kill(proc)
+{
+	return _Scheduler_binding(function(callback) {
+		var task = proc.f;
+		if (task.$ === 2 && task.c)
+		{
+			task.c();
+		}
+
+		proc.f = null;
+
+		callback(_Scheduler_succeed(_Utils_Tuple0));
+	});
+}
+
+
+/* STEP PROCESSES
+
+type alias Process =
+  { $ : tag
+  , id : unique_id
+  , root : Task
+  , stack : null | { $: SUCCEED | FAIL, a: callback, b: stack }
+  , mailbox : [msg]
+  }
+
+*/
+
+
+var _Scheduler_working = false;
+var _Scheduler_queue = [];
+
+
+function _Scheduler_enqueue(proc)
+{
+	_Scheduler_queue.push(proc);
+	if (_Scheduler_working)
+	{
+		return;
+	}
+	_Scheduler_working = true;
+	while (proc = _Scheduler_queue.shift())
+	{
+		_Scheduler_step(proc);
+	}
+	_Scheduler_working = false;
+}
+
+
+function _Scheduler_step(proc)
+{
+	while (proc.f)
+	{
+		var rootTag = proc.f.$;
+		if (rootTag === 0 || rootTag === 1)
+		{
+			while (proc.g && proc.g.$ !== rootTag)
+			{
+				proc.g = proc.g.i;
+			}
+			if (!proc.g)
+			{
+				return;
+			}
+			proc.f = proc.g.b(proc.f.a);
+			proc.g = proc.g.i;
+		}
+		else if (rootTag === 2)
+		{
+			proc.f.c = proc.f.b(function(newRoot) {
+				proc.f = newRoot;
+				_Scheduler_enqueue(proc);
+			});
+			return;
+		}
+		else if (rootTag === 5)
+		{
+			if (proc.h.length === 0)
+			{
+				return;
+			}
+			proc.f = proc.f.b(proc.h.shift());
+		}
+		else // if (rootTag === 3 || rootTag === 4)
+		{
+			proc.g = {
+				$: rootTag === 3 ? 0 : 1,
+				b: proc.f.b,
+				i: proc.g
+			};
+			proc.f = proc.f.d;
+		}
+	}
+}
+
+
+
 function _Char_toCode(char)
 {
 	var code = char.charCodeAt(0);
@@ -1641,197 +1832,6 @@ function _Json_addEntry(func)
 }
 
 var _Json_encodeNull = _Json_wrap(null);
-
-
-
-// TASKS
-
-function _Scheduler_succeed(value)
-{
-	return {
-		$: 0,
-		a: value
-	};
-}
-
-function _Scheduler_fail(error)
-{
-	return {
-		$: 1,
-		a: error
-	};
-}
-
-function _Scheduler_binding(callback)
-{
-	return {
-		$: 2,
-		b: callback,
-		c: null
-	};
-}
-
-var _Scheduler_andThen = F2(function(callback, task)
-{
-	return {
-		$: 3,
-		b: callback,
-		d: task
-	};
-});
-
-var _Scheduler_onError = F2(function(callback, task)
-{
-	return {
-		$: 4,
-		b: callback,
-		d: task
-	};
-});
-
-function _Scheduler_receive(callback)
-{
-	return {
-		$: 5,
-		b: callback
-	};
-}
-
-
-// PROCESSES
-
-var _Scheduler_guid = 0;
-
-function _Scheduler_rawSpawn(task)
-{
-	var proc = {
-		$: 0,
-		e: _Scheduler_guid++,
-		f: task,
-		g: null,
-		h: []
-	};
-
-	_Scheduler_enqueue(proc);
-
-	return proc;
-}
-
-function _Scheduler_spawn(task)
-{
-	return _Scheduler_binding(function(callback) {
-		callback(_Scheduler_succeed(_Scheduler_rawSpawn(task)));
-	});
-}
-
-function _Scheduler_rawSend(proc, msg)
-{
-	proc.h.push(msg);
-	_Scheduler_enqueue(proc);
-}
-
-var _Scheduler_send = F2(function(proc, msg)
-{
-	return _Scheduler_binding(function(callback) {
-		_Scheduler_rawSend(proc, msg);
-		callback(_Scheduler_succeed(_Utils_Tuple0));
-	});
-});
-
-function _Scheduler_kill(proc)
-{
-	return _Scheduler_binding(function(callback) {
-		var task = proc.f;
-		if (task.$ === 2 && task.c)
-		{
-			task.c();
-		}
-
-		proc.f = null;
-
-		callback(_Scheduler_succeed(_Utils_Tuple0));
-	});
-}
-
-
-/* STEP PROCESSES
-
-type alias Process =
-  { $ : tag
-  , id : unique_id
-  , root : Task
-  , stack : null | { $: SUCCEED | FAIL, a: callback, b: stack }
-  , mailbox : [msg]
-  }
-
-*/
-
-
-var _Scheduler_working = false;
-var _Scheduler_queue = [];
-
-
-function _Scheduler_enqueue(proc)
-{
-	_Scheduler_queue.push(proc);
-	if (_Scheduler_working)
-	{
-		return;
-	}
-	_Scheduler_working = true;
-	while (proc = _Scheduler_queue.shift())
-	{
-		_Scheduler_step(proc);
-	}
-	_Scheduler_working = false;
-}
-
-
-function _Scheduler_step(proc)
-{
-	while (proc.f)
-	{
-		var rootTag = proc.f.$;
-		if (rootTag === 0 || rootTag === 1)
-		{
-			while (proc.g && proc.g.$ !== rootTag)
-			{
-				proc.g = proc.g.i;
-			}
-			if (!proc.g)
-			{
-				return;
-			}
-			proc.f = proc.g.b(proc.f.a);
-			proc.g = proc.g.i;
-		}
-		else if (rootTag === 2)
-		{
-			proc.f.c = proc.f.b(function(newRoot) {
-				proc.f = newRoot;
-				_Scheduler_enqueue(proc);
-			});
-			return;
-		}
-		else if (rootTag === 5)
-		{
-			if (proc.h.length === 0)
-			{
-				return;
-			}
-			proc.f = proc.f.b(proc.h.shift());
-		}
-		else // if (rootTag === 3 || rootTag === 4)
-		{
-			proc.g = {
-				$: rootTag === 3 ? 0 : 1,
-				b: proc.f.b,
-				i: proc.g
-			};
-			proc.f = proc.f.d;
-		}
-	}
-}
 
 
 
@@ -5257,6 +5257,20 @@ var elm$core$Maybe$andThen = F2(
 			return elm$core$Maybe$Nothing;
 		}
 	});
+var author$project$Structure$tryTextOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$andThen,
+			function (prop) {
+				if (prop.$ === 'PString') {
+					var v = prop.a;
+					return elm$core$Maybe$Just(v);
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			},
+			A2(author$project$Structure$valueOf, key, node));
+	});
 var elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -5271,17 +5285,7 @@ var author$project$Structure$textOf = F2(
 		return A2(
 			elm$core$Maybe$withDefault,
 			'',
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PString') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
+			A2(author$project$Structure$tryTextOf, key, node));
 	});
 var author$project$Editor$inputCell = F2(
 	function (text, nodeContext) {
@@ -5858,22 +5862,11 @@ var author$project$Main$initStateMachine = A2(
 				'name',
 				'waitingForDraw',
 				author$project$Structure$createNode(author$project$Main$State))),
-			A2(
-			author$project$Structure$addToDefault,
 			A3(
-				author$project$Structure$addText,
-				'stateRef',
-				'idle',
-				A3(
-					author$project$Structure$addText,
-					'eventRef',
-					'panelClosed',
-					author$project$Structure$createNode(author$project$Main$Transition))),
-			A3(
-				author$project$Structure$addText,
-				'name',
-				'unlockedPanel',
-				author$project$Structure$createNode(author$project$Main$State)))
+			author$project$Structure$addText,
+			'name',
+			'unlockedPanel',
+			author$project$Structure$createNode(author$project$Main$State))
 		]),
 	A3(
 		author$project$Structure$addRangeToCustom,
@@ -5909,22 +5902,26 @@ var author$project$Main$initStateMachine = A2(
 		author$project$Structure$createRoot(author$project$Main$StateMachine)));
 var author$project$Editor$featDefault = 'default';
 var author$project$Editor$propIsGrid = 'isGrid';
+var author$project$Structure$tryBoolOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$andThen,
+			function (prop) {
+				if (prop.$ === 'PBool') {
+					var v = prop.a;
+					return elm$core$Maybe$Just(v);
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			},
+			A2(author$project$Structure$valueOf, key, node));
+	});
 var author$project$Structure$boolOf = F2(
 	function (key, node) {
 		return A2(
 			elm$core$Maybe$withDefault,
 			false,
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PBool') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
+			A2(author$project$Structure$tryBoolOf, key, node));
 	});
 var author$project$Structure$strDefault = 'default';
 var author$project$Structure$replaceUnderFeature = F3(
@@ -5958,12 +5955,90 @@ var author$project$Editor$griddifyI = F2(
 			nodeNew);
 	});
 var author$project$Editor$griddify = author$project$Editor$griddifyI(false);
+var author$project$Editor$initEditorModel = F2(
+	function (dRoot, eRoot) {
+		return {dRoot: dRoot, eRoot: eRoot, mbSimulation: elm$core$Maybe$Nothing};
+	});
+var author$project$Runtime$Domain = F2(
+	function (root, xform) {
+		return {root: root, xform: xform};
+	});
+var author$project$Editor$Tick = {$: 'Tick'};
+var author$project$Runtime$Tick = F2(
+	function (a, b) {
+		return {$: 'Tick', a: a, b: b};
+	});
+var elm$browser$Browser$AnimationManager$Time = function (a) {
+	return {$: 'Time', a: a};
+};
+var elm$browser$Browser$AnimationManager$State = F3(
+	function (subs, request, oldTime) {
+		return {oldTime: oldTime, request: request, subs: subs};
+	});
+var elm$core$Task$succeed = _Scheduler_succeed;
+var elm$browser$Browser$AnimationManager$init = elm$core$Task$succeed(
+	A3(elm$browser$Browser$AnimationManager$State, _List_Nil, elm$core$Maybe$Nothing, 0));
+var elm$browser$Browser$External = function (a) {
+	return {$: 'External', a: a};
+};
+var elm$browser$Browser$Internal = function (a) {
+	return {$: 'Internal', a: a};
+};
+var elm$browser$Browser$Dom$NotFound = function (a) {
+	return {$: 'NotFound', a: a};
+};
+var elm$core$Basics$never = function (_n0) {
+	never:
+	while (true) {
+		var nvr = _n0.a;
+		var $temp$_n0 = nvr;
+		_n0 = $temp$_n0;
+		continue never;
+	}
+};
 var elm$core$Result$isOk = function (result) {
 	if (result.$ === 'Ok') {
 		return true;
 	} else {
 		return false;
 	}
+};
+var elm$core$Task$Perform = function (a) {
+	return {$: 'Perform', a: a};
+};
+var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
+var elm$core$Task$andThen = _Scheduler_andThen;
+var elm$core$Task$map = F2(
+	function (func, taskA) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return elm$core$Task$succeed(
+					func(a));
+			},
+			taskA);
+	});
+var elm$core$Task$map2 = F3(
+	function (func, taskA, taskB) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return A2(
+					elm$core$Task$andThen,
+					function (b) {
+						return elm$core$Task$succeed(
+							A2(func, a, b));
+					},
+					taskB);
+			},
+			taskA);
+	});
+var elm$core$Task$sequence = function (tasks) {
+	return A3(
+		elm$core$List$foldr,
+		elm$core$Task$map2(elm$core$List$cons),
+		elm$core$Task$succeed(_List_Nil),
+		tasks);
 };
 var elm$core$Array$branchFactor = 32;
 var elm$core$Array$Array_elm_builtin = F4(
@@ -6313,6 +6388,47 @@ var elm$json$Json$Decode$errorToStringHelp = F2(
 			}
 		}
 	});
+var elm$core$Platform$sendToApp = _Platform_sendToApp;
+var elm$core$Task$spawnCmd = F2(
+	function (router, _n0) {
+		var task = _n0.a;
+		return _Scheduler_spawn(
+			A2(
+				elm$core$Task$andThen,
+				elm$core$Platform$sendToApp(router),
+				task));
+	});
+var elm$core$Task$onEffects = F3(
+	function (router, commands, state) {
+		return A2(
+			elm$core$Task$map,
+			function (_n0) {
+				return _Utils_Tuple0;
+			},
+			elm$core$Task$sequence(
+				A2(
+					elm$core$List$map,
+					elm$core$Task$spawnCmd(router),
+					commands)));
+	});
+var elm$core$Task$onSelfMsg = F3(
+	function (_n0, _n1, _n2) {
+		return elm$core$Task$succeed(_Utils_Tuple0);
+	});
+var elm$core$Task$cmdMap = F2(
+	function (tagger, _n0) {
+		var task = _n0.a;
+		return elm$core$Task$Perform(
+			A2(elm$core$Task$map, tagger, task));
+	});
+_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
+var elm$core$Task$command = _Platform_leaf('Task');
+var elm$core$Task$perform = F2(
+	function (toMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(elm$core$Task$map, toMessage, task)));
+	});
 var elm$json$Json$Decode$map = _Json_map1;
 var elm$json$Json$Decode$map2 = _Json_map2;
 var elm$json$Json$Decode$succeed = _Json_succeed;
@@ -6328,203 +6444,282 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
-var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
-var author$project$Editor$divRowAttributes = function (cell) {
-	return A2(author$project$Structure$boolOf, author$project$Editor$propIsGrid, cell) ? _List_fromArray(
-		[
-			A2(elm$html$Html$Attributes$style, 'display', 'table-row')
-		]) : _List_Nil;
+var elm$core$String$length = _String_length;
+var elm$core$String$slice = _String_slice;
+var elm$core$String$dropLeft = F2(
+	function (n, string) {
+		return (n < 1) ? string : A3(
+			elm$core$String$slice,
+			n,
+			elm$core$String$length(string),
+			string);
+	});
+var elm$core$String$startsWith = _String_startsWith;
+var elm$url$Url$Http = {$: 'Http'};
+var elm$url$Url$Https = {$: 'Https'};
+var elm$core$String$indexes = _String_indexes;
+var elm$core$String$isEmpty = function (string) {
+	return string === '';
 };
-var author$project$Structure$intOf = F2(
-	function (key, node) {
-		return A2(
-			elm$core$Maybe$withDefault,
-			0,
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PInt') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
+var elm$core$String$left = F2(
+	function (n, string) {
+		return (n < 1) ? '' : A3(elm$core$String$slice, 0, n, string);
+	});
+var elm$core$String$contains = _String_contains;
+var elm$core$String$toInt = _String_toInt;
+var elm$url$Url$Url = F6(
+	function (protocol, host, port_, path, query, fragment) {
+		return {fragment: fragment, host: host, path: path, port_: port_, protocol: protocol, query: query};
+	});
+var elm$url$Url$chompBeforePath = F5(
+	function (protocol, path, params, frag, str) {
+		if (elm$core$String$isEmpty(str) || A2(elm$core$String$contains, '@', str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, ':', str);
+			if (!_n0.b) {
+				return elm$core$Maybe$Just(
+					A6(elm$url$Url$Url, protocol, str, elm$core$Maybe$Nothing, path, params, frag));
+			} else {
+				if (!_n0.b.b) {
+					var i = _n0.a;
+					var _n1 = elm$core$String$toInt(
+						A2(elm$core$String$dropLeft, i + 1, str));
+					if (_n1.$ === 'Nothing') {
 						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
-	});
-var author$project$Editor$margins = function (cell) {
-	var top = elm$core$String$fromInt(
-		A2(author$project$Structure$intOf, author$project$Editor$propMarginTop, cell)) + 'px ';
-	var right = elm$core$String$fromInt(
-		A2(author$project$Structure$intOf, author$project$Editor$propMarginRight, cell) + 5) + 'px ';
-	var indentMarginLeft = A2(author$project$Structure$boolOf, author$project$Editor$propIndent, cell) ? 20 : 0;
-	var left = elm$core$String$fromInt(
-		A2(author$project$Structure$intOf, author$project$Editor$propMarginLeft, cell) + indentMarginLeft) + 'px';
-	var bottom = elm$core$String$fromInt(
-		A2(author$project$Structure$intOf, author$project$Editor$propMarginBottom, cell)) + 'px ';
-	return A2(
-		elm$html$Html$Attributes$style,
-		'margin',
-		_Utils_ap(
-			top,
-			_Utils_ap(
-				right,
-				_Utils_ap(bottom, left))));
-};
-var author$project$Editor$paddings = function (_n0) {
-	return A2(elm$html$Html$Attributes$style, 'padding', '0px 0px 0px 0px');
-};
-var author$project$Editor$marginsAndPaddings = function (cell) {
-	return _List_fromArray(
-		[
-			author$project$Editor$margins(cell),
-			author$project$Editor$paddings(cell)
-		]);
-};
-var author$project$Editor$OnClick = F2(
-	function (a, b) {
-		return {$: 'OnClick', a: a, b: b};
-	});
-var author$project$Structure$isaOf = function (_n0) {
-	var isa = _n0.a.isa;
-	return isa;
-};
-var author$project$Editor$isasUnderCustom = F2(
-	function (featureKey, parent) {
-		var children = (featureKey === '') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, featureKey, parent);
-		return A2(elm$core$List$map, author$project$Structure$isaOf, children);
-	});
-var elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return elm$core$Maybe$Just(x);
-	} else {
-		return elm$core$Maybe$Nothing;
-	}
-};
-var elm$html$Html$button = _VirtualDom_node('button');
-var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
-var elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			elm$virtual_dom$VirtualDom$on,
-			event,
-			elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		elm$html$Html$Events$on,
-		'click',
-		elm$json$Json$Decode$succeed(msg));
-};
-var author$project$Editor$viewButtonCell = function (cell) {
-	var _n0 = author$project$Structure$isaOf(cell);
-	if (_n0.$ === 'ContentCell') {
-		var onClick = A2(
-			elm$core$Maybe$withDefault,
-			_List_Nil,
-			A2(
-				elm$core$Maybe$andThen,
-				function (e) {
-					if (e.$ === 'EffectCell') {
-						var effect = e.a;
+					} else {
+						var port_ = _n1;
 						return elm$core$Maybe$Just(
-							_List_fromArray(
-								[
-									elm$html$Html$Events$onClick(
-									A2(author$project$Editor$OnClick, effect, cell))
-								]));
-					} else {
-						return elm$core$Maybe$Nothing;
+							A6(
+								elm$url$Url$Url,
+								protocol,
+								A2(elm$core$String$left, i, str),
+								port_,
+								path,
+								params,
+								frag));
 					}
-				},
-				elm$core$List$head(
-					A2(author$project$Editor$isasUnderCustom, author$project$Editor$featEffects, cell))));
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			}
+		}
+	});
+var elm$url$Url$chompBeforeQuery = F4(
+	function (protocol, params, frag, str) {
+		if (elm$core$String$isEmpty(str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, '/', str);
+			if (!_n0.b) {
+				return A5(elm$url$Url$chompBeforePath, protocol, '/', params, frag, str);
+			} else {
+				var i = _n0.a;
+				return A5(
+					elm$url$Url$chompBeforePath,
+					protocol,
+					A2(elm$core$String$dropLeft, i, str),
+					params,
+					frag,
+					A2(elm$core$String$left, i, str));
+			}
+		}
+	});
+var elm$url$Url$chompBeforeFragment = F3(
+	function (protocol, frag, str) {
+		if (elm$core$String$isEmpty(str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, '?', str);
+			if (!_n0.b) {
+				return A4(elm$url$Url$chompBeforeQuery, protocol, elm$core$Maybe$Nothing, frag, str);
+			} else {
+				var i = _n0.a;
+				return A4(
+					elm$url$Url$chompBeforeQuery,
+					protocol,
+					elm$core$Maybe$Just(
+						A2(elm$core$String$dropLeft, i + 1, str)),
+					frag,
+					A2(elm$core$String$left, i, str));
+			}
+		}
+	});
+var elm$url$Url$chompAfterProtocol = F2(
+	function (protocol, str) {
+		if (elm$core$String$isEmpty(str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, '#', str);
+			if (!_n0.b) {
+				return A3(elm$url$Url$chompBeforeFragment, protocol, elm$core$Maybe$Nothing, str);
+			} else {
+				var i = _n0.a;
+				return A3(
+					elm$url$Url$chompBeforeFragment,
+					protocol,
+					elm$core$Maybe$Just(
+						A2(elm$core$String$dropLeft, i + 1, str)),
+					A2(elm$core$String$left, i, str));
+			}
+		}
+	});
+var elm$url$Url$fromString = function (str) {
+	return A2(elm$core$String$startsWith, 'http://', str) ? A2(
+		elm$url$Url$chompAfterProtocol,
+		elm$url$Url$Http,
+		A2(elm$core$String$dropLeft, 7, str)) : (A2(elm$core$String$startsWith, 'https://', str) ? A2(
+		elm$url$Url$chompAfterProtocol,
+		elm$url$Url$Https,
+		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
+};
+var elm$browser$Browser$AnimationManager$now = _Browser_now(_Utils_Tuple0);
+var elm$browser$Browser$AnimationManager$rAF = _Browser_rAF(_Utils_Tuple0);
+var elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var elm$core$Process$kill = _Scheduler_kill;
+var elm$core$Process$spawn = _Scheduler_spawn;
+var elm$browser$Browser$AnimationManager$onEffects = F3(
+	function (router, subs, _n0) {
+		var request = _n0.request;
+		var oldTime = _n0.oldTime;
+		var _n1 = _Utils_Tuple2(request, subs);
+		if (_n1.a.$ === 'Nothing') {
+			if (!_n1.b.b) {
+				var _n2 = _n1.a;
+				return elm$browser$Browser$AnimationManager$init;
+			} else {
+				var _n4 = _n1.a;
+				return A2(
+					elm$core$Task$andThen,
+					function (pid) {
+						return A2(
+							elm$core$Task$andThen,
+							function (time) {
+								return elm$core$Task$succeed(
+									A3(
+										elm$browser$Browser$AnimationManager$State,
+										subs,
+										elm$core$Maybe$Just(pid),
+										time));
+							},
+							elm$browser$Browser$AnimationManager$now);
+					},
+					elm$core$Process$spawn(
+						A2(
+							elm$core$Task$andThen,
+							elm$core$Platform$sendToSelf(router),
+							elm$browser$Browser$AnimationManager$rAF)));
+			}
+		} else {
+			if (!_n1.b.b) {
+				var pid = _n1.a.a;
+				return A2(
+					elm$core$Task$andThen,
+					function (_n3) {
+						return elm$browser$Browser$AnimationManager$init;
+					},
+					elm$core$Process$kill(pid));
+			} else {
+				return elm$core$Task$succeed(
+					A3(elm$browser$Browser$AnimationManager$State, subs, request, oldTime));
+			}
+		}
+	});
+var elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var elm$time$Time$millisToPosix = elm$time$Time$Posix;
+var elm$browser$Browser$AnimationManager$onSelfMsg = F3(
+	function (router, newTime, _n0) {
+		var subs = _n0.subs;
+		var oldTime = _n0.oldTime;
+		var send = function (sub) {
+			if (sub.$ === 'Time') {
+				var tagger = sub.a;
+				return A2(
+					elm$core$Platform$sendToApp,
+					router,
+					tagger(
+						elm$time$Time$millisToPosix(newTime)));
+			} else {
+				var tagger = sub.a;
+				return A2(
+					elm$core$Platform$sendToApp,
+					router,
+					tagger(newTime - oldTime));
+			}
+		};
 		return A2(
-			elm$html$Html$button,
-			_Utils_ap(
-				author$project$Editor$marginsAndPaddings(cell),
-				onClick),
-			_List_fromArray(
-				[
-					elm$html$Html$text(
-					A2(author$project$Structure$textOf, author$project$Editor$propText, cell))
-				]));
+			elm$core$Task$andThen,
+			function (pid) {
+				return A2(
+					elm$core$Task$andThen,
+					function (_n1) {
+						return elm$core$Task$succeed(
+							A3(
+								elm$browser$Browser$AnimationManager$State,
+								subs,
+								elm$core$Maybe$Just(pid),
+								newTime));
+					},
+					elm$core$Task$sequence(
+						A2(elm$core$List$map, send, subs)));
+			},
+			elm$core$Process$spawn(
+				A2(
+					elm$core$Task$andThen,
+					elm$core$Platform$sendToSelf(router),
+					elm$browser$Browser$AnimationManager$rAF)));
+	});
+var elm$browser$Browser$AnimationManager$Delta = function (a) {
+	return {$: 'Delta', a: a};
+};
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var elm$browser$Browser$AnimationManager$subMap = F2(
+	function (func, sub) {
+		if (sub.$ === 'Time') {
+			var tagger = sub.a;
+			return elm$browser$Browser$AnimationManager$Time(
+				A2(elm$core$Basics$composeL, func, tagger));
+		} else {
+			var tagger = sub.a;
+			return elm$browser$Browser$AnimationManager$Delta(
+				A2(elm$core$Basics$composeL, func, tagger));
+		}
+	});
+_Platform_effectManagers['Browser.AnimationManager'] = _Platform_createManager(elm$browser$Browser$AnimationManager$init, elm$browser$Browser$AnimationManager$onEffects, elm$browser$Browser$AnimationManager$onSelfMsg, 0, elm$browser$Browser$AnimationManager$subMap);
+var elm$browser$Browser$AnimationManager$subscription = _Platform_leaf('Browser.AnimationManager');
+var elm$browser$Browser$AnimationManager$onAnimationFrame = function (tagger) {
+	return elm$browser$Browser$AnimationManager$subscription(
+		elm$browser$Browser$AnimationManager$Time(tagger));
+};
+var elm$browser$Browser$Events$onAnimationFrame = elm$browser$Browser$AnimationManager$onAnimationFrame;
+var elm$core$Platform$Sub$batch = _Platform_batch;
+var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
+var gampleman$elm_visualization$Force$isCompleted = function (_n0) {
+	var alpha = _n0.a.alpha;
+	var minAlpha = _n0.a.minAlpha;
+	return _Utils_cmp(alpha, minAlpha) < 1;
+};
+var author$project$Runtime$subscriptions = function (model) {
+	var _n0 = model.editorModel.mbSimulation;
+	if (_n0.$ === 'Just') {
+		var simulation = _n0.a;
+		return gampleman$elm_visualization$Force$isCompleted(simulation) ? elm$core$Platform$Sub$none : elm$browser$Browser$Events$onAnimationFrame(
+			author$project$Runtime$Tick(author$project$Editor$Tick));
 	} else {
-		return elm$html$Html$text('');
+		return elm$browser$Browser$Events$onAnimationFrame(
+			author$project$Runtime$Tick(author$project$Editor$Tick));
 	}
 };
-var author$project$Editor$divCellAttributes = function (cell) {
-	return A2(author$project$Structure$boolOf, author$project$Editor$propIsGrid, cell) ? _List_fromArray(
-		[
-			A2(elm$html$Html$Attributes$style, 'display', 'table-cell')
-		]) : _List_Nil;
-};
-var author$project$Structure$pathSegmentAsId = F2(
-	function (_n0, idPart) {
-		var feature = _n0.feature;
-		var index = _n0.index;
-		var idPartWSeparator = (idPart === '') ? '' : (idPart + '-');
-		return _Utils_ap(
-			idPartWSeparator,
-			_Utils_ap(
-				feature,
-				elm$core$String$fromInt(index)));
-	});
-var author$project$Structure$pathAsId = function (_n0) {
-	var segments = _n0.a;
-	return A3(elm$core$List$foldl, author$project$Structure$pathSegmentAsId, '', segments);
-};
-var author$project$Structure$pathAsIdFromNode = function (_n0) {
-	var path = _n0.a.path;
-	return author$project$Structure$pathAsId(path);
-};
-var elm$html$Html$div = _VirtualDom_node('div');
-var elm$html$Html$label = _VirtualDom_node('label');
-var elm$json$Json$Encode$string = _Json_wrap;
-var elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			elm$json$Json$Encode$string(string));
-	});
-var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
-var author$project$Editor$viewConstantCell = function (cell) {
-	var _n0 = author$project$Structure$isaOf(cell);
-	if (_n0.$ === 'ContentCell') {
-		return A2(
-			elm$html$Html$div,
-			author$project$Editor$divCellAttributes(cell),
-			_List_fromArray(
-				[
-					A2(
-					elm$html$Html$label,
-					_Utils_ap(
-						_List_fromArray(
-							[
-								elm$html$Html$Attributes$id(
-								author$project$Structure$pathAsIdFromNode(cell)),
-								A2(elm$html$Html$Attributes$style, 'font-weight', 'bold'),
-								A2(elm$html$Html$Attributes$style, 'color', 'darkblue')
-							]),
-						author$project$Editor$marginsAndPaddings(cell)),
-					_List_fromArray(
-						[
-							elm$html$Html$text(
-							A2(author$project$Structure$textOf, author$project$Editor$propConstant, cell))
-						]))
-				]));
-	} else {
-		return elm$html$Html$text('');
-	}
+var elm$core$Platform$Cmd$batch = _Platform_batch;
+var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
+var author$project$Editor$noUpdate = function (editorModel) {
+	return _Utils_Tuple3(false, editorModel, elm$core$Platform$Cmd$none);
 };
 var elm$core$Dict$values = function (dict) {
 	return A3(
@@ -6540,6 +6735,10 @@ var author$project$Structure$getAllUnderCustoms = function (_n0) {
 	var features = _n0.a.features;
 	return elm$core$List$concat(
 		elm$core$Dict$values(features.custom));
+};
+var author$project$Structure$isaOf = function (_n0) {
+	var isa = _n0.a.isa;
+	return isa;
 };
 var author$project$Structure$nodesOfRec = F3(
 	function (isa, node, result) {
@@ -6581,8 +6780,27 @@ var author$project$Editor$dictNameToVertex = function (cellGraph) {
 			author$project$Editor$ContentCell(author$project$Editor$VertexCell),
 			cellGraph));
 };
-var author$project$Editor$edgesFromGraph = function (cellGraph) {
-	var idLookup = function (edge) {
+var author$project$Structure$pathSegmentAsId = F2(
+	function (_n0, idPart) {
+		var feature = _n0.feature;
+		var index = _n0.index;
+		var idPartWSeparator = (idPart === '') ? '' : (idPart + '-');
+		return _Utils_ap(
+			idPartWSeparator,
+			_Utils_ap(
+				feature,
+				elm$core$String$fromInt(index)));
+	});
+var author$project$Structure$pathAsId = function (_n0) {
+	var segments = _n0.a;
+	return A3(elm$core$List$foldl, author$project$Structure$pathSegmentAsId, '', segments);
+};
+var author$project$Structure$pathAsIdFromNode = function (_n0) {
+	var path = _n0.a.path;
+	return author$project$Structure$pathAsId(path);
+};
+var author$project$Editor$customEdgeForcesFromGraph = function (cellGraph) {
+	var forceLookup = function (edge) {
 		var lookupWithDefault = function (key) {
 			return A2(
 				elm$core$Maybe$withDefault,
@@ -6603,37 +6821,72 @@ var author$project$Editor$edgesFromGraph = function (cellGraph) {
 			A2(author$project$Structure$textOf, author$project$Editor$propTo, edge));
 		var from = _n0.a;
 		var to = _n0.b;
-		return _Utils_Tuple2(
-			lookupWithDefault(from),
-			lookupWithDefault(to));
+		return {
+			distance: 150,
+			source: lookupWithDefault(from),
+			strength: elm$core$Maybe$Nothing,
+			target: lookupWithDefault(to)
+		};
 	};
 	var edges = A2(
 		author$project$Structure$nodesOf,
 		author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
 		cellGraph);
-	return A2(elm$core$List$map, idLookup, edges);
+	return A2(elm$core$List$map, forceLookup, edges);
 };
 var elm$core$Basics$pi = _Basics_pi;
 var elm$core$Basics$sqrt = _Basics_sqrt;
 var author$project$Editor$initialAngle = elm$core$Basics$pi * (3 - elm$core$Basics$sqrt(5));
 var author$project$Editor$initialRadius = 10;
+var author$project$Editor$propX = 'x';
+var author$project$Editor$propY = 'y';
+var author$project$Structure$tryFloatOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$andThen,
+			function (prop) {
+				if (prop.$ === 'PFloat') {
+					var v = prop.a;
+					return elm$core$Maybe$Just(v);
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			},
+			A2(author$project$Structure$valueOf, key, node));
+	});
 var elm$core$Basics$cos = _Basics_cos;
 var elm$core$Basics$sin = _Basics_sin;
-var author$project$Editor$entity = F2(
+var author$project$Editor$forceEntityFromVertex = F2(
 	function (index, cell) {
 		var radius = elm$core$Basics$sqrt(index) * author$project$Editor$initialRadius;
+		var mbY = A2(author$project$Structure$tryFloatOf, author$project$Editor$propY, cell);
+		var mbX = A2(author$project$Structure$tryFloatOf, author$project$Editor$propX, cell);
 		var angle = index * author$project$Editor$initialAngle;
+		var xNew = function () {
+			if (mbX.$ === 'Nothing') {
+				return radius * elm$core$Basics$cos(angle);
+			} else {
+				var xc = mbX.a;
+				return xc;
+			}
+		}();
+		var yNew = function () {
+			if (mbY.$ === 'Nothing') {
+				return radius * elm$core$Basics$sin(angle);
+			} else {
+				var yc = mbY.a;
+				return yc;
+			}
+		}();
 		return {
 			id: author$project$Structure$pathAsIdFromNode(cell),
 			value: cell,
 			vx: 0.0,
 			vy: 0.0,
-			x: radius * elm$core$Basics$cos(angle),
-			y: radius * elm$core$Basics$sin(angle)
+			x: xNew,
+			y: yNew
 		};
 	});
-var author$project$Editor$propX = 'x';
-var author$project$Editor$propY = 'y';
 var author$project$Structure$PFloat = function (a) {
 	return {$: 'PFloat', a: a};
 };
@@ -6646,20 +6899,268 @@ var author$project$Structure$addFloat = F3(
 				author$project$Structure$PFloat(value)),
 			node);
 	});
+var author$project$Structure$dropRootSegment = function (path) {
+	var segments = path.a;
+	if (segments.b) {
+		var feature = segments.a.feature;
+		var tail = segments.b;
+		return (feature === 'root') ? author$project$Structure$Path(tail) : path;
+	} else {
+		return path;
+	}
+};
+var author$project$Structure$getUnder = F2(
+	function (feature, node) {
+		return _Utils_eq(feature, author$project$Structure$strDefault) ? author$project$Structure$getUnderDefault(node) : A2(author$project$Structure$getUnderCustom, feature, node);
+	});
+var author$project$Structure$replaceAt = F4(
+	function (pathAfter, child, candidate, result) {
+		return _Utils_eq(
+			pathAfter,
+			author$project$Structure$pathOf(candidate)) ? _Utils_ap(
+			result,
+			_List_fromArray(
+				[child])) : _Utils_ap(
+			result,
+			_List_fromArray(
+				[candidate]));
+	});
+var author$project$Structure$replaceNodeUnderCustom = F4(
+	function (key, child, pathAfter, _n0) {
+		var data = _n0.a;
+		var features = data.features;
+		var appender = F2(
+			function (child2, children) {
+				return A3(
+					elm$core$List$foldl,
+					A2(author$project$Structure$replaceAt, pathAfter, child2),
+					_List_Nil,
+					children);
+			});
+		var featuresNew = _Utils_update(
+			features,
+			{
+				custom: A4(author$project$Structure$updateCustomFeature, key, child, appender, features.custom)
+			});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$replaceNodeUnderDefault = F3(
+	function (child, pathAfter, _n0) {
+		var data = _n0.a;
+		var features = data.features;
+		var featuresNew = function () {
+			var _n1 = features._default;
+			if (!_n1.b) {
+				return _Utils_update(
+					features,
+					{
+						_default: _List_fromArray(
+							[child])
+					});
+			} else {
+				var children = _n1;
+				return _Utils_update(
+					features,
+					{
+						_default: A3(
+							elm$core$List$foldl,
+							A2(author$project$Structure$replaceAt, pathAfter, child),
+							_List_Nil,
+							children)
+					});
+			}
+		}();
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$replaceChildAtPathRec = F4(
+	function (nodeNew, pathAt, segments, parent) {
+		if (segments.b) {
+			if (!segments.b.b) {
+				var feature = segments.a.feature;
+				return _Utils_eq(feature, author$project$Structure$strDefault) ? A3(author$project$Structure$replaceNodeUnderDefault, nodeNew, pathAt, parent) : A4(author$project$Structure$replaceNodeUnderCustom, feature, nodeNew, pathAt, parent);
+			} else {
+				var segment = segments.a;
+				var tail = segments.b;
+				return A5(author$project$Structure$replaceChildrenForChildReplace, nodeNew, pathAt, segment, tail, parent);
+			}
+		} else {
+			return parent;
+		}
+	});
+var author$project$Structure$replaceChildrenForChildReplace = F5(
+	function (nodeNew, pathAt, segment, tailSegments, parent) {
+		var replaceChildAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A4(author$project$Structure$replaceChildAtPathRec, nodeNew, pathAt, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			replaceChildAt,
+			A2(author$project$Structure$getUnder, segment.feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
+	});
+var author$project$Structure$replaceChildAtPath = F3(
+	function (nodeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A4(author$project$Structure$replaceChildAtPathRec, nodeNew, path, segmentsNoRoot, root);
+	});
+var elm$core$Debug$log = _Debug_log;
+var elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return elm$core$Maybe$Just(x);
+	} else {
+		return elm$core$Maybe$Nothing;
+	}
+};
 var gampleman$elm_visualization$Force$Center = F2(
 	function (a, b) {
 		return {$: 'Center', a: a, b: b};
 	});
 var gampleman$elm_visualization$Force$center = gampleman$elm_visualization$Force$Center;
-var gampleman$elm_visualization$Force$isCompleted = function (_n0) {
-	var alpha = _n0.a.alpha;
-	var minAlpha = _n0.a.minAlpha;
-	return _Utils_cmp(alpha, minAlpha) < 1;
+var elm$core$Basics$min = F2(
+	function (x, y) {
+		return (_Utils_cmp(x, y) < 0) ? x : y;
+	});
+var elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var gampleman$elm_visualization$Force$Links = F2(
+	function (a, b) {
+		return {$: 'Links', a: a, b: b};
+	});
+var gampleman$elm_visualization$Force$customLinks = F2(
+	function (iters, list) {
+		var counts = A3(
+			elm$core$List$foldr,
+			F2(
+				function (_n1, d) {
+					var source = _n1.source;
+					var target = _n1.target;
+					return A3(
+						elm$core$Dict$update,
+						target,
+						A2(
+							elm$core$Basics$composeL,
+							A2(
+								elm$core$Basics$composeL,
+								elm$core$Maybe$Just,
+								elm$core$Maybe$withDefault(1)),
+							elm$core$Maybe$map(
+								elm$core$Basics$add(1))),
+						A3(
+							elm$core$Dict$update,
+							source,
+							A2(
+								elm$core$Basics$composeL,
+								A2(
+									elm$core$Basics$composeL,
+									elm$core$Maybe$Just,
+									elm$core$Maybe$withDefault(1)),
+								elm$core$Maybe$map(
+									elm$core$Basics$add(1))),
+							d));
+				}),
+			elm$core$Dict$empty,
+			list);
+		var count = function (key) {
+			return A2(
+				elm$core$Maybe$withDefault,
+				0,
+				A2(elm$core$Dict$get, key, counts));
+		};
+		return A2(
+			gampleman$elm_visualization$Force$Links,
+			iters,
+			A2(
+				elm$core$List$map,
+				function (_n0) {
+					var source = _n0.source;
+					var target = _n0.target;
+					var distance = _n0.distance;
+					var strength = _n0.strength;
+					return {
+						bias: count(source) / (count(source) + count(target)),
+						distance: distance,
+						source: source,
+						strength: A2(
+							elm$core$Maybe$withDefault,
+							1 / A2(
+								elm$core$Basics$min,
+								count(source),
+								count(target)),
+							strength),
+						target: target
+					};
+				},
+				list));
+	});
+var elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Dict$fromList = function (assocs) {
+	return A3(
+		elm$core$List$foldl,
+		F2(
+			function (_n0, dict) {
+				var key = _n0.a;
+				var value = _n0.b;
+				return A3(elm$core$Dict$insert, key, value, dict);
+			}),
+		elm$core$Dict$empty,
+		assocs);
 };
+var gampleman$elm_visualization$Force$ManyBody = F2(
+	function (a, b) {
+		return {$: 'ManyBody', a: a, b: b};
+	});
+var gampleman$elm_visualization$Force$customManyBody = function (theta) {
+	return A2(
+		elm$core$Basics$composeR,
+		elm$core$Dict$fromList,
+		gampleman$elm_visualization$Force$ManyBody(theta));
+};
+var gampleman$elm_visualization$Force$manyBodyStrength = function (strength) {
+	return A2(
+		elm$core$Basics$composeL,
+		gampleman$elm_visualization$Force$customManyBody(0.9),
+		elm$core$List$map(
+			function (key) {
+				return _Utils_Tuple2(key, strength);
+			}));
+};
+var elm$core$Basics$pow = _Basics_pow;
 var gampleman$elm_visualization$Force$State = function (a) {
 	return {$: 'State', a: a};
 };
-var elm$core$Basics$pow = _Basics_pow;
+var gampleman$elm_visualization$Force$simulation = function (forces) {
+	return gampleman$elm_visualization$Force$State(
+		{
+			alpha: 1.0,
+			alphaDecay: 1 - A2(elm$core$Basics$pow, 1.0e-3, 1 / 300),
+			alphaTarget: 0.0,
+			forces: forces,
+			minAlpha: 1.0e-3,
+			velocityDecay: 0.6
+		});
+};
 var elm$core$Dict$map = F2(
 	function (func, dict) {
 		if (dict.$ === 'RBEmpty_elm_builtin') {
@@ -6699,16 +7200,6 @@ var elm$core$Dict$sizeHelp = F2(
 var elm$core$Dict$size = function (dict) {
 	return A2(elm$core$Dict$sizeHelp, 0, dict);
 };
-var elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return elm$core$Maybe$Nothing;
-		}
-	});
 var gampleman$elm_visualization$Force$nTimes = F3(
 	function (fn, times, input) {
 		nTimes:
@@ -6969,10 +7460,6 @@ var gampleman$elm_visualization$Force$QuadTree$quadrant = F2(
 		var maxX = _n2.maxX;
 		var maxY = _n2.maxY;
 		return (_Utils_cmp(y, midY) > -1) ? ((_Utils_cmp(x, midX) > -1) ? gampleman$elm_visualization$Force$QuadTree$NE : gampleman$elm_visualization$Force$QuadTree$NW) : ((_Utils_cmp(x, midX) > -1) ? gampleman$elm_visualization$Force$QuadTree$SE : gampleman$elm_visualization$Force$QuadTree$SW);
-	});
-var elm$core$Basics$min = F2(
-	function (x, y) {
-		return (_Utils_cmp(x, y) < 0) ? x : y;
 	});
 var ianmackenzie$elm_geometry$Geometry$Types$BoundingBox2d = function (a) {
 	return {$: 'BoundingBox2d', a: a};
@@ -7482,220 +7969,1274 @@ var gampleman$elm_visualization$Force$tick = F2(
 				updateEntity,
 				elm$core$Dict$values(newNodes)));
 	});
-var gampleman$elm_visualization$Force$computeSimulation = F2(
-	function (state, entities) {
-		computeSimulation:
-		while (true) {
-			if (gampleman$elm_visualization$Force$isCompleted(state)) {
-				return entities;
-			} else {
-				var _n0 = A2(gampleman$elm_visualization$Force$tick, state, entities);
-				var newState = _n0.a;
-				var newEntities = _n0.b;
-				var $temp$state = newState,
-					$temp$entities = newEntities;
-				state = $temp$state;
-				entities = $temp$entities;
-				continue computeSimulation;
-			}
-		}
-	});
-var elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
-var elm$core$Basics$composeL = F3(
-	function (g, f, x) {
-		return g(
-			f(x));
-	});
-var gampleman$elm_visualization$Force$Links = F2(
-	function (a, b) {
-		return {$: 'Links', a: a, b: b};
-	});
-var gampleman$elm_visualization$Force$customLinks = F2(
-	function (iters, list) {
-		var counts = A3(
-			elm$core$List$foldr,
-			F2(
-				function (_n1, d) {
-					var source = _n1.source;
-					var target = _n1.target;
-					return A3(
-						elm$core$Dict$update,
-						target,
-						A2(
-							elm$core$Basics$composeL,
-							A2(
-								elm$core$Basics$composeL,
-								elm$core$Maybe$Just,
-								elm$core$Maybe$withDefault(1)),
-							elm$core$Maybe$map(
-								elm$core$Basics$add(1))),
-						A3(
-							elm$core$Dict$update,
-							source,
-							A2(
-								elm$core$Basics$composeL,
-								A2(
-									elm$core$Basics$composeL,
-									elm$core$Maybe$Just,
-									elm$core$Maybe$withDefault(1)),
-								elm$core$Maybe$map(
-									elm$core$Basics$add(1))),
-							d));
-				}),
-			elm$core$Dict$empty,
-			list);
-		var count = function (key) {
-			return A2(
-				elm$core$Maybe$withDefault,
-				0,
-				A2(elm$core$Dict$get, key, counts));
-		};
-		return A2(
-			gampleman$elm_visualization$Force$Links,
-			iters,
-			A2(
-				elm$core$List$map,
-				function (_n0) {
-					var source = _n0.source;
-					var target = _n0.target;
-					var distance = _n0.distance;
-					var strength = _n0.strength;
-					return {
-						bias: count(source) / (count(source) + count(target)),
-						distance: distance,
-						source: source,
-						strength: A2(
-							elm$core$Maybe$withDefault,
-							1 / A2(
-								elm$core$Basics$min,
-								count(source),
-								count(target)),
-							strength),
-						target: target
-					};
-				},
-				list));
-	});
-var gampleman$elm_visualization$Force$links = A2(
-	elm$core$Basics$composeR,
-	elm$core$List$map(
-		function (_n0) {
-			var source = _n0.a;
-			var target = _n0.b;
-			return {distance: 30, source: source, strength: elm$core$Maybe$Nothing, target: target};
-		}),
-	gampleman$elm_visualization$Force$customLinks(1));
-var elm$core$Dict$fromList = function (assocs) {
-	return A3(
-		elm$core$List$foldl,
-		F2(
-			function (_n0, dict) {
-				var key = _n0.a;
-				var value = _n0.b;
-				return A3(elm$core$Dict$insert, key, value, dict);
-			}),
-		elm$core$Dict$empty,
-		assocs);
-};
-var gampleman$elm_visualization$Force$ManyBody = F2(
-	function (a, b) {
-		return {$: 'ManyBody', a: a, b: b};
-	});
-var gampleman$elm_visualization$Force$customManyBody = function (theta) {
-	return A2(
-		elm$core$Basics$composeR,
-		elm$core$Dict$fromList,
-		gampleman$elm_visualization$Force$ManyBody(theta));
-};
-var gampleman$elm_visualization$Force$manyBodyStrength = function (strength) {
-	return A2(
-		elm$core$Basics$composeL,
-		gampleman$elm_visualization$Force$customManyBody(0.9),
-		elm$core$List$map(
-			function (key) {
-				return _Utils_Tuple2(key, strength);
-			}));
-};
-var gampleman$elm_visualization$Force$simulation = function (forces) {
-	return gampleman$elm_visualization$Force$State(
-		{
-			alpha: 1.0,
-			alphaDecay: 1 - A2(elm$core$Basics$pow, 1.0e-3, 1 / 300),
-			alphaTarget: 0.0,
-			forces: forces,
-			minAlpha: 1.0e-3,
-			velocityDecay: 0.6
-		});
-};
-var author$project$Editor$forceGraph = function (cellGraph) {
-	var verticies = A2(
-		author$project$Structure$nodesOf,
-		author$project$Editor$ContentCell(author$project$Editor$VertexCell),
-		cellGraph);
-	var forces = _List_fromArray(
-		[
-			gampleman$elm_visualization$Force$links(
-			author$project$Editor$edgesFromGraph(cellGraph)),
-			A2(
-			gampleman$elm_visualization$Force$manyBodyStrength,
-			-5000,
-			A2(
-				elm$core$List$map,
-				function (c) {
-					return author$project$Structure$pathAsIdFromNode(c);
-				},
-				verticies)),
-			A2(gampleman$elm_visualization$Force$center, 400, 300)
-		]);
-	var edges = A2(
-		author$project$Structure$nodesOf,
-		author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
-		cellGraph);
-	var addPosToCell = function (e) {
-		return A3(
-			author$project$Structure$addFloat,
-			author$project$Editor$propY,
-			e.y,
-			A3(author$project$Structure$addFloat, author$project$Editor$propX, e.x, e.value));
-	};
-	var simResult = A2(
-		elm$core$List$append,
-		edges,
+var author$project$Editor$tickGraphSimulations = function (editorModel) {
+	var mbCellGraph = elm$core$List$head(
 		A2(
-			elm$core$List$map,
-			addPosToCell,
-			A2(
-				gampleman$elm_visualization$Force$computeSimulation,
-				gampleman$elm_visualization$Force$simulation(forces),
+			author$project$Structure$nodesOf,
+			author$project$Editor$ContentCell(author$project$Editor$GraphCell),
+			editorModel.eRoot));
+	if (mbCellGraph.$ === 'Nothing') {
+		return author$project$Editor$noUpdate(editorModel);
+	} else {
+		var cellGraph = mbCellGraph.a;
+		var _n1 = editorModel.mbSimulation;
+		if (_n1.$ === 'Nothing') {
+			var verticies = A2(
+				author$project$Structure$nodesOf,
+				author$project$Editor$ContentCell(author$project$Editor$VertexCell),
+				cellGraph);
+			var forces = A2(
+				elm$core$Debug$log,
+				'forces',
+				_List_fromArray(
+					[
+						A2(
+						gampleman$elm_visualization$Force$customLinks,
+						1,
+						author$project$Editor$customEdgeForcesFromGraph(cellGraph)),
+						A2(
+						gampleman$elm_visualization$Force$manyBodyStrength,
+						-1000,
+						A2(
+							elm$core$List$map,
+							function (v) {
+								return author$project$Structure$pathAsIdFromNode(v);
+							},
+							verticies)),
+						A2(gampleman$elm_visualization$Force$center, 400, 300)
+					]));
+			return _Utils_Tuple3(
+				false,
+				_Utils_update(
+					editorModel,
+					{
+						mbSimulation: elm$core$Maybe$Just(
+							gampleman$elm_visualization$Force$simulation(forces))
+					}),
+				elm$core$Platform$Cmd$none);
+		} else {
+			var simulation = _n1.a;
+			var verticies = A2(
+				author$project$Structure$nodesOf,
+				author$project$Editor$ContentCell(author$project$Editor$VertexCell),
+				cellGraph);
+			var pathToGraph = author$project$Structure$pathOf(cellGraph);
+			var edges = A2(
+				author$project$Structure$nodesOf,
+				author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
+				cellGraph);
+			var addPosToCell = function (e) {
+				return A3(
+					author$project$Structure$addFloat,
+					author$project$Editor$propY,
+					e.y,
+					A3(author$project$Structure$addFloat, author$project$Editor$propX, e.x, e.value));
+			};
+			var _n2 = A2(
+				gampleman$elm_visualization$Force$tick,
+				simulation,
 				A2(
 					elm$core$List$indexedMap,
 					F2(
-						function (i, n) {
-							return A2(author$project$Editor$entity, i, n);
+						function (i, v) {
+							return A2(author$project$Editor$forceEntityFromVertex, i, v);
 						}),
-					verticies))));
-	return A3(author$project$Structure$replaceUnderFeature, 'default', simResult, cellGraph);
+					verticies));
+			var newSimulationState = _n2.a;
+			var verticiesNew = _n2.b;
+			var childrenNew = _Utils_ap(
+				A2(elm$core$List$map, addPosToCell, verticiesNew),
+				edges);
+			var cellGraphNew = A3(author$project$Structure$replaceUnderFeature, 'default', childrenNew, cellGraph);
+			var eRootNew = A3(author$project$Structure$replaceChildAtPath, cellGraphNew, pathToGraph, editorModel.eRoot);
+			return _Utils_Tuple3(
+				false,
+				_Utils_update(
+					editorModel,
+					{
+						eRoot: eRootNew,
+						mbSimulation: elm$core$Maybe$Just(newSimulationState)
+					}),
+				elm$core$Platform$Cmd$none);
+		}
+	}
+};
+var author$project$Structure$deleteNodeAt = F2(
+	function (_n0, parent) {
+		var feature = _n0.feature;
+		var index = _n0.index;
+		var mbChildAt = F2(
+			function (i, c) {
+				return _Utils_eq(i, index) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(c);
+			});
+		var _delete = function (children) {
+			return A2(
+				elm$core$List$filterMap,
+				elm$core$Basics$identity,
+				A2(elm$core$List$indexedMap, mbChildAt, children));
+		};
+		var childrenNew = _delete(
+			A2(author$project$Structure$getUnder, feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
+	});
+var author$project$Structure$deleteNodeNested = F3(
+	function (_n1, tailSegments, parent) {
+		var feature = _n1.feature;
+		var index = _n1.index;
+		var deleteRec = F2(
+			function (i, child) {
+				return _Utils_eq(i, index) ? A2(author$project$Structure$deleteNodeRec, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			deleteRec,
+			A2(author$project$Structure$getUnder, feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
+	});
+var author$project$Structure$deleteNodeRec = F2(
+	function (segments, parent) {
+		if (segments.b) {
+			if (!segments.b.b) {
+				var segment = segments.a;
+				return A2(author$project$Structure$deleteNodeAt, segment, parent);
+			} else {
+				var segment = segments.a;
+				var tail = segments.b;
+				return A3(author$project$Structure$deleteNodeNested, segment, tail, parent);
+			}
+		} else {
+			return parent;
+		}
+	});
+var author$project$Structure$deleteNodeUnder = F2(
+	function (path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A2(author$project$Structure$deleteNodeRec, segmentsNoRoot, root);
+	});
+var author$project$Structure$addFeaturePath = F2(
+	function (parentPath, _n2) {
+		var _default = _n2._default;
+		var custom = _n2.custom;
+		var indexUpdater = function (feature) {
+			return elm$core$List$indexedMap(
+				A2(author$project$Structure$addPath, parentPath, feature));
+		};
+		var defaultNew = A2(indexUpdater, author$project$Structure$strDefault, _default);
+		var customNew = A2(elm$core$Dict$map, indexUpdater, custom);
+		return {custom: customNew, _default: defaultNew};
+	});
+var author$project$Structure$addPath = F4(
+	function (_n0, feature, index, _n1) {
+		var parentSegments = _n0.a;
+		var data = _n1.a;
+		var segmentNew = {feature: feature, index: index};
+		var pathNew = author$project$Structure$Path(
+			A2(author$project$Structure$appendTo, segmentNew, parentSegments));
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{
+					features: A2(author$project$Structure$addFeaturePath, pathNew, data.features),
+					path: pathNew
+				}));
+	});
+var author$project$Structure$updatePaths = function (_n0) {
+	var data = _n0.a;
+	return author$project$Structure$Node(
+		_Utils_update(
+			data,
+			{
+				features: A2(author$project$Structure$addFeaturePath, data.path, data.features)
+			}));
+};
+var author$project$Editor$tryDelete = F5(
+	function (editorModel, _n0, navFun, textLength, isAtDeletePos) {
+		var path = _n0.path;
+		if (!textLength) {
+			return _Utils_Tuple3(
+				true,
+				_Utils_update(
+					editorModel,
+					{
+						dRoot: author$project$Structure$updatePaths(
+							A2(author$project$Structure$deleteNodeUnder, path, editorModel.dRoot))
+					}),
+				elm$core$Platform$Cmd$none);
+		} else {
+			if (isAtDeletePos) {
+				var mbNext = A2(navFun, editorModel.dRoot, path);
+				if (mbNext.$ === 'Nothing') {
+					return author$project$Editor$noUpdate(editorModel);
+				} else {
+					var next = mbNext.a;
+					return _Utils_Tuple3(
+						true,
+						_Utils_update(
+							editorModel,
+							{
+								dRoot: author$project$Structure$updatePaths(
+									A2(
+										author$project$Structure$deleteNodeUnder,
+										author$project$Structure$pathOf(next),
+										editorModel.dRoot))
+							}),
+						elm$core$Platform$Cmd$none);
+				}
+			} else {
+				return author$project$Editor$noUpdate(editorModel);
+			}
+		}
+	});
+var author$project$Structure$nodeAtI = F2(
+	function (parent, segments) {
+		nodeAtI:
+		while (true) {
+			if (segments.b) {
+				var feature = segments.a.feature;
+				var index = segments.a.index;
+				var tail = segments.b;
+				var mbChildAt = F2(
+					function (i, c) {
+						return _Utils_eq(i, index) ? elm$core$Maybe$Just(c) : elm$core$Maybe$Nothing;
+					});
+				var getAtIndex = function (children) {
+					return A2(
+						elm$core$List$filterMap,
+						elm$core$Basics$identity,
+						A2(elm$core$List$indexedMap, mbChildAt, children));
+				};
+				var nextChild = getAtIndex(
+					A2(author$project$Structure$getUnder, feature, parent));
+				if (nextChild.b && (!nextChild.b.b)) {
+					var child = nextChild.a;
+					var $temp$parent = child,
+						$temp$segments = tail;
+					parent = $temp$parent;
+					segments = $temp$segments;
+					continue nodeAtI;
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			} else {
+				return elm$core$Maybe$Just(parent);
+			}
+		}
+	});
+var author$project$Structure$splitLastPathSegment = function (_n0) {
+	var segments = _n0.a;
+	var tailReversed = function (t) {
+		return author$project$Structure$Path(
+			elm$core$List$reverse(t));
+	};
+	var reversed = elm$core$List$reverse(segments);
+	if (!reversed.b) {
+		return _Utils_Tuple2(elm$core$Maybe$Nothing, elm$core$Maybe$Nothing);
+	} else {
+		if (!reversed.b.b) {
+			var head = reversed.a;
+			return _Utils_Tuple2(
+				elm$core$Maybe$Just(head),
+				elm$core$Maybe$Nothing);
+		} else {
+			var head = reversed.a;
+			var tail = reversed.b;
+			return _Utils_Tuple2(
+				elm$core$Maybe$Just(head),
+				elm$core$Maybe$Just(
+					tailReversed(tail)));
+		}
+	}
+};
+var author$project$Structure$sibling = F3(
+	function (root, path, op) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		var split = author$project$Structure$splitLastPathSegment(
+			author$project$Structure$Path(segmentsNoRoot));
+		if (split.a.$ === 'Nothing') {
+			var _n2 = split.a;
+			return elm$core$Maybe$Nothing;
+		} else {
+			if (split.b.$ === 'Nothing') {
+				var _n3 = split.b;
+				return elm$core$Maybe$Nothing;
+			} else {
+				var last = split.a.a;
+				var parentSegments = split.b.a.a;
+				var lastNew = {
+					feature: last.feature,
+					index: A2(op, last.index, 1)
+				};
+				return A2(
+					author$project$Structure$nodeAtI,
+					root,
+					_Utils_ap(
+						parentSegments,
+						_List_fromArray(
+							[lastNew])));
+			}
+		}
+	});
+var author$project$Structure$previousSibling = F2(
+	function (root, path) {
+		return A3(author$project$Structure$sibling, root, path, elm$core$Basics$sub);
+	});
+var author$project$Editor$updateOnBackspaceEffect = F3(
+	function (editorModel, effect, cellContext) {
+		if (effect.$ === 'DeletionEffect') {
+			var effectData = effect.a;
+			var selection = effectData.selection;
+			var textLength = elm$core$String$length(
+				A2(author$project$Structure$textOf, author$project$Editor$propInput, cellContext));
+			var isAtDeletePos = !selection.start;
+			return A5(author$project$Editor$tryDelete, editorModel, effectData, author$project$Structure$previousSibling, textLength, isAtDeletePos);
+		} else {
+			return author$project$Editor$noUpdate(editorModel);
+		}
+	});
+var author$project$Editor$propName = 'name';
+var author$project$Structure$replaceChildrenForRangeReplace = F6(
+	function (key, rangeNew, pathAt, segment, tailSegments, parent) {
+		var replaceRangeAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, pathAt, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			replaceRangeAt,
+			A2(author$project$Structure$getUnder, segment.feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
+	});
+var author$project$Structure$replaceRangeAtPathRec = F5(
+	function (key, rangeNew, pathAt, segments, parent) {
+		if (!segments.b) {
+			return A3(author$project$Structure$replaceUnderFeature, key, rangeNew, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A6(author$project$Structure$replaceChildrenForRangeReplace, key, rangeNew, pathAt, segment, tail, parent);
+		}
+	});
+var author$project$Structure$replaceRangeAtPath = F4(
+	function (key, rangeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, path, segmentsNoRoot, root);
+	});
+var author$project$Editor$setScopeInformation = F2(
+	function (domainModel, scopeData) {
+		var optionNodes = A2(
+			elm$core$List$map,
+			function (s) {
+				return A3(
+					author$project$Structure$addText,
+					author$project$Editor$propScopeValue,
+					A2(author$project$Structure$textOf, author$project$Editor$propName, s),
+					author$project$Structure$createNode(scopeData.isa));
+			},
+			A2(author$project$Structure$nodesOf, scopeData.isa, domainModel));
+		return A4(author$project$Structure$replaceRangeAtPath, author$project$Editor$featScope, optionNodes, scopeData.pathContextNode, domainModel);
+	});
+var author$project$Editor$updateOnCreateScopeEffect = F2(
+	function (editorModel, effect) {
+		if (effect.$ === 'CreateScopeEffect') {
+			var scopeData = effect.a;
+			return _Utils_Tuple3(
+				true,
+				_Utils_update(
+					editorModel,
+					{
+						dRoot: A2(author$project$Editor$setScopeInformation, editorModel.dRoot, scopeData)
+					}),
+				elm$core$Platform$Cmd$none);
+		} else {
+			return author$project$Editor$noUpdate(editorModel);
+		}
+	});
+var author$project$Structure$nextSibling = F2(
+	function (root, path) {
+		return A3(author$project$Structure$sibling, root, path, elm$core$Basics$add);
+	});
+var author$project$Editor$updateOnDeleteEffect = F3(
+	function (editorModel, effect, cellContext) {
+		if (effect.$ === 'DeletionEffect') {
+			var effectData = effect.a;
+			var selection = effectData.selection;
+			var textLength = elm$core$String$length(
+				A2(author$project$Structure$textOf, author$project$Editor$propInput, cellContext));
+			var isAtDeletePos = _Utils_eq(selection.end, textLength);
+			return A5(author$project$Editor$tryDelete, editorModel, effectData, author$project$Structure$nextSibling, textLength, isAtDeletePos);
+		} else {
+			return author$project$Editor$noUpdate(editorModel);
+		}
+	});
+var elm$core$String$toFloat = _String_toFloat;
+var elm$core$String$toLower = _String_toLower;
+var author$project$Structure$updateProperty = F2(
+	function (_n0, _n1) {
+		var key = _n0.a;
+		var value = _n0.b;
+		var data = _n1.a;
+		var primitiveOld = A2(
+			elm$core$Maybe$withDefault,
+			author$project$Structure$PString(''),
+			A2(elm$core$Dict$get, key, data.properties));
+		var primitiveNew = function () {
+			switch (primitiveOld.$) {
+				case 'PString':
+					return author$project$Structure$PString(value);
+				case 'PInt':
+					return A2(
+						elm$core$Maybe$withDefault,
+						primitiveOld,
+						A2(
+							elm$core$Maybe$andThen,
+							function (i) {
+								return elm$core$Maybe$Just(
+									author$project$Structure$PInt(i));
+							},
+							elm$core$String$toInt(value)));
+				case 'PBool':
+					return (elm$core$String$toLower(value) === 'true') ? author$project$Structure$PBool(true) : ((elm$core$String$toLower(value) === 'false') ? author$project$Structure$PBool(false) : primitiveOld);
+				default:
+					return A2(
+						elm$core$Maybe$withDefault,
+						primitiveOld,
+						A2(
+							elm$core$Maybe$andThen,
+							function (f) {
+								return elm$core$Maybe$Just(
+									author$project$Structure$PFloat(f));
+							},
+							elm$core$String$toFloat(value)));
+			}
+		}();
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{
+					properties: A3(elm$core$Dict$insert, key, primitiveNew, data.properties)
+				}));
+	});
+var author$project$Structure$updateChildrenUnder = F4(
+	function (_n1, tailSegments, kvp, parent) {
+		var feature = _n1.feature;
+		var index = _n1.index;
+		var updateAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, tailSegments, kvp, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			updateAt,
+			A2(author$project$Structure$getUnder, feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
+	});
+var author$project$Structure$updatePropertyRec = F3(
+	function (segments, kvp, parent) {
+		if (!segments.b) {
+			return A2(author$project$Structure$updateProperty, kvp, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A4(author$project$Structure$updateChildrenUnder, segment, tail, kvp, parent);
+		}
+	});
+var author$project$Structure$updatePropertyByPath = F3(
+	function (root, path, kvp) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A3(author$project$Structure$updatePropertyRec, segmentsNoRoot, kvp, root);
+	});
+var author$project$Editor$updateOnInputEffect = F3(
+	function (editorModel, effect, value) {
+		if (effect.$ === 'InputEffect') {
+			var path = effect.a.path;
+			var key = effect.a.key;
+			return _Utils_Tuple3(
+				true,
+				_Utils_update(
+					editorModel,
+					{
+						dRoot: author$project$Structure$updatePaths(
+							A3(
+								author$project$Structure$updatePropertyByPath,
+								editorModel.dRoot,
+								path,
+								_Utils_Tuple2(key, value)))
+					}),
+				elm$core$Platform$Cmd$none);
+		} else {
+			return author$project$Editor$noUpdate(editorModel);
+		}
+	});
+var author$project$Editor$D = {$: 'D'};
+var author$project$Editor$NavSelection = function (a) {
+	return {$: 'NavSelection', a: a};
+};
+var author$project$Editor$NavSelectionEffect = function (a) {
+	return {$: 'NavSelectionEffect', a: a};
+};
+var author$project$Editor$NavSelectionEffectData = F3(
+	function (dir, pathSelectedCell, selection) {
+		return {dir: dir, pathSelectedCell: pathSelectedCell, selection: selection};
+	});
+var author$project$Editor$Selection = F3(
+	function (start, end, dir) {
+		return {dir: dir, end: end, start: start};
+	});
+var author$project$Editor$updateSelectionOnEnter = function (cellContext) {
+	return A2(
+		elm$core$Task$perform,
+		author$project$Editor$NavSelection,
+		elm$core$Task$succeed(
+			author$project$Editor$NavSelectionEffect(
+				A3(
+					author$project$Editor$NavSelectionEffectData,
+					author$project$Editor$D,
+					author$project$Structure$pathOf(cellContext),
+					A3(author$project$Editor$Selection, 0, 0, '')))));
+};
+var author$project$Structure$addChildAtPathRec = F4(
+	function (key, nodeNew, segments, parent) {
+		if (!segments.b) {
+			return _Utils_eq(key, author$project$Structure$strDefault) ? A2(author$project$Structure$addToDefault, nodeNew, parent) : A3(author$project$Structure$addToCustom, key, nodeNew, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A5(author$project$Structure$addChildrenAtPathRec, key, nodeNew, segment, tail, parent);
+		}
+	});
+var author$project$Structure$addChildrenAtPathRec = F5(
+	function (key, nodeNew, _n0, tailSegments, parent) {
+		var feature = _n0.feature;
+		var index = _n0.index;
+		var insertAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, index) ? A4(author$project$Structure$addChildAtPathRec, key, nodeNew, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			insertAt,
+			A2(author$project$Structure$getUnder, feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
+	});
+var author$project$Structure$addChildAtPath = F4(
+	function (key, nodeNew, path, root) {
+		var feature = (key === '') ? author$project$Structure$strDefault : key;
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A4(author$project$Structure$addChildAtPathRec, feature, nodeNew, segmentsNoRoot, root);
+	});
+var author$project$Structure$insertAfter = F4(
+	function (pathAfter, child, candidate, result) {
+		return _Utils_eq(
+			pathAfter,
+			author$project$Structure$pathOf(candidate)) ? _Utils_ap(
+			result,
+			_List_fromArray(
+				[candidate, child])) : _Utils_ap(
+			result,
+			_List_fromArray(
+				[candidate]));
+	});
+var author$project$Structure$insertAfterUnderCustom = F4(
+	function (key, child, pathAfter, _n0) {
+		var data = _n0.a;
+		var features = data.features;
+		var appender = F2(
+			function (child2, children) {
+				return A3(
+					elm$core$List$foldl,
+					A2(author$project$Structure$insertAfter, pathAfter, child2),
+					_List_Nil,
+					children);
+			});
+		var featuresNew = _Utils_update(
+			features,
+			{
+				custom: A4(author$project$Structure$updateCustomFeature, key, child, appender, features.custom)
+			});
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$insertAfterUnderDefault = F3(
+	function (child, pathAfter, _n0) {
+		var data = _n0.a;
+		var features = data.features;
+		var featuresNew = function () {
+			var _n1 = features._default;
+			if (!_n1.b) {
+				return _Utils_update(
+					features,
+					{
+						_default: _List_fromArray(
+							[child])
+					});
+			} else {
+				var children = _n1;
+				return _Utils_update(
+					features,
+					{
+						_default: A3(
+							elm$core$List$foldl,
+							A2(author$project$Structure$insertAfter, pathAfter, child),
+							_List_Nil,
+							children)
+					});
+			}
+		}();
+		return author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var author$project$Structure$insertChildAfterPathRec = F4(
+	function (nodeNew, pathAfter, segments, parent) {
+		if (segments.b) {
+			if (!segments.b.b) {
+				var feature = segments.a.feature;
+				return _Utils_eq(feature, author$project$Structure$strDefault) ? A3(author$project$Structure$insertAfterUnderDefault, nodeNew, pathAfter, parent) : A4(author$project$Structure$insertAfterUnderCustom, feature, nodeNew, pathAfter, parent);
+			} else {
+				var segment = segments.a;
+				var tail = segments.b;
+				return A5(author$project$Structure$insertChildren, nodeNew, pathAfter, segment, tail, parent);
+			}
+		} else {
+			return parent;
+		}
+	});
+var author$project$Structure$insertChildren = F5(
+	function (nodeNew, pathAfter, segment, tailSegments, parent) {
+		var insertAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A4(author$project$Structure$insertChildAfterPathRec, nodeNew, pathAfter, tailSegments, child) : child;
+			});
+		var childrenNew = A2(
+			elm$core$List$indexedMap,
+			insertAt,
+			A2(author$project$Structure$getUnder, segment.feature, parent));
+		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
+	});
+var author$project$Structure$insertChildAfterPath = F3(
+	function (nodeNew, path, root) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A4(author$project$Structure$insertChildAfterPathRec, nodeNew, path, segmentsNoRoot, root);
+	});
+var author$project$Editor$updateOnInsertionEffect = F3(
+	function (editorModel, effect, cellContext) {
+		if (effect.$ === 'InsertionEffect') {
+			var path = effect.a.path;
+			var nodeToInsert = effect.a.nodeToInsert;
+			var isReplace = effect.a.isReplace;
+			var feature = effect.a.feature;
+			if (isReplace) {
+				var dRootNew = author$project$Structure$updatePaths(
+					A4(author$project$Structure$addChildAtPath, feature, nodeToInsert, path, editorModel.dRoot));
+				return _Utils_Tuple3(
+					true,
+					_Utils_update(
+						editorModel,
+						{dRoot: dRootNew}),
+					elm$core$Platform$Cmd$none);
+			} else {
+				var dRootNew = author$project$Structure$updatePaths(
+					A3(author$project$Structure$insertChildAfterPath, nodeToInsert, path, editorModel.dRoot));
+				return _Utils_Tuple3(
+					true,
+					_Utils_update(
+						editorModel,
+						{dRoot: dRootNew}),
+					author$project$Editor$updateSelectionOnEnter(cellContext));
+			}
+		} else {
+			return author$project$Editor$noUpdate(editorModel);
+		}
+	});
+var author$project$Editor$Horiz = {$: 'Horiz'};
+var author$project$Editor$Vert = {$: 'Vert'};
+var author$project$Structure$parentOf = F2(
+	function (root, path) {
+		var _n0 = author$project$Structure$splitLastPathSegment(
+			author$project$Structure$dropRootSegment(path));
+		var mbPathToParent = _n0.b;
+		return A2(
+			elm$core$Maybe$andThen,
+			author$project$Structure$nodeAtI(root),
+			A2(
+				elm$core$Maybe$map,
+				function (_n1) {
+					var segments = _n1.a;
+					return segments;
+				},
+				mbPathToParent));
+	});
+var author$project$Editor$orientationOf = F2(
+	function (root, cell) {
+		var _n0 = author$project$Structure$isaOf(cell);
+		if (_n0.$ === 'ContentCell') {
+			if (_n0.a.$ === 'StackCell') {
+				var _n1 = _n0.a;
+				return elm$core$Maybe$Just(
+					function () {
+						var bO = A2(author$project$Structure$boolOf, author$project$Editor$propIsHoriz, cell);
+						return bO ? author$project$Editor$Horiz : author$project$Editor$Vert;
+					}());
+			} else {
+				return A2(
+					elm$core$Maybe$andThen,
+					author$project$Editor$orientationOf(root),
+					A2(
+						author$project$Structure$parentOf,
+						root,
+						author$project$Structure$pathOf(cell)));
+			}
+		} else {
+			return elm$core$Maybe$Nothing;
+		}
+	});
+var author$project$Editor$NoOp = {$: 'NoOp'};
+var author$project$Editor$findFirstInputCellRec = F3(
+	function (root, candidates, recFun) {
+		findFirstInputCellRec:
+		while (true) {
+			if (!candidates.b) {
+				return elm$core$Maybe$Nothing;
+			} else {
+				var head = candidates.a;
+				var tail = candidates.b;
+				var mbFirst = A2(recFun, root, head);
+				if (mbFirst.$ === 'Nothing') {
+					var $temp$root = root,
+						$temp$candidates = tail,
+						$temp$recFun = recFun;
+					root = $temp$root;
+					candidates = $temp$candidates;
+					recFun = $temp$recFun;
+					continue findFirstInputCellRec;
+				} else {
+					var first = mbFirst.a;
+					return elm$core$Maybe$Just(first);
+				}
+			}
+		}
+	});
+var author$project$Editor$findNextInputCell = F2(
+	function (root, current) {
+		findNextInputCell:
+		while (true) {
+			var mbNext = A2(
+				author$project$Structure$nextSibling,
+				root,
+				author$project$Structure$pathOf(current));
+			if (mbNext.$ === 'Just') {
+				var next = mbNext.a;
+				return A2(
+					elm$core$Maybe$withDefault,
+					current,
+					A2(author$project$Editor$findNextInputCellRec, root, next));
+			} else {
+				var mbParent = A2(
+					author$project$Structure$parentOf,
+					root,
+					author$project$Structure$pathOf(current));
+				if (mbParent.$ === 'Nothing') {
+					return current;
+				} else {
+					var parent = mbParent.a;
+					var $temp$root = root,
+						$temp$current = parent;
+					root = $temp$root;
+					current = $temp$current;
+					continue findNextInputCell;
+				}
+			}
+		}
+	});
+var author$project$Editor$findNextInputCellRec = F2(
+	function (root, next) {
+		var _n0 = author$project$Structure$isaOf(next);
+		_n0$2:
+		while (true) {
+			if (_n0.$ === 'ContentCell') {
+				switch (_n0.a.$) {
+					case 'InputCell':
+						var _n1 = _n0.a;
+						return elm$core$Maybe$Just(next);
+					case 'StackCell':
+						var _n2 = _n0.a;
+						var _n3 = author$project$Structure$getUnderDefault(next);
+						if (!_n3.b) {
+							return elm$core$Maybe$Just(
+								A2(author$project$Editor$findNextInputCell, root, next));
+						} else {
+							var children = _n3;
+							var mbFirst = A3(author$project$Editor$findFirstInputCellRec, root, children, author$project$Editor$findNextInputCellRec);
+							if (mbFirst.$ === 'Nothing') {
+								return elm$core$Maybe$Just(
+									A2(author$project$Editor$findNextInputCell, root, next));
+							} else {
+								var first = mbFirst.a;
+								return elm$core$Maybe$Just(first);
+							}
+						}
+					default:
+						break _n0$2;
+				}
+			} else {
+				break _n0$2;
+			}
+		}
+		return elm$core$Maybe$Just(
+			A2(author$project$Editor$findNextInputCell, root, next));
+	});
+var author$project$Editor$findPrevInputCell = F2(
+	function (root, current) {
+		findPrevInputCell:
+		while (true) {
+			var mbPrev = A2(
+				author$project$Structure$previousSibling,
+				root,
+				author$project$Structure$pathOf(current));
+			if (mbPrev.$ === 'Just') {
+				var prev = mbPrev.a;
+				return A2(
+					elm$core$Maybe$withDefault,
+					current,
+					A2(author$project$Editor$findPrevInputCellRec, root, prev));
+			} else {
+				var mbParent = A2(
+					author$project$Structure$parentOf,
+					root,
+					author$project$Structure$pathOf(current));
+				if (mbParent.$ === 'Nothing') {
+					return current;
+				} else {
+					var parent = mbParent.a;
+					var $temp$root = root,
+						$temp$current = parent;
+					root = $temp$root;
+					current = $temp$current;
+					continue findPrevInputCell;
+				}
+			}
+		}
+	});
+var author$project$Editor$findPrevInputCellRec = F2(
+	function (root, prev) {
+		var _n0 = author$project$Structure$isaOf(prev);
+		_n0$2:
+		while (true) {
+			if (_n0.$ === 'ContentCell') {
+				switch (_n0.a.$) {
+					case 'InputCell':
+						var _n1 = _n0.a;
+						return elm$core$Maybe$Just(prev);
+					case 'StackCell':
+						var _n2 = _n0.a;
+						var _n3 = author$project$Structure$getUnderDefault(prev);
+						if (!_n3.b) {
+							return elm$core$Maybe$Just(
+								A2(author$project$Editor$findPrevInputCell, root, prev));
+						} else {
+							var children = _n3;
+							var mbLast = A3(
+								author$project$Editor$findFirstInputCellRec,
+								root,
+								elm$core$List$reverse(children),
+								author$project$Editor$findPrevInputCellRec);
+							if (mbLast.$ === 'Nothing') {
+								return elm$core$Maybe$Just(
+									A2(author$project$Editor$findPrevInputCell, root, prev));
+							} else {
+								var last = mbLast.a;
+								return elm$core$Maybe$Just(last);
+							}
+						}
+					default:
+						break _n0$2;
+				}
+			} else {
+				break _n0$2;
+			}
+		}
+		return elm$core$Maybe$Just(
+			A2(author$project$Editor$findPrevInputCell, root, prev));
+	});
+var author$project$Structure$nodeAt = F2(
+	function (parent, path) {
+		var _n0 = author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _n0.a;
+		return A2(author$project$Structure$nodeAtI, parent, segmentsNoRoot);
+	});
+var elm$browser$Browser$Dom$focus = _Browser_call('focus');
+var elm$core$Task$onError = _Scheduler_onError;
+var elm$core$Task$attempt = F2(
+	function (resultToMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(
+					elm$core$Task$onError,
+					A2(
+						elm$core$Basics$composeL,
+						A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+						elm$core$Result$Err),
+					A2(
+						elm$core$Task$andThen,
+						A2(
+							elm$core$Basics$composeL,
+							A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+							elm$core$Result$Ok),
+						task))));
+	});
+var author$project$Editor$updateSelectionByOrientation = F3(
+	function (editorModel, navData, orientation) {
+		var mbCellSelected = A2(author$project$Structure$nodeAt, editorModel, navData.pathSelectedCell);
+		if (mbCellSelected.$ === 'Nothing') {
+			return elm$core$Platform$Cmd$none;
+		} else {
+			var cellSelected = mbCellSelected.a;
+			var moverTask = function (f) {
+				return A2(
+					elm$core$Task$attempt,
+					function (_n10) {
+						return author$project$Editor$NoOp;
+					},
+					elm$browser$Browser$Dom$focus(
+						author$project$Structure$pathAsIdFromNode(
+							A2(f, editorModel, cellSelected))));
+			};
+			var _n1 = _Utils_Tuple2(navData.dir, orientation);
+			_n1$4:
+			while (true) {
+				if (_n1.b.$ === 'Vert') {
+					switch (_n1.a.$) {
+						case 'U':
+							var _n2 = _n1.a;
+							var _n3 = _n1.b;
+							return moverTask(author$project$Editor$findPrevInputCell);
+						case 'D':
+							var _n4 = _n1.a;
+							var _n5 = _n1.b;
+							return moverTask(author$project$Editor$findNextInputCell);
+						default:
+							break _n1$4;
+					}
+				} else {
+					switch (_n1.a.$) {
+						case 'L':
+							var _n6 = _n1.a;
+							var _n7 = _n1.b;
+							return (!navData.selection.start) ? moverTask(author$project$Editor$findPrevInputCell) : elm$core$Platform$Cmd$none;
+						case 'R':
+							var _n8 = _n1.a;
+							var _n9 = _n1.b;
+							return (_Utils_cmp(
+								navData.selection.start,
+								elm$core$String$length(
+									A2(author$project$Structure$textOf, author$project$Editor$propInput, cellSelected))) > -1) ? moverTask(author$project$Editor$findNextInputCell) : elm$core$Platform$Cmd$none;
+						default:
+							break _n1$4;
+					}
+				}
+			}
+			return elm$core$Platform$Cmd$none;
+		}
+	});
+var author$project$Editor$updateSelection = F2(
+	function (editorModel, navData) {
+		var mbNodeContext = A2(author$project$Structure$nodeAt, editorModel, navData.pathSelectedCell);
+		var mbOrientation = A2(
+			elm$core$Maybe$andThen,
+			author$project$Editor$orientationOf(editorModel),
+			mbNodeContext);
+		if (mbOrientation.$ === 'Nothing') {
+			return elm$core$Platform$Cmd$none;
+		} else {
+			var orientation = mbOrientation.a;
+			return A3(author$project$Editor$updateSelectionByOrientation, editorModel, navData, orientation);
+		}
+	});
+var author$project$Editor$updateOnNavEffect = F2(
+	function (effect, editorModel) {
+		if (effect.$ === 'NavSelectionEffect') {
+			var navData = effect.a;
+			return A2(author$project$Editor$updateSelection, editorModel, navData);
+		} else {
+			return elm$core$Platform$Cmd$none;
+		}
+	});
+var author$project$Editor$updateEditor = F2(
+	function (msg, editorModel) {
+		switch (msg.$) {
+			case 'Tick':
+				return author$project$Editor$tickGraphSimulations(editorModel);
+			case 'NoOp':
+				return author$project$Editor$noUpdate(editorModel);
+			case 'Swallow':
+				return author$project$Editor$noUpdate(editorModel);
+			case 'OnEnter':
+				var effect = msg.a;
+				var cellContext = msg.b;
+				return A3(author$project$Editor$updateOnInsertionEffect, editorModel, effect, cellContext);
+			case 'OnClick':
+				var effect = msg.a;
+				var cellContext = msg.b;
+				return A3(author$project$Editor$updateOnInsertionEffect, editorModel, effect, cellContext);
+			case 'OnDelete':
+				var effect = msg.a;
+				var cellContext = msg.b;
+				return A3(author$project$Editor$updateOnDeleteEffect, editorModel, effect, cellContext);
+			case 'OnBackspace':
+				var effect = msg.a;
+				var cellContext = msg.b;
+				return A3(author$project$Editor$updateOnBackspaceEffect, editorModel, effect, cellContext);
+			case 'OnInput':
+				var effect = msg.a;
+				var value = msg.b;
+				return A3(author$project$Editor$updateOnInputEffect, editorModel, effect, value);
+			case 'NavSelection':
+				var effect = msg.a;
+				return _Utils_Tuple3(
+					false,
+					editorModel,
+					A2(author$project$Editor$updateOnNavEffect, effect, editorModel.eRoot));
+			default:
+				var effect = msg.a;
+				return A2(author$project$Editor$updateOnCreateScopeEffect, editorModel, effect);
+		}
+	});
+var author$project$Runtime$EditorMsg = function (a) {
+	return {$: 'EditorMsg', a: a};
+};
+var author$project$Runtime$runDomainXform = function (domain) {
+	return author$project$Structure$updatePaths(
+		author$project$Editor$griddify(
+			domain.xform(domain.root)));
+};
+var elm$core$Platform$Cmd$map = _Platform_map;
+var author$project$Runtime$update = F2(
+	function (msg, model) {
+		var domain = model.domain;
+		var editorModel = model.editorModel;
+		if (msg.$ === 'Tick') {
+			var eMsg = msg.a;
+			var _n1 = A2(author$project$Editor$updateEditor, eMsg, editorModel);
+			var runXform = _n1.a;
+			var editorModelUpdated = _n1.b;
+			var editorCmd = _n1.c;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{editorModel: editorModelUpdated}),
+				elm$core$Platform$Cmd$none);
+		} else {
+			var eMsg = msg.a;
+			var _n2 = A2(author$project$Editor$updateEditor, eMsg, editorModel);
+			var runXform = _n2.a;
+			var editorModelUpdated = _n2.b;
+			var editorCmd = _n2.c;
+			var modelNew = function () {
+				if (runXform) {
+					var domainNew = _Utils_update(
+						domain,
+						{root: editorModelUpdated.dRoot});
+					var rootENew = author$project$Runtime$runDomainXform(domainNew);
+					var editorModelNew = _Utils_update(
+						editorModelUpdated,
+						{eRoot: rootENew, mbSimulation: elm$core$Maybe$Nothing});
+					return _Utils_update(
+						model,
+						{domain: domainNew, editorModel: editorModelNew});
+				} else {
+					return model;
+				}
+			}();
+			return _Utils_Tuple2(
+				modelNew,
+				A2(elm$core$Platform$Cmd$map, author$project$Runtime$EditorMsg, editorCmd));
+		}
+	});
+var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
+var author$project$Editor$divRowAttributes = function (cell) {
+	return A2(author$project$Structure$boolOf, author$project$Editor$propIsGrid, cell) ? _List_fromArray(
+		[
+			A2(elm$html$Html$Attributes$style, 'display', 'table-row')
+		]) : _List_Nil;
+};
+var author$project$Structure$tryIntOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$andThen,
+			function (prop) {
+				if (prop.$ === 'PInt') {
+					var v = prop.a;
+					return elm$core$Maybe$Just(v);
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			},
+			A2(author$project$Structure$valueOf, key, node));
+	});
+var author$project$Structure$intOf = F2(
+	function (key, node) {
+		return A2(
+			elm$core$Maybe$withDefault,
+			0,
+			A2(author$project$Structure$tryIntOf, key, node));
+	});
+var author$project$Editor$margins = function (cell) {
+	var top = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, author$project$Editor$propMarginTop, cell)) + 'px ';
+	var right = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, author$project$Editor$propMarginRight, cell) + 5) + 'px ';
+	var indentMarginLeft = A2(author$project$Structure$boolOf, author$project$Editor$propIndent, cell) ? 20 : 0;
+	var left = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, author$project$Editor$propMarginLeft, cell) + indentMarginLeft) + 'px';
+	var bottom = elm$core$String$fromInt(
+		A2(author$project$Structure$intOf, author$project$Editor$propMarginBottom, cell)) + 'px ';
+	return A2(
+		elm$html$Html$Attributes$style,
+		'margin',
+		_Utils_ap(
+			top,
+			_Utils_ap(
+				right,
+				_Utils_ap(bottom, left))));
+};
+var author$project$Editor$paddings = function (_n0) {
+	return A2(elm$html$Html$Attributes$style, 'padding', '0px 0px 0px 0px');
+};
+var author$project$Editor$marginsAndPaddings = function (cell) {
+	return _List_fromArray(
+		[
+			author$project$Editor$margins(cell),
+			author$project$Editor$paddings(cell)
+		]);
+};
+var author$project$Editor$OnClick = F2(
+	function (a, b) {
+		return {$: 'OnClick', a: a, b: b};
+	});
+var author$project$Editor$isasUnderCustom = F2(
+	function (featureKey, parent) {
+		var children = (featureKey === '') ? author$project$Structure$getUnderDefault(parent) : A2(author$project$Structure$getUnderCustom, featureKey, parent);
+		return A2(elm$core$List$map, author$project$Structure$isaOf, children);
+	});
+var elm$html$Html$button = _VirtualDom_node('button');
+var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			elm$virtual_dom$VirtualDom$on,
+			event,
+			elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		elm$html$Html$Events$on,
+		'click',
+		elm$json$Json$Decode$succeed(msg));
+};
+var author$project$Editor$viewButtonCell = function (cell) {
+	var _n0 = author$project$Structure$isaOf(cell);
+	if (_n0.$ === 'ContentCell') {
+		var onClick = A2(
+			elm$core$Maybe$withDefault,
+			_List_Nil,
+			A2(
+				elm$core$Maybe$andThen,
+				function (e) {
+					if (e.$ === 'EffectCell') {
+						var effect = e.a;
+						return elm$core$Maybe$Just(
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onClick(
+									A2(author$project$Editor$OnClick, effect, cell))
+								]));
+					} else {
+						return elm$core$Maybe$Nothing;
+					}
+				},
+				elm$core$List$head(
+					A2(author$project$Editor$isasUnderCustom, author$project$Editor$featEffects, cell))));
+		return A2(
+			elm$html$Html$button,
+			_Utils_ap(
+				author$project$Editor$marginsAndPaddings(cell),
+				onClick),
+			_List_fromArray(
+				[
+					elm$html$Html$text(
+					A2(author$project$Structure$textOf, author$project$Editor$propText, cell))
+				]));
+	} else {
+		return elm$html$Html$text('');
+	}
+};
+var author$project$Editor$divCellAttributes = function (cell) {
+	return A2(author$project$Structure$boolOf, author$project$Editor$propIsGrid, cell) ? _List_fromArray(
+		[
+			A2(elm$html$Html$Attributes$style, 'display', 'table-cell')
+		]) : _List_Nil;
+};
+var elm$html$Html$div = _VirtualDom_node('div');
+var elm$html$Html$label = _VirtualDom_node('label');
+var elm$json$Json$Encode$string = _Json_wrap;
+var elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			elm$json$Json$Encode$string(string));
+	});
+var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
+var author$project$Editor$viewConstantCell = function (cell) {
+	var _n0 = author$project$Structure$isaOf(cell);
+	if (_n0.$ === 'ContentCell') {
+		return A2(
+			elm$html$Html$div,
+			author$project$Editor$divCellAttributes(cell),
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$label,
+					_Utils_ap(
+						_List_fromArray(
+							[
+								elm$html$Html$Attributes$id(
+								author$project$Structure$pathAsIdFromNode(cell)),
+								A2(elm$html$Html$Attributes$style, 'font-weight', 'bold'),
+								A2(elm$html$Html$Attributes$style, 'color', 'darkblue')
+							]),
+						author$project$Editor$marginsAndPaddings(cell)),
+					_List_fromArray(
+						[
+							elm$html$Html$text(
+							A2(author$project$Structure$textOf, author$project$Editor$propConstant, cell))
+						]))
+				]));
+	} else {
+		return elm$html$Html$text('');
+	}
 };
 var author$project$Structure$floatOf = F2(
 	function (key, node) {
 		return A2(
 			elm$core$Maybe$withDefault,
 			0,
-			A2(
-				elm$core$Maybe$andThen,
-				function (prop) {
-					if (prop.$ === 'PFloat') {
-						var v = prop.a;
-						return elm$core$Maybe$Just(v);
-					} else {
-						return elm$core$Maybe$Nothing;
-					}
-				},
-				A2(author$project$Structure$valueOf, key, node)));
+			A2(author$project$Structure$tryFloatOf, key, node));
 	});
 var avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {
@@ -7906,7 +9447,6 @@ var author$project$Editor$viewEdgeCell = function (fromTo) {
 		}
 	}
 };
-var elm$core$Debug$log = _Debug_log;
 var author$project$Editor$viewEdgeCells = function (cellGraph) {
 	var fromToLookup = function (edge) {
 		var lookup = function (key) {
@@ -7925,20 +9465,13 @@ var author$project$Editor$viewEdgeCells = function (cellGraph) {
 			lookup(to));
 	};
 	var edges = A2(
-		elm$core$Debug$log,
-		'edges',
-		A2(
-			author$project$Structure$nodesOf,
-			author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
-			cellGraph));
-	var fromToPairs = A2(
-		elm$core$Debug$log,
-		'pairs',
-		A2(elm$core$List$map, fromToLookup, edges));
+		author$project$Structure$nodesOf,
+		author$project$Editor$ContentCell(author$project$Editor$EdgeCell),
+		cellGraph);
+	var fromToPairs = A2(elm$core$List$map, fromToLookup, edges);
 	return A2(elm$core$List$map, author$project$Editor$viewEdgeCell, fromToPairs);
 };
 var avh4$elm_color$Color$blue = A4(avh4$elm_color$Color$RgbaSpace, 52 / 255, 101 / 255, 164 / 255, 1.0);
-var elm$core$String$length = _String_length;
 var elm_community$typed_svg$TypedSvg$g = elm_community$typed_svg$TypedSvg$Core$node('g');
 var elm_community$typed_svg$TypedSvg$rect = elm_community$typed_svg$TypedSvg$Core$node('rect');
 var elm_community$typed_svg$TypedSvg$text_ = elm_community$typed_svg$TypedSvg$Core$node('text');
@@ -8028,8 +9561,12 @@ var elm_community$typed_svg$TypedSvg$Types$AnchorMiddle = {$: 'AnchorMiddle'};
 var author$project$Editor$viewVertexCell = function (cell) {
 	var yPos = A2(author$project$Structure$floatOf, author$project$Editor$propY, cell);
 	var xPos = A2(author$project$Structure$floatOf, author$project$Editor$propX, cell);
-	var wRect = elm$core$String$length(
-		A2(author$project$Structure$textOf, author$project$Editor$propText, cell)) * 10;
+	var name = A2(
+		elm$core$Maybe$withDefault,
+		'<no name>',
+		A2(author$project$Structure$tryTextOf, author$project$Editor$propText, cell));
+	var nameNotEmpty = (name === '') ? '<no name>' : name;
+	var wRect = elm$core$String$length(nameNotEmpty) * 10;
 	var xPosMiddle = xPos - (wRect / 2);
 	var hRect = 40;
 	var yPosMiddle = yPos - (hRect / 2);
@@ -8066,35 +9603,18 @@ var author$project$Editor$viewVertexCell = function (cell) {
 					]),
 				_List_fromArray(
 					[
-						elm$html$Html$text(
-						A2(author$project$Structure$textOf, author$project$Editor$propText, cell))
+						elm$html$Html$text(nameNotEmpty)
 					]))
 			]));
 };
 var elm_community$typed_svg$TypedSvg$svg = elm_community$typed_svg$TypedSvg$Core$node('svg');
-var elm_community$typed_svg$TypedSvg$Attributes$viewBox = F4(
-	function (minX, minY, vWidth, vHeight) {
-		return A2(
-			elm_community$typed_svg$TypedSvg$Core$attribute,
-			'viewBox',
-			A2(
-				elm$core$String$join,
-				' ',
-				A2(
-					elm$core$List$map,
-					elm$core$String$fromFloat,
-					_List_fromArray(
-						[minX, minY, vWidth, vHeight]))));
-	});
 var author$project$Editor$viewGraphCell = function (cellGraph) {
-	var graphForced = author$project$Editor$forceGraph(cellGraph);
 	return A2(
 		elm_community$typed_svg$TypedSvg$svg,
 		_List_fromArray(
 			[
-				A4(elm_community$typed_svg$TypedSvg$Attributes$viewBox, 0, 0, 800, 600),
-				A2(elm$html$Html$Attributes$style, 'width', '800'),
-				A2(elm$html$Html$Attributes$style, 'height', '600'),
+				A2(elm$html$Html$Attributes$style, 'width', '100%'),
+				A2(elm$html$Html$Attributes$style, 'height', '100%'),
 				A2(elm$html$Html$Attributes$style, 'background-color', 'azure')
 			]),
 		_List_fromArray(
@@ -8102,7 +9622,7 @@ var author$project$Editor$viewGraphCell = function (cellGraph) {
 				A2(
 				elm_community$typed_svg$TypedSvg$g,
 				_List_Nil,
-				author$project$Editor$viewEdgeCells(graphForced)),
+				author$project$Editor$viewEdgeCells(cellGraph)),
 				A2(
 				elm_community$typed_svg$TypedSvg$g,
 				_List_Nil,
@@ -8112,7 +9632,7 @@ var author$project$Editor$viewGraphCell = function (cellGraph) {
 					A2(
 						author$project$Structure$nodesOf,
 						author$project$Editor$ContentCell(author$project$Editor$VertexCell),
-						graphForced)))
+						cellGraph)))
 			]));
 };
 var author$project$Editor$OnInput = F2(
@@ -8166,12 +9686,6 @@ var elm$html$Html$Events$onInput = function (tagger) {
 };
 var author$project$Editor$effectAttributeFromInput = function (handler) {
 	return elm$html$Html$Events$onInput(handler);
-};
-var author$project$Editor$NavSelection = function (a) {
-	return {$: 'NavSelection', a: a};
-};
-var author$project$Editor$NavSelectionEffect = function (a) {
-	return {$: 'NavSelectionEffect', a: a};
 };
 var author$project$Editor$OnBackspace = F2(
 	function (a, b) {
@@ -8469,7 +9983,6 @@ var author$project$Editor$grouped = function (effectCells) {
 	var dictGrouped = A3(elm$core$List$foldl, toDict, elm$core$Dict$empty, effectCells);
 	return A3(elm$core$Dict$foldl, toEffectGroupList, _List_Nil, dictGrouped);
 };
-var author$project$Editor$D = {$: 'D'};
 var author$project$Editor$L = {$: 'L'};
 var author$project$Editor$R = {$: 'R'};
 var author$project$Editor$U = {$: 'U'};
@@ -8899,1226 +10412,35 @@ var author$project$Editor$viewEditor = function (root) {
 			}
 		}());
 };
-var author$project$Runtime$Domain = F2(
-	function (root, xform) {
-		return {root: root, xform: xform};
-	});
-var author$project$Structure$getUnder = F2(
-	function (feature, node) {
-		return _Utils_eq(feature, author$project$Structure$strDefault) ? author$project$Structure$getUnderDefault(node) : A2(author$project$Structure$getUnderCustom, feature, node);
-	});
-var author$project$Structure$deleteNodeAt = F2(
-	function (_n0, parent) {
-		var feature = _n0.feature;
-		var index = _n0.index;
-		var mbChildAt = F2(
-			function (i, c) {
-				return _Utils_eq(i, index) ? elm$core$Maybe$Nothing : elm$core$Maybe$Just(c);
-			});
-		var _delete = function (children) {
-			return A2(
-				elm$core$List$filterMap,
-				elm$core$Basics$identity,
-				A2(elm$core$List$indexedMap, mbChildAt, children));
-		};
-		var childrenNew = _delete(
-			A2(author$project$Structure$getUnder, feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
-	});
-var author$project$Structure$deleteNodeNested = F3(
-	function (_n1, tailSegments, parent) {
-		var feature = _n1.feature;
-		var index = _n1.index;
-		var deleteRec = F2(
-			function (i, child) {
-				return _Utils_eq(i, index) ? A2(author$project$Structure$deleteNodeRec, tailSegments, child) : child;
-			});
-		var childrenNew = A2(
-			elm$core$List$indexedMap,
-			deleteRec,
-			A2(author$project$Structure$getUnder, feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
-	});
-var author$project$Structure$deleteNodeRec = F2(
-	function (segments, parent) {
-		if (segments.b) {
-			if (!segments.b.b) {
-				var segment = segments.a;
-				return A2(author$project$Structure$deleteNodeAt, segment, parent);
-			} else {
-				var segment = segments.a;
-				var tail = segments.b;
-				return A3(author$project$Structure$deleteNodeNested, segment, tail, parent);
-			}
-		} else {
-			return parent;
-		}
-	});
-var author$project$Structure$dropRootSegment = function (path) {
-	var segments = path.a;
-	if (segments.b) {
-		var feature = segments.a.feature;
-		var tail = segments.b;
-		return (feature === 'root') ? author$project$Structure$Path(tail) : path;
-	} else {
-		return path;
-	}
-};
-var author$project$Structure$deleteNodeUnder = F2(
-	function (path, root) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A2(author$project$Structure$deleteNodeRec, segmentsNoRoot, root);
-	});
-var author$project$Structure$addFeaturePath = F2(
-	function (parentPath, _n2) {
-		var _default = _n2._default;
-		var custom = _n2.custom;
-		var indexUpdater = function (feature) {
-			return elm$core$List$indexedMap(
-				A2(author$project$Structure$addPath, parentPath, feature));
-		};
-		var defaultNew = A2(indexUpdater, author$project$Structure$strDefault, _default);
-		var customNew = A2(elm$core$Dict$map, indexUpdater, custom);
-		return {custom: customNew, _default: defaultNew};
-	});
-var author$project$Structure$addPath = F4(
-	function (_n0, feature, index, _n1) {
-		var parentSegments = _n0.a;
-		var data = _n1.a;
-		var segmentNew = {feature: feature, index: index};
-		var pathNew = author$project$Structure$Path(
-			A2(author$project$Structure$appendTo, segmentNew, parentSegments));
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{
-					features: A2(author$project$Structure$addFeaturePath, pathNew, data.features),
-					path: pathNew
-				}));
-	});
-var author$project$Structure$updatePaths = function (_n0) {
-	var data = _n0.a;
-	return author$project$Structure$Node(
-		_Utils_update(
-			data,
-			{
-				features: A2(author$project$Structure$addFeaturePath, data.path, data.features)
-			}));
-};
-var author$project$Editor$tryDelete = F5(
-	function (domainModel, _n0, navFun, textLength, isAtDeletePos) {
-		var path = _n0.path;
-		if (!textLength) {
-			return author$project$Structure$updatePaths(
-				A2(author$project$Structure$deleteNodeUnder, path, domainModel));
-		} else {
-			if (isAtDeletePos) {
-				var mbNext = A2(navFun, domainModel, path);
-				if (mbNext.$ === 'Nothing') {
-					return domainModel;
-				} else {
-					var next = mbNext.a;
-					return author$project$Structure$updatePaths(
-						A2(
-							author$project$Structure$deleteNodeUnder,
-							author$project$Structure$pathOf(next),
-							domainModel));
-				}
-			} else {
-				return domainModel;
-			}
-		}
-	});
-var author$project$Structure$nodeAtI = F2(
-	function (parent, segments) {
-		nodeAtI:
-		while (true) {
-			if (segments.b) {
-				var feature = segments.a.feature;
-				var index = segments.a.index;
-				var tail = segments.b;
-				var mbChildAt = F2(
-					function (i, c) {
-						return _Utils_eq(i, index) ? elm$core$Maybe$Just(c) : elm$core$Maybe$Nothing;
-					});
-				var getAtIndex = function (children) {
-					return A2(
-						elm$core$List$filterMap,
-						elm$core$Basics$identity,
-						A2(elm$core$List$indexedMap, mbChildAt, children));
-				};
-				var nextChild = getAtIndex(
-					A2(author$project$Structure$getUnder, feature, parent));
-				if (nextChild.b && (!nextChild.b.b)) {
-					var child = nextChild.a;
-					var $temp$parent = child,
-						$temp$segments = tail;
-					parent = $temp$parent;
-					segments = $temp$segments;
-					continue nodeAtI;
-				} else {
-					return elm$core$Maybe$Nothing;
-				}
-			} else {
-				return elm$core$Maybe$Just(parent);
-			}
-		}
-	});
-var author$project$Structure$splitLastPathSegment = function (_n0) {
-	var segments = _n0.a;
-	var tailReversed = function (t) {
-		return author$project$Structure$Path(
-			elm$core$List$reverse(t));
-	};
-	var reversed = elm$core$List$reverse(segments);
-	if (!reversed.b) {
-		return _Utils_Tuple2(elm$core$Maybe$Nothing, elm$core$Maybe$Nothing);
-	} else {
-		if (!reversed.b.b) {
-			var head = reversed.a;
-			return _Utils_Tuple2(
-				elm$core$Maybe$Just(head),
-				elm$core$Maybe$Nothing);
-		} else {
-			var head = reversed.a;
-			var tail = reversed.b;
-			return _Utils_Tuple2(
-				elm$core$Maybe$Just(head),
-				elm$core$Maybe$Just(
-					tailReversed(tail)));
-		}
-	}
-};
-var author$project$Structure$sibling = F3(
-	function (root, path, op) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		var split = author$project$Structure$splitLastPathSegment(
-			author$project$Structure$Path(segmentsNoRoot));
-		if (split.a.$ === 'Nothing') {
-			var _n2 = split.a;
-			return elm$core$Maybe$Nothing;
-		} else {
-			if (split.b.$ === 'Nothing') {
-				var _n3 = split.b;
-				return elm$core$Maybe$Nothing;
-			} else {
-				var last = split.a.a;
-				var parentSegments = split.b.a.a;
-				var lastNew = {
-					feature: last.feature,
-					index: A2(op, last.index, 1)
-				};
-				return A2(
-					author$project$Structure$nodeAtI,
-					root,
-					_Utils_ap(
-						parentSegments,
-						_List_fromArray(
-							[lastNew])));
-			}
-		}
-	});
-var author$project$Structure$previousSibling = F2(
-	function (root, path) {
-		return A3(author$project$Structure$sibling, root, path, elm$core$Basics$sub);
-	});
-var elm$core$Platform$Cmd$batch = _Platform_batch;
-var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
-var author$project$Editor$updateOnBackspaceEffect = F3(
-	function (domainModel, effect, cellContext) {
-		if (effect.$ === 'DeletionEffect') {
-			var effectData = effect.a;
-			var selection = effectData.selection;
-			var textLength = elm$core$String$length(
-				A2(author$project$Structure$textOf, author$project$Editor$propInput, cellContext));
-			var isAtDeletePos = !selection.start;
-			return _Utils_Tuple2(
-				A5(author$project$Editor$tryDelete, domainModel, effectData, author$project$Structure$previousSibling, textLength, isAtDeletePos),
-				elm$core$Platform$Cmd$none);
-		} else {
-			return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-		}
-	});
-var author$project$Editor$propName = 'name';
-var author$project$Structure$replaceChildrenForRangeReplace = F6(
-	function (key, rangeNew, pathAt, segment, tailSegments, parent) {
-		var replaceRangeAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, pathAt, tailSegments, child) : child;
-			});
-		var childrenNew = A2(
-			elm$core$List$indexedMap,
-			replaceRangeAt,
-			A2(author$project$Structure$getUnder, segment.feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
-	});
-var author$project$Structure$replaceRangeAtPathRec = F5(
-	function (key, rangeNew, pathAt, segments, parent) {
-		if (!segments.b) {
-			return A3(author$project$Structure$replaceUnderFeature, key, rangeNew, parent);
-		} else {
-			var segment = segments.a;
-			var tail = segments.b;
-			return A6(author$project$Structure$replaceChildrenForRangeReplace, key, rangeNew, pathAt, segment, tail, parent);
-		}
-	});
-var author$project$Structure$replaceRangeAtPath = F4(
-	function (key, rangeNew, path, root) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A5(author$project$Structure$replaceRangeAtPathRec, key, rangeNew, path, segmentsNoRoot, root);
-	});
-var author$project$Editor$setScopeInformation = F2(
-	function (domainModel, scopeData) {
-		var optionNodes = A2(
-			elm$core$List$map,
-			function (s) {
-				return A3(
-					author$project$Structure$addText,
-					author$project$Editor$propScopeValue,
-					A2(author$project$Structure$textOf, author$project$Editor$propName, s),
-					author$project$Structure$createNode(scopeData.isa));
-			},
-			A2(author$project$Structure$nodesOf, scopeData.isa, domainModel));
-		return A4(author$project$Structure$replaceRangeAtPath, author$project$Editor$featScope, optionNodes, scopeData.pathContextNode, domainModel);
-	});
-var author$project$Editor$updateOnCreateScopeEffect = F2(
-	function (domainModel, effect) {
-		if (effect.$ === 'CreateScopeEffect') {
-			var scopeData = effect.a;
-			return _Utils_Tuple2(
-				A2(author$project$Editor$setScopeInformation, domainModel, scopeData),
-				elm$core$Platform$Cmd$none);
-		} else {
-			return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-		}
-	});
-var author$project$Structure$nextSibling = F2(
-	function (root, path) {
-		return A3(author$project$Structure$sibling, root, path, elm$core$Basics$add);
-	});
-var author$project$Editor$updateOnDeleteEffect = F3(
-	function (domainModel, effect, cellContext) {
-		if (effect.$ === 'DeletionEffect') {
-			var effectData = effect.a;
-			var selection = effectData.selection;
-			var textLength = elm$core$String$length(
-				A2(author$project$Structure$textOf, author$project$Editor$propInput, cellContext));
-			var isAtDeletePos = _Utils_eq(selection.end, textLength);
-			return _Utils_Tuple2(
-				A5(author$project$Editor$tryDelete, domainModel, effectData, author$project$Structure$nextSibling, textLength, isAtDeletePos),
-				elm$core$Platform$Cmd$none);
-		} else {
-			return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-		}
-	});
-var elm$core$String$toFloat = _String_toFloat;
-var elm$core$String$toInt = _String_toInt;
-var elm$core$String$toLower = _String_toLower;
-var author$project$Structure$updateProperty = F2(
-	function (_n0, _n1) {
-		var key = _n0.a;
-		var value = _n0.b;
-		var data = _n1.a;
-		var primitiveOld = A2(
-			elm$core$Maybe$withDefault,
-			author$project$Structure$PString(''),
-			A2(elm$core$Dict$get, key, data.properties));
-		var primitiveNew = function () {
-			switch (primitiveOld.$) {
-				case 'PString':
-					return author$project$Structure$PString(value);
-				case 'PInt':
-					return A2(
-						elm$core$Maybe$withDefault,
-						primitiveOld,
-						A2(
-							elm$core$Maybe$andThen,
-							function (i) {
-								return elm$core$Maybe$Just(
-									author$project$Structure$PInt(i));
-							},
-							elm$core$String$toInt(value)));
-				case 'PBool':
-					return (elm$core$String$toLower(value) === 'true') ? author$project$Structure$PBool(true) : ((elm$core$String$toLower(value) === 'false') ? author$project$Structure$PBool(false) : primitiveOld);
-				default:
-					return A2(
-						elm$core$Maybe$withDefault,
-						primitiveOld,
-						A2(
-							elm$core$Maybe$andThen,
-							function (f) {
-								return elm$core$Maybe$Just(
-									author$project$Structure$PFloat(f));
-							},
-							elm$core$String$toFloat(value)));
-			}
-		}();
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{
-					properties: A3(elm$core$Dict$insert, key, primitiveNew, data.properties)
-				}));
-	});
-var author$project$Structure$updateChildrenUnder = F4(
-	function (_n1, tailSegments, kvp, parent) {
-		var feature = _n1.feature;
-		var index = _n1.index;
-		var updateAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, index) ? A3(author$project$Structure$updatePropertyRec, tailSegments, kvp, child) : child;
-			});
-		var childrenNew = A2(
-			elm$core$List$indexedMap,
-			updateAt,
-			A2(author$project$Structure$getUnder, feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
-	});
-var author$project$Structure$updatePropertyRec = F3(
-	function (segments, kvp, parent) {
-		if (!segments.b) {
-			return A2(author$project$Structure$updateProperty, kvp, parent);
-		} else {
-			var segment = segments.a;
-			var tail = segments.b;
-			return A4(author$project$Structure$updateChildrenUnder, segment, tail, kvp, parent);
-		}
-	});
-var author$project$Structure$updatePropertyByPath = F3(
-	function (root, path, kvp) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A3(author$project$Structure$updatePropertyRec, segmentsNoRoot, kvp, root);
-	});
-var author$project$Editor$updateOnInputEffect = F3(
-	function (domainModel, effect, value) {
-		if (effect.$ === 'InputEffect') {
-			var path = effect.a.path;
-			var key = effect.a.key;
-			return _Utils_Tuple2(
-				author$project$Structure$updatePaths(
-					A3(
-						author$project$Structure$updatePropertyByPath,
-						domainModel,
-						path,
-						_Utils_Tuple2(key, value))),
-				elm$core$Platform$Cmd$none);
-		} else {
-			return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-		}
-	});
-var author$project$Editor$NavSelectionEffectData = F3(
-	function (dir, pathSelectedCell, selection) {
-		return {dir: dir, pathSelectedCell: pathSelectedCell, selection: selection};
-	});
-var author$project$Editor$Selection = F3(
-	function (start, end, dir) {
-		return {dir: dir, end: end, start: start};
-	});
-var elm$core$Task$Perform = function (a) {
-	return {$: 'Perform', a: a};
-};
-var elm$core$Task$succeed = _Scheduler_succeed;
-var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
-var elm$core$Task$andThen = _Scheduler_andThen;
-var elm$core$Task$map = F2(
-	function (func, taskA) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return elm$core$Task$succeed(
-					func(a));
-			},
-			taskA);
-	});
-var elm$core$Task$map2 = F3(
-	function (func, taskA, taskB) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return A2(
-					elm$core$Task$andThen,
-					function (b) {
-						return elm$core$Task$succeed(
-							A2(func, a, b));
-					},
-					taskB);
-			},
-			taskA);
-	});
-var elm$core$Task$sequence = function (tasks) {
-	return A3(
-		elm$core$List$foldr,
-		elm$core$Task$map2(elm$core$List$cons),
-		elm$core$Task$succeed(_List_Nil),
-		tasks);
-};
-var elm$core$Platform$sendToApp = _Platform_sendToApp;
-var elm$core$Task$spawnCmd = F2(
-	function (router, _n0) {
-		var task = _n0.a;
-		return _Scheduler_spawn(
-			A2(
-				elm$core$Task$andThen,
-				elm$core$Platform$sendToApp(router),
-				task));
-	});
-var elm$core$Task$onEffects = F3(
-	function (router, commands, state) {
-		return A2(
-			elm$core$Task$map,
-			function (_n0) {
-				return _Utils_Tuple0;
-			},
-			elm$core$Task$sequence(
-				A2(
-					elm$core$List$map,
-					elm$core$Task$spawnCmd(router),
-					commands)));
-	});
-var elm$core$Task$onSelfMsg = F3(
-	function (_n0, _n1, _n2) {
-		return elm$core$Task$succeed(_Utils_Tuple0);
-	});
-var elm$core$Task$cmdMap = F2(
-	function (tagger, _n0) {
-		var task = _n0.a;
-		return elm$core$Task$Perform(
-			A2(elm$core$Task$map, tagger, task));
-	});
-_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
-var elm$core$Task$command = _Platform_leaf('Task');
-var elm$core$Task$perform = F2(
-	function (toMessage, task) {
-		return elm$core$Task$command(
-			elm$core$Task$Perform(
-				A2(elm$core$Task$map, toMessage, task)));
-	});
-var author$project$Editor$updateSelectionOnEnter = function (cellContext) {
-	return A2(
-		elm$core$Task$perform,
-		author$project$Editor$NavSelection,
-		elm$core$Task$succeed(
-			author$project$Editor$NavSelectionEffect(
-				A3(
-					author$project$Editor$NavSelectionEffectData,
-					author$project$Editor$D,
-					author$project$Structure$pathOf(cellContext),
-					A3(author$project$Editor$Selection, 0, 0, '')))));
-};
-var author$project$Structure$addChildAtPathRec = F4(
-	function (key, nodeNew, segments, parent) {
-		if (!segments.b) {
-			return _Utils_eq(key, author$project$Structure$strDefault) ? A2(author$project$Structure$addToDefault, nodeNew, parent) : A3(author$project$Structure$addToCustom, key, nodeNew, parent);
-		} else {
-			var segment = segments.a;
-			var tail = segments.b;
-			return A5(author$project$Structure$addChildrenAtPathRec, key, nodeNew, segment, tail, parent);
-		}
-	});
-var author$project$Structure$addChildrenAtPathRec = F5(
-	function (key, nodeNew, _n0, tailSegments, parent) {
-		var feature = _n0.feature;
-		var index = _n0.index;
-		var insertAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, index) ? A4(author$project$Structure$addChildAtPathRec, key, nodeNew, tailSegments, child) : child;
-			});
-		var childrenNew = A2(
-			elm$core$List$indexedMap,
-			insertAt,
-			A2(author$project$Structure$getUnder, feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, feature, childrenNew, parent);
-	});
-var author$project$Structure$addChildAtPath = F4(
-	function (key, nodeNew, path, root) {
-		var feature = (key === '') ? author$project$Structure$strDefault : key;
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A4(author$project$Structure$addChildAtPathRec, feature, nodeNew, segmentsNoRoot, root);
-	});
-var author$project$Structure$insertAfter = F4(
-	function (pathAfter, child, candidate, result) {
-		return _Utils_eq(
-			pathAfter,
-			author$project$Structure$pathOf(candidate)) ? _Utils_ap(
-			result,
-			_List_fromArray(
-				[candidate, child])) : _Utils_ap(
-			result,
-			_List_fromArray(
-				[candidate]));
-	});
-var author$project$Structure$insertAfterUnderCustom = F4(
-	function (key, child, pathAfter, _n0) {
-		var data = _n0.a;
-		var features = data.features;
-		var appender = F2(
-			function (child2, children) {
-				return A3(
-					elm$core$List$foldl,
-					A2(author$project$Structure$insertAfter, pathAfter, child2),
-					_List_Nil,
-					children);
-			});
-		var featuresNew = _Utils_update(
-			features,
-			{
-				custom: A4(author$project$Structure$updateCustomFeature, key, child, appender, features.custom)
-			});
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{features: featuresNew}));
-	});
-var author$project$Structure$insertAfterUnderDefault = F3(
-	function (child, pathAfter, _n0) {
-		var data = _n0.a;
-		var features = data.features;
-		var featuresNew = function () {
-			var _n1 = features._default;
-			if (!_n1.b) {
-				return _Utils_update(
-					features,
-					{
-						_default: _List_fromArray(
-							[child])
-					});
-			} else {
-				var children = _n1;
-				return _Utils_update(
-					features,
-					{
-						_default: A3(
-							elm$core$List$foldl,
-							A2(author$project$Structure$insertAfter, pathAfter, child),
-							_List_Nil,
-							children)
-					});
-			}
-		}();
-		return author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{features: featuresNew}));
-	});
-var author$project$Structure$insertChildAfterPathRec = F4(
-	function (nodeNew, pathAfter, segments, parent) {
-		if (segments.b) {
-			if (!segments.b.b) {
-				var feature = segments.a.feature;
-				return _Utils_eq(feature, author$project$Structure$strDefault) ? A3(author$project$Structure$insertAfterUnderDefault, nodeNew, pathAfter, parent) : A4(author$project$Structure$insertAfterUnderCustom, feature, nodeNew, pathAfter, parent);
-			} else {
-				var segment = segments.a;
-				var tail = segments.b;
-				return A5(author$project$Structure$insertChildren, nodeNew, pathAfter, segment, tail, parent);
-			}
-		} else {
-			return parent;
-		}
-	});
-var author$project$Structure$insertChildren = F5(
-	function (nodeNew, pathAfter, segment, tailSegments, parent) {
-		var insertAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A4(author$project$Structure$insertChildAfterPathRec, nodeNew, pathAfter, tailSegments, child) : child;
-			});
-		var childrenNew = A2(
-			elm$core$List$indexedMap,
-			insertAt,
-			A2(author$project$Structure$getUnder, segment.feature, parent));
-		return A3(author$project$Structure$replaceUnderFeature, segment.feature, childrenNew, parent);
-	});
-var author$project$Structure$insertChildAfterPath = F3(
-	function (nodeNew, path, root) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A4(author$project$Structure$insertChildAfterPathRec, nodeNew, path, segmentsNoRoot, root);
-	});
-var author$project$Editor$updateOnInsertionEffect = F3(
-	function (domainModel, effect, cellContext) {
-		if (effect.$ === 'InsertionEffect') {
-			var path = effect.a.path;
-			var nodeToInsert = effect.a.nodeToInsert;
-			var isReplace = effect.a.isReplace;
-			var feature = effect.a.feature;
-			return isReplace ? _Utils_Tuple2(
-				author$project$Structure$updatePaths(
-					A4(author$project$Structure$addChildAtPath, feature, nodeToInsert, path, domainModel)),
-				elm$core$Platform$Cmd$none) : _Utils_Tuple2(
-				author$project$Structure$updatePaths(
-					A3(author$project$Structure$insertChildAfterPath, nodeToInsert, path, domainModel)),
-				author$project$Editor$updateSelectionOnEnter(cellContext));
-		} else {
-			return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-		}
-	});
-var author$project$Editor$Horiz = {$: 'Horiz'};
-var author$project$Editor$Vert = {$: 'Vert'};
-var author$project$Structure$parentOf = F2(
-	function (root, path) {
-		var _n0 = author$project$Structure$splitLastPathSegment(
-			author$project$Structure$dropRootSegment(path));
-		var mbPathToParent = _n0.b;
-		return A2(
-			elm$core$Maybe$andThen,
-			author$project$Structure$nodeAtI(root),
-			A2(
-				elm$core$Maybe$map,
-				function (_n1) {
-					var segments = _n1.a;
-					return segments;
-				},
-				mbPathToParent));
-	});
-var author$project$Editor$orientationOf = F2(
-	function (root, cell) {
-		var _n0 = author$project$Structure$isaOf(cell);
-		if (_n0.$ === 'ContentCell') {
-			if (_n0.a.$ === 'StackCell') {
-				var _n1 = _n0.a;
-				return elm$core$Maybe$Just(
-					function () {
-						var bO = A2(author$project$Structure$boolOf, author$project$Editor$propIsHoriz, cell);
-						return bO ? author$project$Editor$Horiz : author$project$Editor$Vert;
-					}());
-			} else {
-				return A2(
-					elm$core$Maybe$andThen,
-					author$project$Editor$orientationOf(root),
-					A2(
-						author$project$Structure$parentOf,
-						root,
-						author$project$Structure$pathOf(cell)));
-			}
-		} else {
-			return elm$core$Maybe$Nothing;
-		}
-	});
-var author$project$Editor$NoOp = {$: 'NoOp'};
-var author$project$Editor$findFirstInputCellRec = F3(
-	function (root, candidates, recFun) {
-		findFirstInputCellRec:
-		while (true) {
-			if (!candidates.b) {
-				return elm$core$Maybe$Nothing;
-			} else {
-				var head = candidates.a;
-				var tail = candidates.b;
-				var mbFirst = A2(recFun, root, head);
-				if (mbFirst.$ === 'Nothing') {
-					var $temp$root = root,
-						$temp$candidates = tail,
-						$temp$recFun = recFun;
-					root = $temp$root;
-					candidates = $temp$candidates;
-					recFun = $temp$recFun;
-					continue findFirstInputCellRec;
-				} else {
-					var first = mbFirst.a;
-					return elm$core$Maybe$Just(first);
-				}
-			}
-		}
-	});
-var author$project$Editor$findNextInputCell = F2(
-	function (root, current) {
-		findNextInputCell:
-		while (true) {
-			var mbNext = A2(
-				author$project$Structure$nextSibling,
-				root,
-				author$project$Structure$pathOf(current));
-			if (mbNext.$ === 'Just') {
-				var next = mbNext.a;
-				return A2(
-					elm$core$Maybe$withDefault,
-					current,
-					A2(author$project$Editor$findNextInputCellRec, root, next));
-			} else {
-				var mbParent = A2(
-					author$project$Structure$parentOf,
-					root,
-					author$project$Structure$pathOf(current));
-				if (mbParent.$ === 'Nothing') {
-					return current;
-				} else {
-					var parent = mbParent.a;
-					var $temp$root = root,
-						$temp$current = parent;
-					root = $temp$root;
-					current = $temp$current;
-					continue findNextInputCell;
-				}
-			}
-		}
-	});
-var author$project$Editor$findNextInputCellRec = F2(
-	function (root, next) {
-		var _n0 = author$project$Structure$isaOf(next);
-		_n0$2:
-		while (true) {
-			if (_n0.$ === 'ContentCell') {
-				switch (_n0.a.$) {
-					case 'InputCell':
-						var _n1 = _n0.a;
-						return elm$core$Maybe$Just(next);
-					case 'StackCell':
-						var _n2 = _n0.a;
-						var _n3 = author$project$Structure$getUnderDefault(next);
-						if (!_n3.b) {
-							return elm$core$Maybe$Just(
-								A2(author$project$Editor$findNextInputCell, root, next));
-						} else {
-							var children = _n3;
-							var mbFirst = A3(author$project$Editor$findFirstInputCellRec, root, children, author$project$Editor$findNextInputCellRec);
-							if (mbFirst.$ === 'Nothing') {
-								return elm$core$Maybe$Just(
-									A2(author$project$Editor$findNextInputCell, root, next));
-							} else {
-								var first = mbFirst.a;
-								return elm$core$Maybe$Just(first);
-							}
-						}
-					default:
-						break _n0$2;
-				}
-			} else {
-				break _n0$2;
-			}
-		}
-		return elm$core$Maybe$Just(
-			A2(author$project$Editor$findNextInputCell, root, next));
-	});
-var author$project$Editor$findPrevInputCell = F2(
-	function (root, current) {
-		findPrevInputCell:
-		while (true) {
-			var mbPrev = A2(
-				author$project$Structure$previousSibling,
-				root,
-				author$project$Structure$pathOf(current));
-			if (mbPrev.$ === 'Just') {
-				var prev = mbPrev.a;
-				return A2(
-					elm$core$Maybe$withDefault,
-					current,
-					A2(author$project$Editor$findPrevInputCellRec, root, prev));
-			} else {
-				var mbParent = A2(
-					author$project$Structure$parentOf,
-					root,
-					author$project$Structure$pathOf(current));
-				if (mbParent.$ === 'Nothing') {
-					return current;
-				} else {
-					var parent = mbParent.a;
-					var $temp$root = root,
-						$temp$current = parent;
-					root = $temp$root;
-					current = $temp$current;
-					continue findPrevInputCell;
-				}
-			}
-		}
-	});
-var author$project$Editor$findPrevInputCellRec = F2(
-	function (root, prev) {
-		var _n0 = author$project$Structure$isaOf(prev);
-		_n0$2:
-		while (true) {
-			if (_n0.$ === 'ContentCell') {
-				switch (_n0.a.$) {
-					case 'InputCell':
-						var _n1 = _n0.a;
-						return elm$core$Maybe$Just(prev);
-					case 'StackCell':
-						var _n2 = _n0.a;
-						var _n3 = author$project$Structure$getUnderDefault(prev);
-						if (!_n3.b) {
-							return elm$core$Maybe$Just(
-								A2(author$project$Editor$findPrevInputCell, root, prev));
-						} else {
-							var children = _n3;
-							var mbLast = A3(
-								author$project$Editor$findFirstInputCellRec,
-								root,
-								elm$core$List$reverse(children),
-								author$project$Editor$findPrevInputCellRec);
-							if (mbLast.$ === 'Nothing') {
-								return elm$core$Maybe$Just(
-									A2(author$project$Editor$findPrevInputCell, root, prev));
-							} else {
-								var last = mbLast.a;
-								return elm$core$Maybe$Just(last);
-							}
-						}
-					default:
-						break _n0$2;
-				}
-			} else {
-				break _n0$2;
-			}
-		}
-		return elm$core$Maybe$Just(
-			A2(author$project$Editor$findPrevInputCell, root, prev));
-	});
-var author$project$Structure$nodeAt = F2(
-	function (parent, path) {
-		var _n0 = author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _n0.a;
-		return A2(author$project$Structure$nodeAtI, parent, segmentsNoRoot);
-	});
-var elm$browser$Browser$External = function (a) {
-	return {$: 'External', a: a};
-};
-var elm$browser$Browser$Internal = function (a) {
-	return {$: 'Internal', a: a};
-};
-var elm$browser$Browser$Dom$NotFound = function (a) {
-	return {$: 'NotFound', a: a};
-};
-var elm$core$Basics$never = function (_n0) {
-	never:
-	while (true) {
-		var nvr = _n0.a;
-		var $temp$_n0 = nvr;
-		_n0 = $temp$_n0;
-		continue never;
-	}
-};
-var elm$core$String$slice = _String_slice;
-var elm$core$String$dropLeft = F2(
-	function (n, string) {
-		return (n < 1) ? string : A3(
-			elm$core$String$slice,
-			n,
-			elm$core$String$length(string),
-			string);
-	});
-var elm$core$String$startsWith = _String_startsWith;
-var elm$url$Url$Http = {$: 'Http'};
-var elm$url$Url$Https = {$: 'Https'};
-var elm$core$String$indexes = _String_indexes;
-var elm$core$String$isEmpty = function (string) {
-	return string === '';
-};
-var elm$core$String$left = F2(
-	function (n, string) {
-		return (n < 1) ? '' : A3(elm$core$String$slice, 0, n, string);
-	});
-var elm$core$String$contains = _String_contains;
-var elm$url$Url$Url = F6(
-	function (protocol, host, port_, path, query, fragment) {
-		return {fragment: fragment, host: host, path: path, port_: port_, protocol: protocol, query: query};
-	});
-var elm$url$Url$chompBeforePath = F5(
-	function (protocol, path, params, frag, str) {
-		if (elm$core$String$isEmpty(str) || A2(elm$core$String$contains, '@', str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, ':', str);
-			if (!_n0.b) {
-				return elm$core$Maybe$Just(
-					A6(elm$url$Url$Url, protocol, str, elm$core$Maybe$Nothing, path, params, frag));
-			} else {
-				if (!_n0.b.b) {
-					var i = _n0.a;
-					var _n1 = elm$core$String$toInt(
-						A2(elm$core$String$dropLeft, i + 1, str));
-					if (_n1.$ === 'Nothing') {
-						return elm$core$Maybe$Nothing;
-					} else {
-						var port_ = _n1;
-						return elm$core$Maybe$Just(
-							A6(
-								elm$url$Url$Url,
-								protocol,
-								A2(elm$core$String$left, i, str),
-								port_,
-								path,
-								params,
-								frag));
-					}
-				} else {
-					return elm$core$Maybe$Nothing;
-				}
-			}
-		}
-	});
-var elm$url$Url$chompBeforeQuery = F4(
-	function (protocol, params, frag, str) {
-		if (elm$core$String$isEmpty(str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, '/', str);
-			if (!_n0.b) {
-				return A5(elm$url$Url$chompBeforePath, protocol, '/', params, frag, str);
-			} else {
-				var i = _n0.a;
-				return A5(
-					elm$url$Url$chompBeforePath,
-					protocol,
-					A2(elm$core$String$dropLeft, i, str),
-					params,
-					frag,
-					A2(elm$core$String$left, i, str));
-			}
-		}
-	});
-var elm$url$Url$chompBeforeFragment = F3(
-	function (protocol, frag, str) {
-		if (elm$core$String$isEmpty(str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, '?', str);
-			if (!_n0.b) {
-				return A4(elm$url$Url$chompBeforeQuery, protocol, elm$core$Maybe$Nothing, frag, str);
-			} else {
-				var i = _n0.a;
-				return A4(
-					elm$url$Url$chompBeforeQuery,
-					protocol,
-					elm$core$Maybe$Just(
-						A2(elm$core$String$dropLeft, i + 1, str)),
-					frag,
-					A2(elm$core$String$left, i, str));
-			}
-		}
-	});
-var elm$url$Url$chompAfterProtocol = F2(
-	function (protocol, str) {
-		if (elm$core$String$isEmpty(str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, '#', str);
-			if (!_n0.b) {
-				return A3(elm$url$Url$chompBeforeFragment, protocol, elm$core$Maybe$Nothing, str);
-			} else {
-				var i = _n0.a;
-				return A3(
-					elm$url$Url$chompBeforeFragment,
-					protocol,
-					elm$core$Maybe$Just(
-						A2(elm$core$String$dropLeft, i + 1, str)),
-					A2(elm$core$String$left, i, str));
-			}
-		}
-	});
-var elm$url$Url$fromString = function (str) {
-	return A2(elm$core$String$startsWith, 'http://', str) ? A2(
-		elm$url$Url$chompAfterProtocol,
-		elm$url$Url$Http,
-		A2(elm$core$String$dropLeft, 7, str)) : (A2(elm$core$String$startsWith, 'https://', str) ? A2(
-		elm$url$Url$chompAfterProtocol,
-		elm$url$Url$Https,
-		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
-};
-var elm$browser$Browser$Dom$focus = _Browser_call('focus');
-var elm$core$Task$onError = _Scheduler_onError;
-var elm$core$Task$attempt = F2(
-	function (resultToMessage, task) {
-		return elm$core$Task$command(
-			elm$core$Task$Perform(
-				A2(
-					elm$core$Task$onError,
-					A2(
-						elm$core$Basics$composeL,
-						A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
-						elm$core$Result$Err),
-					A2(
-						elm$core$Task$andThen,
-						A2(
-							elm$core$Basics$composeL,
-							A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
-							elm$core$Result$Ok),
-						task))));
-	});
-var author$project$Editor$updateSelectionByOrientation = F3(
-	function (editorModel, navData, orientation) {
-		var mbCellSelected = A2(author$project$Structure$nodeAt, editorModel, navData.pathSelectedCell);
-		if (mbCellSelected.$ === 'Nothing') {
-			return elm$core$Platform$Cmd$none;
-		} else {
-			var cellSelected = mbCellSelected.a;
-			var moverTask = function (f) {
-				return A2(
-					elm$core$Task$attempt,
-					function (_n10) {
-						return author$project$Editor$NoOp;
-					},
-					elm$browser$Browser$Dom$focus(
-						author$project$Structure$pathAsIdFromNode(
-							A2(f, editorModel, cellSelected))));
-			};
-			var _n1 = _Utils_Tuple2(navData.dir, orientation);
-			_n1$4:
-			while (true) {
-				if (_n1.b.$ === 'Vert') {
-					switch (_n1.a.$) {
-						case 'U':
-							var _n2 = _n1.a;
-							var _n3 = _n1.b;
-							return moverTask(author$project$Editor$findPrevInputCell);
-						case 'D':
-							var _n4 = _n1.a;
-							var _n5 = _n1.b;
-							return moverTask(author$project$Editor$findNextInputCell);
-						default:
-							break _n1$4;
-					}
-				} else {
-					switch (_n1.a.$) {
-						case 'L':
-							var _n6 = _n1.a;
-							var _n7 = _n1.b;
-							return (!navData.selection.start) ? moverTask(author$project$Editor$findPrevInputCell) : elm$core$Platform$Cmd$none;
-						case 'R':
-							var _n8 = _n1.a;
-							var _n9 = _n1.b;
-							return (_Utils_cmp(
-								navData.selection.start,
-								elm$core$String$length(
-									A2(author$project$Structure$textOf, author$project$Editor$propInput, cellSelected))) > -1) ? moverTask(author$project$Editor$findNextInputCell) : elm$core$Platform$Cmd$none;
-						default:
-							break _n1$4;
-					}
-				}
-			}
-			return elm$core$Platform$Cmd$none;
-		}
-	});
-var author$project$Editor$updateSelection = F2(
-	function (editorModel, navData) {
-		var mbNodeContext = A2(author$project$Structure$nodeAt, editorModel, navData.pathSelectedCell);
-		var mbOrientation = A2(
-			elm$core$Maybe$andThen,
-			author$project$Editor$orientationOf(editorModel),
-			mbNodeContext);
-		if (mbOrientation.$ === 'Nothing') {
-			return elm$core$Platform$Cmd$none;
-		} else {
-			var orientation = mbOrientation.a;
-			return A3(author$project$Editor$updateSelectionByOrientation, editorModel, navData, orientation);
-		}
-	});
-var author$project$Editor$updateOnNavEffect = F2(
-	function (effect, editorModel) {
-		if (effect.$ === 'NavSelectionEffect') {
-			var navData = effect.a;
-			return A2(author$project$Editor$updateSelection, editorModel, navData);
-		} else {
-			return elm$core$Platform$Cmd$none;
-		}
-	});
-var author$project$Editor$updateEditor = F3(
-	function (msg, editorModel, domainModel) {
-		switch (msg.$) {
-			case 'NoOp':
-				return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-			case 'Swallow':
-				return _Utils_Tuple2(domainModel, elm$core$Platform$Cmd$none);
-			case 'OnEnter':
-				var effect = msg.a;
-				var cellContext = msg.b;
-				return A3(author$project$Editor$updateOnInsertionEffect, domainModel, effect, cellContext);
-			case 'OnClick':
-				var effect = msg.a;
-				var cellContext = msg.b;
-				return A3(author$project$Editor$updateOnInsertionEffect, domainModel, effect, cellContext);
-			case 'OnDelete':
-				var effect = msg.a;
-				var cellContext = msg.b;
-				return A3(author$project$Editor$updateOnDeleteEffect, domainModel, effect, cellContext);
-			case 'OnBackspace':
-				var effect = msg.a;
-				var cellContext = msg.b;
-				return A3(author$project$Editor$updateOnBackspaceEffect, domainModel, effect, cellContext);
-			case 'OnInput':
-				var effect = msg.a;
-				var value = msg.b;
-				return A3(author$project$Editor$updateOnInputEffect, domainModel, effect, value);
-			case 'NavSelection':
-				var effect = msg.a;
-				return _Utils_Tuple2(
-					domainModel,
-					A2(author$project$Editor$updateOnNavEffect, effect, editorModel));
-			default:
-				var effect = msg.a;
-				return A2(author$project$Editor$updateOnCreateScopeEffect, domainModel, effect);
-		}
-	});
-var author$project$Runtime$EditorMsg = function (a) {
-	return {$: 'EditorMsg', a: a};
-};
-var author$project$Runtime$runDomainXform = function (domainD) {
-	return author$project$Structure$updatePaths(
-		author$project$Editor$griddify(
-			domainD.xform(domainD.root)));
-};
-var elm$core$Platform$Cmd$map = _Platform_map;
-var author$project$Runtime$update = F2(
-	function (msg, model) {
-		var domainD = model.domainD;
-		var domainE = model.domainE;
-		var eMsg = msg.a;
-		var _n1 = A3(author$project$Editor$updateEditor, eMsg, domainE.root, domainD.root);
-		var rootDNew = _n1.a;
-		var editorCmd = _n1.b;
-		var domainDNew = _Utils_update(
-			domainD,
-			{root: rootDNew});
-		var rootENew = author$project$Runtime$runDomainXform(domainDNew);
-		var domainENew = _Utils_update(
-			domainE,
-			{root: rootENew});
-		return _Utils_Tuple2(
-			_Utils_update(
-				model,
-				{domainD: domainDNew, domainE: domainENew}),
-			A2(elm$core$Platform$Cmd$map, author$project$Runtime$EditorMsg, editorCmd));
-	});
 var elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
 var elm$html$Html$map = elm$virtual_dom$VirtualDom$map;
 var author$project$Runtime$view = function (model) {
 	return A2(
 		elm$html$Html$map,
 		author$project$Runtime$EditorMsg,
-		model.domainE.xform(model.domainE.root));
+		author$project$Editor$viewEditor(model.editorModel.eRoot));
 };
 var elm$browser$Browser$element = _Browser_element;
-var elm$core$Platform$Sub$batch = _Platform_batch;
-var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
 var author$project$Runtime$projection = F2(
 	function (rootD, xform) {
-		var init = function (_n1) {
+		var init = function (_n0) {
 			return _Utils_Tuple2(
 				{
-					domainD: A2(
+					domain: A2(
 						author$project$Runtime$Domain,
 						author$project$Structure$updatePaths(rootD),
 						xform),
-					domainE: A2(
-						author$project$Runtime$Domain,
+					editorModel: A2(
+						author$project$Editor$initEditorModel,
+						rootD,
 						author$project$Structure$updatePaths(
 							author$project$Editor$griddify(
-								xform(rootD))),
-						author$project$Editor$viewEditor)
+								xform(rootD))))
 				},
 				elm$core$Platform$Cmd$none);
 		};
 		return elm$browser$Browser$element(
-			{
-				init: init,
-				subscriptions: function (_n0) {
-					return elm$core$Platform$Sub$none;
-				},
-				update: author$project$Runtime$update,
-				view: author$project$Runtime$view
-			});
+			{init: init, subscriptions: author$project$Runtime$subscriptions, update: author$project$Runtime$update, view: author$project$Runtime$view});
 	});
 var author$project$Main$main = A2(author$project$Runtime$projection, author$project$Main$initStateMachine, author$project$Main$editor);
 _Platform_export({'Main':{'init':author$project$Main$main(

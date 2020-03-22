@@ -3,15 +3,15 @@ module Structure exposing
     , Path(..)
     , addBool
     , addChildAtPath
+    , addFloat
     , addInt
     , addProperty
     , addRangeAtPath
-    , addText
-    , addFloat
-    , addToCustom
     , addRangeToCustom
-    , addToDefault
     , addRangeToDefault
+    , addText
+    , addToCustom
+    , addToDefault
     , boolOf
     , createNode
     , createRoot
@@ -35,6 +35,10 @@ module Structure exposing
     , replaceRangeAtPath
     , replaceUnderFeature
     , textOf
+    , tryBoolOf
+    , tryFloatOf
+    , tryIntOf
+    , tryTextOf
     , updatePaths
     , updatePropertyByPath
     )
@@ -144,8 +148,8 @@ valueOf key (Node { properties }) =
     Dict.get key properties
 
 
-textOf : String -> Node a -> String
-textOf key node =
+tryTextOf : String -> Node a -> Maybe String
+tryTextOf key node =
     valueOf key node
         |> Maybe.andThen
             (\prop ->
@@ -156,11 +160,16 @@ textOf key node =
                     _ ->
                         Nothing
             )
+
+
+textOf : String -> Node a -> String
+textOf key node =
+    tryTextOf key node
         |> Maybe.withDefault ""
 
 
-intOf : String -> Node a -> Int
-intOf key node =
+tryIntOf : String -> Node a -> Maybe Int
+tryIntOf key node =
     valueOf key node
         |> Maybe.andThen
             (\prop ->
@@ -171,11 +180,16 @@ intOf key node =
                     _ ->
                         Nothing
             )
+
+
+intOf : String -> Node a -> Int
+intOf key node =
+    tryIntOf key node
         |> Maybe.withDefault 0
 
 
-floatOf : String -> Node a -> Float
-floatOf key node =
+tryFloatOf : String -> Node a -> Maybe Float
+tryFloatOf key node =
     valueOf key node
         |> Maybe.andThen
             (\prop ->
@@ -186,11 +200,16 @@ floatOf key node =
                     _ ->
                         Nothing
             )
+
+
+floatOf : String -> Node a -> Float
+floatOf key node =
+    tryFloatOf key node
         |> Maybe.withDefault 0
 
 
-boolOf : String -> Node a -> Bool
-boolOf key node =
+tryBoolOf : String -> Node a -> Maybe Bool
+tryBoolOf key node =
     valueOf key node
         |> Maybe.andThen
             (\prop ->
@@ -201,6 +220,11 @@ boolOf key node =
                     _ ->
                         Nothing
             )
+
+
+boolOf : String -> Node a -> Bool
+boolOf key node =
+    tryBoolOf key node
         |> Maybe.withDefault False
 
 

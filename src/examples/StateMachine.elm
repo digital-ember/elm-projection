@@ -79,11 +79,7 @@ initStateMachine =
                     )
             , createNode State
                 |> addText "name" "unlockedPanel"
-                |> addToDefault
-                    (createNode Transition
-                        |> addText "eventRef" "panelClosed"
-                        |> addText "stateRef" "idle"
-                    )
+
             ]
 
 

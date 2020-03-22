@@ -1,7 +1,8 @@
 module Editor exposing
     ( Cell
+    , EditorModel
     , MarginSide(..)
-    , Msg
+    , Msg(..)
     , addIndent
     , addMargin
     , buttonCell
@@ -12,6 +13,7 @@ module Editor exposing
     , griddify
     , horizSplitCell
     , horizStackCell
+    , initEditorModel
     , inputCell
     , inputEffect
     , insertionEffect
@@ -33,12 +35,10 @@ module Editor exposing
 import Browser.Dom as Dom
 import Color
 import Dict as Dict
-import Force exposing (Entity)
-import Graph
+import Force exposing (Entity, Force, State)
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
-import IntDict
 import Json.Decode as JsonD
 import Structure exposing (..)
 import Task as Task
@@ -73,6 +73,13 @@ type EffectCell a
     | InputEffect InputEffectData
     | NavSelectionEffect NavSelectionEffectData
     | CreateScopeEffect (CreateScopeEffectData a)
+
+
+type alias EditorModel a =
+    { dRoot : Node a
+    , eRoot : Node (Cell a)
+    , mbSimulation : Maybe (Force.State String)
+    }
 
 
 type alias InsertionEffectData a =
@@ -137,6 +144,7 @@ type Msg a
     | OnDelete (EffectCell a) (Node (Cell a))
     | OnInput (EffectCell a) String
     | UpdateScope (EffectCell a)
+    | Tick
 
 
 type Dir
@@ -151,6 +159,14 @@ type MarginSide
     | Right
     | Bottom
     | Left
+
+
+initEditorModel : Node a -> Node (Cell a) -> EditorModel a
+initEditorModel dRoot eRoot =
+    { dRoot = dRoot
+    , eRoot = eRoot
+    , mbSimulation = Nothing
+    }
 
 
 rootCell : Node (Cell a)
@@ -407,53 +423,123 @@ grouped effectCells =
 -- BEHAVIOR
 
 
-updateEditor : Msg a -> Node (Cell a) -> Node a -> ( Node a, Cmd (Msg a) )
-updateEditor msg editorModel domainModel =
+updateEditor : Msg a -> EditorModel a -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateEditor msg editorModel =
     case msg of
+        Tick ->
+            tickGraphSimulations editorModel
+
         NoOp ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
 
         Swallow _ ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
 
         OnEnter effect cellContext ->
-            updateOnInsertionEffect domainModel effect cellContext
+            updateOnInsertionEffect editorModel effect cellContext
 
         OnClick effect cellContext ->
-            updateOnInsertionEffect domainModel effect cellContext
+            updateOnInsertionEffect editorModel effect cellContext
 
         OnDelete effect cellContext ->
-            updateOnDeleteEffect domainModel effect cellContext
+            updateOnDeleteEffect editorModel effect cellContext
 
         OnBackspace effect cellContext ->
-            updateOnBackspaceEffect domainModel effect cellContext
+            updateOnBackspaceEffect editorModel effect cellContext
 
         OnInput effect value ->
-            updateOnInputEffect domainModel effect value
+            updateOnInputEffect editorModel effect value
 
         NavSelection effect ->
-            ( domainModel, updateOnNavEffect effect editorModel )
+            ( False, editorModel, updateOnNavEffect effect editorModel.eRoot )
 
         UpdateScope effect ->
-            updateOnCreateScopeEffect domainModel effect
+            updateOnCreateScopeEffect editorModel effect
 
 
-updateOnInsertionEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
-updateOnInsertionEffect domainModel effect cellContext =
+tickGraphSimulations : EditorModel a -> ( Bool, EditorModel a, Cmd (Msg a) )
+tickGraphSimulations editorModel =
+    let
+        mbCellGraph =
+            nodesOf (ContentCell GraphCell) editorModel.eRoot |> List.head
+    in
+    case mbCellGraph of
+        Nothing ->
+            noUpdate editorModel
+
+        Just cellGraph ->
+            case editorModel.mbSimulation of
+                Nothing ->
+                    let
+                        verticies =
+                            nodesOf (ContentCell VertexCell) cellGraph
+
+                        forces =
+                            [ Force.customLinks 1 <| customEdgeForcesFromGraph cellGraph
+                            , Force.manyBodyStrength -1000 <| List.map (\v -> pathAsIdFromNode v) <| verticies
+                            , Force.center 400 300
+                            ]
+                                |> Debug.log "forces"
+                    in
+                    ( False, { editorModel | mbSimulation = Just <| Force.simulation forces }, Cmd.none )
+
+                Just simulation ->
+                    let
+                        pathToGraph =
+                            pathOf cellGraph
+
+                        verticies =
+                            nodesOf (ContentCell VertexCell) cellGraph
+
+                        edges =
+                            nodesOf (ContentCell EdgeCell) cellGraph
+
+                        addPosToCell e =
+                            e.value
+                                |> addFloat propX e.x
+                                |> addFloat propY e.y
+
+                        ( newSimulationState, verticiesNew ) =
+                            List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
+                                |> Force.tick simulation
+
+                        childrenNew =
+                            List.map addPosToCell verticiesNew
+                                ++ edges
+
+                        cellGraphNew =
+                            replaceUnderFeature "default" childrenNew cellGraph
+
+                        eRootNew =
+                            replaceChildAtPath cellGraphNew pathToGraph editorModel.eRoot
+                    in
+                    ( False, { editorModel | eRoot = eRootNew, mbSimulation = Just <| newSimulationState }, Cmd.none )
+
+
+updateOnInsertionEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnInsertionEffect editorModel effect cellContext =
     case effect of
         InsertionEffect { path, nodeToInsert, isReplace, feature } ->
             if isReplace then
-                ( addChildAtPath feature nodeToInsert path domainModel |> updatePaths, Cmd.none )
+                let
+                    dRootNew =
+                        addChildAtPath feature nodeToInsert path editorModel.dRoot |> updatePaths
+                in
+                ( True, { editorModel | dRoot = dRootNew }, Cmd.none )
 
             else
-                ( insertChildAfterPath nodeToInsert path domainModel |> updatePaths, updateSelectionOnEnter cellContext )
+                let
+                    dRootNew =
+                        insertChildAfterPath nodeToInsert path editorModel.dRoot |> updatePaths
+                in
+                ( True, { editorModel | dRoot = dRootNew }, updateSelectionOnEnter cellContext )
 
         _ ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
 
 
-updateOnDeleteEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
-updateOnDeleteEffect domainModel effect cellContext =
+updateOnDeleteEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnDeleteEffect editorModel effect cellContext =
     case effect of
         DeletionEffect ({ selection } as effectData) ->
             let
@@ -463,21 +549,19 @@ updateOnDeleteEffect domainModel effect cellContext =
                 isAtDeletePos =
                     selection.end == textLength
             in
-            ( tryDelete
-                domainModel
+            tryDelete
+                editorModel
                 effectData
                 nextSibling
                 textLength
                 isAtDeletePos
-            , Cmd.none
-            )
 
         _ ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
 
 
-updateOnBackspaceEffect : Node a -> EffectCell a -> Node (Cell a) -> ( Node a, Cmd (Msg a) )
-updateOnBackspaceEffect domainModel effect cellContext =
+updateOnBackspaceEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnBackspaceEffect editorModel effect cellContext =
     case effect of
         DeletionEffect ({ selection } as effectData) ->
             let
@@ -487,27 +571,25 @@ updateOnBackspaceEffect domainModel effect cellContext =
                 isAtDeletePos =
                     selection.start == 0
             in
-            ( tryDelete
-                domainModel
+            tryDelete
+                editorModel
                 effectData
                 previousSibling
                 textLength
                 isAtDeletePos
-            , Cmd.none
-            )
 
         _ ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
 
 
-updateOnInputEffect : Node a -> EffectCell a -> String -> ( Node a, Cmd (Msg a) )
-updateOnInputEffect domainModel effect value =
+updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnInputEffect editorModel effect value =
     case effect of
         InputEffect { path, key } ->
-            ( updatePropertyByPath domainModel path ( key, value ) |> updatePaths, Cmd.none )
+            ( True, { editorModel | dRoot = updatePropertyByPath editorModel.dRoot path ( key, value ) |> updatePaths }, Cmd.none )
 
         _ ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
 
 
 updateOnNavEffect : EffectCell a -> Node (Cell a) -> Cmd (Msg a)
@@ -520,14 +602,18 @@ updateOnNavEffect effect editorModel =
             Cmd.none
 
 
-updateOnCreateScopeEffect : Node a -> EffectCell a -> ( Node a, Cmd (Msg a) )
-updateOnCreateScopeEffect domainModel effect =
+updateOnCreateScopeEffect : EditorModel a -> EffectCell a -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnCreateScopeEffect editorModel effect =
     case effect of
         CreateScopeEffect scopeData ->
-            ( setScopeInformation domainModel scopeData, Cmd.none )
+            ( True, { editorModel | dRoot = setScopeInformation editorModel.dRoot scopeData }, Cmd.none )
 
         _ ->
-            ( domainModel, Cmd.none )
+            noUpdate editorModel
+
+
+noUpdate editorModel =
+    ( False, editorModel, Cmd.none )
 
 
 setScopeInformation : Node a -> CreateScopeEffectData a -> Node a
@@ -544,25 +630,25 @@ setScopeInformation domainModel scopeData =
         domainModel
 
 
-tryDelete : Node a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> Node a
-tryDelete domainModel { path } navFun textLength isAtDeletePos =
+tryDelete : EditorModel a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> ( Bool, EditorModel a, Cmd (Msg a) )
+tryDelete editorModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
-        deleteNodeUnder path domainModel |> updatePaths
+        ( True, { editorModel | dRoot = deleteNodeUnder path editorModel.dRoot |> updatePaths }, Cmd.none )
 
     else if isAtDeletePos then
         let
             mbNext =
-                navFun domainModel path
+                navFun editorModel.dRoot path
         in
         case mbNext of
             Nothing ->
-                domainModel
+                noUpdate editorModel
 
             Just next ->
-                deleteNodeUnder (pathOf next) domainModel |> updatePaths
+                ( True, { editorModel | dRoot = deleteNodeUnder (pathOf next) editorModel.dRoot |> updatePaths }, Cmd.none )
 
     else
-        domainModel
+        noUpdate editorModel
 
 
 updateSelectionOnEnter : Node (Cell a) -> Cmd (Msg a)
@@ -1161,21 +1247,16 @@ viewRefCell cell =
 
 viewGraphCell : Node (Cell a) -> Html (Msg a)
 viewGraphCell cellGraph =
-    let
-        graphForced =
-            forceGraph cellGraph
-    in
     svg
-        [ viewBox 0 0 800 600
-        , HtmlA.style "width" "800"
-        , HtmlA.style "height" "600"
+        [ HtmlA.style "width" "100%"
+        , HtmlA.style "height" "100%"
         , HtmlA.style "background-color" "azure"
         ]
         [ g [] <|
-            viewEdgeCells graphForced
+            viewEdgeCells cellGraph
         , g [] <|
             List.map viewVertexCell <|
-                nodesOf (ContentCell VertexCell) graphForced
+                nodesOf (ContentCell VertexCell) cellGraph
         ]
 
 
@@ -1193,17 +1274,39 @@ initialAngle =
     pi * (3 - sqrt 5)
 
 
-entity : Int -> Node (Cell a) -> Force.Entity String { value : Node (Cell a) }
-entity index cell =
+forceEntityFromVertex : Int -> Node (Cell a) -> Force.Entity String { value : Node (Cell a) }
+forceEntityFromVertex index cell =
     let
+        mbX =
+            tryFloatOf propX cell
+
+        mbY =
+            tryFloatOf propY cell
+
         radius =
             sqrt (toFloat index) * initialRadius
 
         angle =
             toFloat index * initialAngle
+
+        xNew =
+            case mbX of
+                Nothing ->
+                    radius * cos angle
+
+                Just xc ->
+                    xc
+
+        yNew =
+            case mbY of
+                Nothing ->
+                    radius * sin angle
+
+                Just yc ->
+                    yc
     in
-    { x = radius * cos angle
-    , y = radius * sin angle
+    { x = xNew
+    , y = yNew
     , vx = 0.0
     , vy = 0.0
     , id = pathAsIdFromNode cell
@@ -1211,40 +1314,14 @@ entity index cell =
     }
 
 
-forceGraph cellGraph =
-    let
-        verticies =
-            nodesOf (ContentCell VertexCell) cellGraph
-
-        edges =
-            nodesOf (ContentCell EdgeCell) cellGraph
-
-        forces =
-            [ Force.links <| edgesFromGraph cellGraph
-            , Force.manyBodyStrength -5000 <| List.map (\c -> pathAsIdFromNode c) <| verticies
-            , Force.center 400 300
-            ]
-
-        addPosToCell e =
-            e.value
-                |> addFloat propX e.x
-                |> addFloat propY e.y
-
-        simResult =
-            List.indexedMap (\i n -> entity i n) verticies
-                |> Force.computeSimulation (Force.simulation forces)
-                |> List.map addPosToCell
-                |> List.append edges
-    in
-    replaceUnderFeature "default" simResult cellGraph
-
-
+dictNameToVertex : Node (Cell a) -> Dict.Dict String (Node (Cell a))
 dictNameToVertex cellGraph =
     nodesOf (ContentCell VertexCell) cellGraph
         |> List.foldl (\v d -> Dict.insert (textOf propText v) v d) Dict.empty
 
 
-edgesFromGraph cellGraph =
+edgeForcesFromGraph : Node (Cell a) -> List ( String, String )
+edgeForcesFromGraph cellGraph =
     let
         edges =
             nodesOf (ContentCell EdgeCell) cellGraph
@@ -1263,11 +1340,36 @@ edgesFromGraph cellGraph =
     in
     List.map idLookup edges
 
+customEdgeForcesFromGraph : Node (Cell a) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
+customEdgeForcesFromGraph cellGraph =
+    let
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph
 
+        forceLookup edge =
+            let
+                ( from, to ) =
+                    ( textOf propFrom edge, textOf propTo edge )
+
+                lookupWithDefault key =
+                    Dict.get key (dictNameToVertex cellGraph)
+                        |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
+                        |> Maybe.withDefault ""
+            in
+            { source = lookupWithDefault from
+            , target = lookupWithDefault to
+            , distance = 150
+            , strength = Nothing
+            }
+    in
+    List.map forceLookup edges
+
+
+viewEdgeCells : Node (Cell a) -> List (Html (Msg a))
 viewEdgeCells cellGraph =
     let
         edges =
-            nodesOf (ContentCell EdgeCell) cellGraph |> Debug.log "edges"
+            nodesOf (ContentCell EdgeCell) cellGraph
 
         fromToLookup edge =
             let
@@ -1276,23 +1378,25 @@ viewEdgeCells cellGraph =
 
                 lookup key =
                     Dict.get key (dictNameToVertex cellGraph)
-
             in
             ( lookup from, lookup to )
 
-        fromToPairs = List.map fromToLookup edges |> Debug.log "pairs"
+        fromToPairs =
+            List.map fromToLookup edges
     in
-        List.map viewEdgeCell fromToPairs
+    List.map viewEdgeCell fromToPairs
 
+
+viewEdgeCell : ( Maybe (Node (Cell a)), Maybe (Node (Cell a)) ) -> Html (Msg a)
 viewEdgeCell fromTo =
     case fromTo of
-        (Nothing, _) ->
+        ( Nothing, _ ) ->
             text ""
 
-        (_, Nothing) ->
+        ( _, Nothing ) ->
             text ""
 
-        (Just from, Just to) ->
+        ( Just from, Just to ) ->
             line
                 [ strokeWidth 1
                 , stroke <| Paint <| Color.rgb255 170 170 170
@@ -1304,10 +1408,16 @@ viewEdgeCell fromTo =
                 []
 
 
+viewVertexCell : Node (Cell a) -> Html (Msg a)
 viewVertexCell cell =
     let
+        name =
+            tryTextOf propText cell |> Maybe.withDefault "<no name>"
+
+        nameNotEmpty = if name == "" then "<no name>" else name
+
         wRect =
-            (toFloat <| String.length <| textOf propText cell) * 10
+            (toFloat <| String.length <| nameNotEmpty) * 10
 
         hRect =
             40
@@ -1339,7 +1449,7 @@ viewVertexCell cell =
             , ry 4
             ]
             []
-        , text_ [ x xPos, y yPos, textAnchor AnchorMiddle ] [ text <| textOf propText cell ]
+        , text_ [ x xPos, y yPos, textAnchor AnchorMiddle ] [ text nameNotEmpty ]
         ]
 
 
