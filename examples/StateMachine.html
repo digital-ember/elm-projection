@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>Main</title>
-  <link rel="stylesheet" href=".\..\style.css">
-  <script src="stateMachine.js"></script>
+  <link rel="stylesheet" href=".\..\src\style.css">
+  <script src="StateMachine.js"></script>
 </head>
 
 <body>
 <div id="elm"></div>
 <script>
-  var app = Elm.Main.init({
+  var app = Elm.StateMachine.init({
     node: document.getElementById('elm')
   });
   </script>

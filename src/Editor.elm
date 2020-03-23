@@ -39,12 +39,13 @@ import Force exposing (Entity, Force, State)
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
+import Html.Events.Extra.Mouse as Mouse
 import Json.Decode as JsonD
 import Structure exposing (..)
 import Task as Task
-import TypedSvg exposing (g, line, rect, svg, text_)
+import TypedSvg exposing (circle, g, line, rect, svg, text_)
 import TypedSvg.Attributes exposing (fill, stroke, textAnchor, viewBox)
-import TypedSvg.Attributes.InPx exposing (height, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
+import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
 
@@ -80,6 +81,14 @@ type alias EditorModel a =
     { dRoot : Node a
     , eRoot : Node (Cell a)
     , mbSimulation : Maybe (Force.State String)
+    , drag : Maybe Drag
+    }
+
+
+type alias Drag =
+    { start : ( Float, Float )
+    , current : ( Float, Float )
+    , path : Path
     }
 
 
@@ -146,6 +155,9 @@ type Msg a
     | OnInput (EffectCell a) String
     | UpdateScope (EffectCell a)
     | Tick
+    | DragStart Path ( Float, Float )
+    | DragAt ( Float, Float )
+    | DragEnd ( Float, Float )
 
 
 type Dir
@@ -167,6 +179,7 @@ initEditorModel dRoot eRoot =
     { dRoot = dRoot
     , eRoot = eRoot
     , mbSimulation = Nothing
+    , drag = Nothing
     }
 
 
@@ -332,11 +345,6 @@ deletionEffect nodeContext =
 
 inputEffect : Path -> String -> EffectCell a
 inputEffect path key =
-    let
-        p =
-            Debug.log "path" path
-    in
-        
     InputEffect <| InputEffectData path key
 
 
@@ -436,6 +444,47 @@ updateEditor msg editorModel =
         Tick ->
             tickGraphSimulations editorModel
 
+        DragStart path xy ->
+            ( False, { editorModel | drag = Just <| Drag xy xy path }, Cmd.none )
+
+        DragAt xy ->
+            case editorModel.drag of
+                Just { start, path } ->
+                    let
+                        mbSimNew =
+                            editorModel.mbSimulation
+                                |> Maybe.andThen (\s -> Just <| Force.reheat s)
+                    in
+                    ( False
+                    , { editorModel
+                        | drag = Just <| Drag start xy path
+                        , mbSimulation = mbSimNew
+                        , eRoot = updateDrag editorModel.eRoot path xy
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    noUpdate editorModel
+
+        DragEnd xy ->
+            case editorModel.drag of
+                Just { path } ->
+                    let
+                        d =
+                            Debug.log "END" xy
+                    in
+                    ( False
+                    , { editorModel
+                        | eRoot = updateDrag editorModel.eRoot path xy
+                        , drag = Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    noUpdate editorModel
+
         NoOp ->
             noUpdate editorModel
 
@@ -467,8 +516,16 @@ updateEditor msg editorModel =
 tickGraphSimulations : EditorModel a -> ( Bool, EditorModel a, Cmd (Msg a) )
 tickGraphSimulations editorModel =
     let
+        eRootWithDrag =
+            case editorModel.drag of
+                Nothing ->
+                    editorModel.eRoot
+
+                Just { current, path } ->
+                    updateDrag editorModel.eRoot path (current |> Debug.log "tick at")
+
         mbCellGraph =
-            nodesOf (ContentCell GraphCell) editorModel.eRoot |> List.head
+            nodesOf (ContentCell GraphCell) eRootWithDrag |> List.head
     in
     case mbCellGraph of
         Nothing ->
@@ -517,9 +574,18 @@ tickGraphSimulations editorModel =
                             replaceUnderFeature "default" childrenNew cellGraph
 
                         eRootNew =
-                            replaceChildAtPath cellGraphNew pathToGraph editorModel.eRoot
+                            replaceChildAtPath cellGraphNew pathToGraph eRootWithDrag
                     in
                     ( False, { editorModel | eRoot = eRootNew, mbSimulation = Just <| newSimulationState }, Cmd.none )
+
+
+updateDrag : Node (Cell a) -> Path -> ( Float, Float ) -> Node (Cell a)
+updateDrag eRoot path ( x, y ) =
+    let
+        eRootTemp =
+            updatePropertyByPath eRoot path ( propX, String.fromFloat x )
+    in
+    updatePropertyByPath eRootTemp path ( propY, String.fromFloat y )
 
 
 updateOnInsertionEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
@@ -592,13 +658,6 @@ updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( Bool, EditorM
 updateOnInputEffect editorModel effect value =
     case effect of
         InputEffect { path, key } ->
-            let
-                p =
-                    Debug.log "path" (pathAsId path)
-                k = Debug.log "key " key
-                v = Debug.log "val " value
-            in
-
             ( True, { editorModel | dRoot = updatePropertyByPath editorModel.dRoot path ( key, value ) |> updatePaths }, Cmd.none )
 
         _ ->
@@ -1262,7 +1321,7 @@ viewGraphCell : Node (Cell a) -> Html (Msg a)
 viewGraphCell cellGraph =
     svg
         [ HtmlA.style "width" "100%"
-        , HtmlA.style "height" "100%"
+        , HtmlA.style "height" "800px"
         , HtmlA.style "background-color" "AliceBlue"
         ]
         [ g [] <|
@@ -1473,20 +1532,17 @@ viewVertexCell cell =
             , fill <| Paint <| Color.white
             , stroke <| Paint <| Color.rgb255 17 77 175
             , strokeWidth 2
-
-            --, onMouseDown cell.id
             , x xPosRect
             , y yPosRect
             , rx 4
             , ry 4
             ]
             []
-
         , foreignObject
             [ x xPosInput
             , y yPosInput
             , width wRect
-            , height hRect
+            , height 18
             ]
             [ form []
                 [ input
@@ -1500,12 +1556,25 @@ viewVertexCell cell =
                      , HtmlA.size textWidth
                      , HtmlA.style "background-color" "transparent"
                      ]
-                     ++ inputCellAttributesFromEffects cell
+                        ++ inputCellAttributesFromEffects cell
                     )
                     []
                 ]
             ]
+        , circle
+            [ r 5
+            , cx xPosRect
+            , cy yPosRect
+            , onMouseDown (pathOf cell)
+            , fill <| Paint <| Color.rgb255 17 77 175
+            ]
+            []
         ]
+
+
+onMouseDown : Path -> Attribute (Msg a)
+onMouseDown path =
+    Mouse.onDown (.clientPos >> DragStart path)
 
 
 optionFromScope : Node (Cell a) -> Html (Msg a)

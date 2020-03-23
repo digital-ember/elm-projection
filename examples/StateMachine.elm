@@ -1,7 +1,4 @@
---module StateMachine exposing (main)
-
-
-module Main exposing (Domain(..), ctorEvent, ctorState, ctorTransition, editor, editorEvent, editorEventPlaceholder, editorEvents, editorState, editorStateHead, editorStateMachine, editorStateMachineName, editorStates, editorStatesPlaceholder, editorTransition, editorTransitionPlaceholder, initStateMachine, main)
+module StateMachine exposing (Domain(..), ctorEvent, ctorState, ctorTransition, editor, editorEvent, editorEventPlaceholder, editorEvents, editorState, editorStateHead, editorStateMachine, editorStateMachineName, editorStates, editorStatesPlaceholder, editorTransition, editorTransitionPlaceholder, initStateMachine, main)
 
 import Editor exposing (..)
 import Runtime exposing (Model, projection)
