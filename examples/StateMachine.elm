@@ -15,6 +15,15 @@ type Domain
     | Transition
 
 
+roleEventRef =
+    roleFromString "eventRef"
+
+roleStateRef =
+    roleFromString "stateRef"
+
+roleEvents =
+    roleFromString "events"
+
 {-| Program is created by the Runtime.program function.
 It requires:
 
@@ -33,49 +42,49 @@ Just an root node of variant StateMachine.
 initStateMachine : Node Domain
 initStateMachine =
     createRoot StateMachine
-        |> addRangeToCustom "events"
-            [ createNode Event |> addText "name" "doorClosed"
-            , createNode Event |> addText "name" "drawOpened"
-            , createNode Event |> addText "name" "lightOn"
-            , createNode Event |> addText "name" "doorOpened"
-            , createNode Event |> addText "name" "panelClosed"
+        |> addRangeToCustom roleEvents
+            [ createNode Event |> addText roleName "doorClosed"
+            , createNode Event |> addText roleName "drawOpened"
+            , createNode Event |> addText roleName "lightOn"
+            , createNode Event |> addText roleName "doorOpened"
+            , createNode Event |> addText roleName "panelClosed"
             ]
         |> addRangeToDefault
             [ createNode State
-                |> addText "name" "idle"
+                |> addText roleName "idle"
                 |> addToDefault
                     (createNode Transition
-                        |> addText "eventRef" "doorClosed"
-                        |> addText "stateRef" "active"
+                        |> addText roleEventRef "doorClosed"
+                        |> addText roleStateRef "active"
                     )
             , createNode State
-                |> addText "name" "active"
+                |> addText roleName "active"
                 |> addToDefault
                     (createNode Transition
-                        |> addText "eventRef" "drawOpened"
-                        |> addText "stateRef" "waitingForLight"
+                        |> addText roleEventRef "drawOpened"
+                        |> addText roleStateRef "waitingForLight"
                     )
                 |> addToDefault
                     (createNode Transition
-                        |> addText "eventRef" "lightOn"
-                        |> addText "stateRef" "waitingForDraw"
-                    )
-            , createNode State
-                |> addText "name" "waitingForLight"
-                |> addToDefault
-                    (createNode Transition
-                        |> addText "eventRef" "lightOn"
-                        |> addText "stateRef" "unlockedPanel"
+                        |> addText roleEventRef "lightOn"
+                        |> addText roleStateRef "waitingForDraw"
                     )
             , createNode State
-                |> addText "name" "waitingForDraw"
+                |> addText roleName "waitingForLight"
                 |> addToDefault
                     (createNode Transition
-                        |> addText "eventRef" "drawOpened"
-                        |> addText "stateRef" "unlockedPanel"
+                        |> addText roleEventRef "lightOn"
+                        |> addText roleStateRef "unlockedPanel"
                     )
             , createNode State
-                |> addText "name" "unlockedPanel"
+                |> addText roleName "waitingForDraw"
+                |> addToDefault
+                    (createNode Transition
+                        |> addText roleEventRef "drawOpened"
+                        |> addText roleStateRef "unlockedPanel"
+                    )
+            , createNode State
+                |> addText roleName "unlockedPanel"
 
             ]
 
@@ -123,7 +132,7 @@ editorStateMachineName : Node Domain -> Node (Cell Domain)
 editorStateMachineName sm =
     horizStackCell
         |> with (constantCell "name:")
-        |> with (inputCell "name" sm)
+        |> with (inputCell roleName sm)
         |> addMargin Bottom 20
 
 
@@ -135,7 +144,7 @@ editorEvents : Node Domain -> Node (Cell Domain)
 editorEvents sm =
     let
         editorEventsResult =
-            case getUnderCustom "events" sm of
+            case getUnderCustom roleEvents sm of
                 [] ->
                     [ editorEventPlaceholder sm ]
 
@@ -155,7 +164,7 @@ editorEvents sm =
 
 editorEvent : Node Domain -> Node (Cell Domain)
 editorEvent event =
-    inputCell "name" event
+    inputCell roleName event
         |> withEffect (insertionEffect event ctorEvent)
         |> withEffect (deletionEffect event)
 
@@ -163,7 +172,7 @@ editorEvent event =
 editorEventPlaceholder : Node Domain -> Node (Cell Domain)
 editorEventPlaceholder sm =
     placeholderCell "no events"
-        |> withEffect (replacementEffect "events" sm ctorEvent)
+        |> withEffect (replacementEffect roleEvents sm ctorEvent)
 
 
 editorStates : Node Domain -> Node (Cell Domain)
@@ -184,7 +193,7 @@ editorStates sm =
 editorStatesPlaceholder : Node Domain -> Node (Cell Domain)
 editorStatesPlaceholder sm =
     placeholderCell "no states"
-        |> withEffect (replacementEffect "" sm ctorState)
+        |> withEffect (replacementEffect roleDefault sm ctorState)
 
 
 editorState : Node Domain -> Node (Cell Domain)
@@ -218,7 +227,7 @@ editorStateHead state =
     horizStackCell
         |> with (constantCell "state")
         |> with
-            (inputCell "name" state
+            (inputCell roleName state
                 |> withEffect (insertionEffect state ctorState)
                 |> withEffect (deletionEffect state)
             )
@@ -227,20 +236,20 @@ editorStateHead state =
 editorTransitionPlaceholder : Node Domain -> Node (Cell Domain)
 editorTransitionPlaceholder state =
     placeholderCell "no transitions"
-        |> withEffect (replacementEffect "" state ctorTransition)
+        |> withEffect (replacementEffect roleDefault state ctorTransition)
 
 
 editorTransition : Node Domain -> Node (Cell Domain)
 editorTransition transition =
     horizStackCell
         |> with
-            (refCell Event "eventRef" transition Nothing
+            (refCell Event roleEventRef transition Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )
         |> with (constantCell "⇒")
         |> with
-            (refCell State "stateRef" transition Nothing
+            (refCell State roleStateRef transition Nothing
                 |> withEffect (insertionEffect transition ctorTransition)
                 |> withEffect (deletionEffect transition)
             )
@@ -252,7 +261,7 @@ editorStatesVerticies sm =
 
 
 editorStateVertex state =
-    vertexCell "name" state
+    vertexCell roleName state
 
 
 editorTransitionsEdges : Node Domain -> List (Node (Cell Domain))
@@ -265,7 +274,7 @@ editorTransitionsEdges sm =
 editorTransitionEdge state =
     let
         edge transition =
-            edgeCell "eventRef" ( textOf "name" state, textOf "stateRef" transition ) transition
+            edgeCell roleEventRef ( textOf roleName state, textOf roleStateRef transition ) transition
     in
     List.map edge <| getUnderDefault state
 
@@ -277,17 +286,17 @@ editorTransitionEdge state =
 ctorEvent : Node Domain
 ctorEvent =
     createNode Event
-        |> addText "name" ""
+        |> addText roleName ""
 
 
 ctorState : Node Domain
 ctorState =
     createNode State
-        |> addText "name" ""
+        |> addText roleName ""
 
 
 ctorTransition : Node Domain
 ctorTransition =
     createNode Transition
-        |> addText "eventRef" ""
-        |> addText "stateRef" ""
+        |> addText roleEventRef ""
+        |> addText roleStateRef ""

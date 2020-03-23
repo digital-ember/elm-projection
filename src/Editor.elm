@@ -2,6 +2,7 @@ module Editor exposing
     ( Cell
     , EditorModel
     , MarginSide(..)
+    , MousePosition
     , Msg(..)
     , addIndent
     , addMargin
@@ -17,6 +18,7 @@ module Editor exposing
     , inputCell
     , inputEffect
     , insertionEffect
+    , mousePosition
     , placeholderCell
     , refCell
     , replacementEffect
@@ -39,14 +41,14 @@ import Force exposing (Entity, Force, State)
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
-import Html.Events.Extra.Mouse as Mouse
 import Json.Decode as JsonD
 import Structure exposing (..)
 import Task as Task
-import TypedSvg exposing (circle, g, line, rect, svg, text_)
-import TypedSvg.Attributes exposing (fill, stroke, textAnchor, viewBox)
+import TypedSvg exposing (circle, g, line, rect, svg)
+import TypedSvg.Attributes exposing (fill, stroke)
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (foreignObject)
+import TypedSvg.Events as TsvgE
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
 
 
@@ -82,12 +84,13 @@ type alias EditorModel a =
     , eRoot : Node (Cell a)
     , mbSimulation : Maybe (Force.State String)
     , drag : Maybe Drag
+    , mousePos : ( Float, Float )
     }
 
 
 type alias Drag =
-    { start : ( Float, Float )
-    , current : ( Float, Float )
+    { mousePosStart : ( Float, Float )
+    , vertexPosStart : ( Float, Float )
     , path : Path
     }
 
@@ -96,7 +99,7 @@ type alias InsertionEffectData a =
     { path : Path
     , nodeToInsert : Node a
     , isReplace : Bool
-    , feature : String
+    , role : Role
     }
 
 
@@ -108,7 +111,7 @@ type alias DeletionEffectData =
 
 type alias InputEffectData =
     { path : Path
-    , key : String
+    , role : Role
     }
 
 
@@ -155,9 +158,9 @@ type Msg a
     | OnInput (EffectCell a) String
     | UpdateScope (EffectCell a)
     | Tick
-    | DragStart Path ( Float, Float )
-    | DragAt ( Float, Float )
-    | DragEnd ( Float, Float )
+    | DragStart Path
+    | MouseMove ( Float, Float )
+    | MouseUp ( Float, Float )
 
 
 type Dir
@@ -180,6 +183,7 @@ initEditorModel dRoot eRoot =
     , eRoot = eRoot
     , mbSimulation = Nothing
     , drag = Nothing
+    , mousePos = ( 0, 0 )
     }
 
 
@@ -189,45 +193,45 @@ rootCell =
 
 
 constantCell : String -> Node (Cell a)
-constantCell text =
+constantCell constantValue =
     createNode (ContentCell ConstantCell)
-        |> addText propConstant text
+        |> addText roleConstant constantValue
 
 
-refCell : a -> String -> Node a -> Maybe (List String) -> Node (Cell a)
-refCell target text nodeContext scopeProvider =
+refCell : a -> Role -> Node a -> Maybe (List String) -> Node (Cell a)
+refCell target role nodeContext scopeProvider =
     let
         pathContext =
             pathOf nodeContext
     in
     createNode (ContentCell RefCell)
-        |> addText propInput (textOf text nodeContext)
-        |> addRangeToCustom featScope (createRefScope nodeContext)
-        |> withEffect (inputEffect pathContext text)
+        |> addText roleInput (textOf role nodeContext)
+        |> addRangeToCustom roleScope (createRefScope nodeContext)
+        |> withEffect (inputEffect pathContext role)
         |> withEffect (createScopeEffect target (pathOf nodeContext) scopeProvider)
 
 
 createRefScope nodeContext =
-    List.map (\scopeElement -> constantCell (textOf propScopeValue scopeElement)) (getUnderCustom featScope nodeContext)
+    List.map (\scopeElement -> constantCell (textOf roleScopeValue scopeElement)) (getUnderCustom roleScope nodeContext)
 
 
-inputCell : String -> Node a -> Node (Cell a)
-inputCell text nodeContext =
+inputCell : Role -> Node a -> Node (Cell a)
+inputCell role nodeContext =
     createNode (ContentCell InputCell)
-        |> addText propInput (textOf text nodeContext)
-        |> withEffect (inputEffect (pathOf nodeContext) text)
+        |> addText roleInput (textOf role nodeContext)
+        |> withEffect (inputEffect (pathOf nodeContext) role)
 
 
 horizStackCell : Node (Cell a)
 horizStackCell =
     createNode (ContentCell StackCell)
-        |> addBool propIsHoriz True
+        |> addBool roleIsHoriz True
 
 
 vertStackCell : Node (Cell a)
 vertStackCell =
     createNode (ContentCell StackCell)
-        |> addBool propIsHoriz False
+        |> addBool roleIsHoriz False
 
 
 vertSplitCell : Node (Cell a)
@@ -238,25 +242,25 @@ vertSplitCell =
 horizSplitCell : Node (Cell a)
 horizSplitCell =
     createNode (ContentCell SplitCell)
-        |> addBool propIsHoriz True
+        |> addBool roleIsHoriz True
 
 
 vertGridCell : Node (Cell a)
 vertGridCell =
     vertStackCell
-        |> addBool propIsGrid True
+        |> addBool roleIsGrid True
 
 
 placeholderCell : String -> Node (Cell a)
 placeholderCell text =
     createNode (ContentCell PlaceholderCell)
-        |> addText propPlaceholder text
+        |> addText rolePlaceholder text
 
 
 buttonCell : String -> Node (Cell a)
 buttonCell text =
     createNode (ContentCell ButtonCell)
-        |> addText propText text
+        |> addText roleText text
 
 
 graphCell : Node (Cell a)
@@ -264,19 +268,19 @@ graphCell =
     createNode (ContentCell GraphCell)
 
 
-vertexCell : String -> Node a -> Node (Cell a)
-vertexCell text nodeContext =
+vertexCell : Role -> Node a -> Node (Cell a)
+vertexCell role nodeContext =
     createNode (ContentCell VertexCell)
-        |> addText propText (textOf text nodeContext)
-        |> withEffect (inputEffect (pathOf nodeContext) text)
+        |> addText roleText (textOf role nodeContext)
+        |> withEffect (inputEffect (pathOf nodeContext) role)
 
 
-edgeCell : String -> ( String, String ) -> Node a -> Node (Cell a)
-edgeCell text ( from, to ) nodeContext =
+edgeCell : Role -> ( String, String ) -> Node a -> Node (Cell a)
+edgeCell role ( from, to ) nodeContext =
     createNode (ContentCell EdgeCell)
-        |> addText propText (textOf text nodeContext)
-        |> addText propFrom from
-        |> addText propTo to
+        |> addText roleText (textOf role nodeContext)
+        |> addText roleFrom from
+        |> addText roleTo to
 
 
 with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
@@ -291,7 +295,7 @@ withRange children =
 
 addIndent : Node (Cell a) -> Node (Cell a)
 addIndent node =
-    addBool propIndent True node
+    addBool roleIndent True node
 
 
 addMargin : MarginSide -> Int -> Node (Cell a) -> Node (Cell a)
@@ -300,16 +304,16 @@ addMargin side space node =
         key =
             case side of
                 Top ->
-                    propMarginTop
+                    roleMarginTop
 
                 Right ->
-                    propMarginRight
+                    roleMarginRight
 
                 Bottom ->
-                    propMarginBottom
+                    roleMarginBottom
 
                 Left ->
-                    propMarginLeft
+                    roleMarginLeft
     in
     addInt key space node
 
@@ -320,21 +324,21 @@ addMargin side space node =
 
 withEffect : EffectCell a -> Node (Cell a) -> Node (Cell a)
 withEffect effect =
-    addToCustom featEffects <|
+    addToCustom roleEffects <|
         createNode <|
             EffectCell effect
 
 
-replacementEffect : String -> Node a -> Node a -> EffectCell a
-replacementEffect feature nodeContext nodeToInsert =
+replacementEffect : Role -> Node a -> Node a -> EffectCell a
+replacementEffect role nodeContext nodeToInsert =
     InsertionEffect <|
-        InsertionEffectData (pathOf nodeContext) nodeToInsert True feature
+        InsertionEffectData (pathOf nodeContext) nodeToInsert True role
 
 
 insertionEffect : Node a -> Node a -> EffectCell a
 insertionEffect nodeContext nodeToInsert =
     InsertionEffect <|
-        InsertionEffectData (pathOf nodeContext) nodeToInsert False ""
+        InsertionEffectData (pathOf nodeContext) nodeToInsert False roleEmpty
 
 
 deletionEffect : Node a -> EffectCell a
@@ -343,9 +347,9 @@ deletionEffect nodeContext =
         DeletionEffectData (pathOf nodeContext) emptySelection
 
 
-inputEffect : Path -> String -> EffectCell a
-inputEffect path key =
-    InputEffect <| InputEffectData path key
+inputEffect : Path -> Role -> EffectCell a
+inputEffect path role =
+    InputEffect <| InputEffectData path role
 
 
 createScopeEffect : a -> Path -> Maybe (List String) -> EffectCell a
@@ -444,12 +448,37 @@ updateEditor msg editorModel =
         Tick ->
             tickGraphSimulations editorModel
 
-        DragStart path xy ->
-            ( False, { editorModel | drag = Just <| Drag xy xy path }, Cmd.none )
+        DragStart path ->
+            let
+                mbVertex =
+                    nodeAt editorModel.eRoot path
+            in
+            case mbVertex of
+                Nothing ->
+                    noUpdate editorModel
 
-        DragAt xy ->
+                Just vertex ->
+                    let
+                        vertextPosStart =
+                            ( floatOf roleX vertex, floatOf roleY vertex )
+
+                        vertexGrabbed =
+                            vertex |> addBool roleGrabbed True
+
+                        eRootNew =
+                            replaceChildAtPath vertexGrabbed (pathOf vertex) editorModel.eRoot
+                    in
+                    ( False
+                    , { editorModel
+                        | drag = Just <| Drag editorModel.mousePos vertextPosStart path
+                        , eRoot = eRootNew
+                      }
+                    , Cmd.none
+                    )
+
+        MouseMove mousePosNew ->
             case editorModel.drag of
-                Just { start, path } ->
+                Just drag ->
                     let
                         mbSimNew =
                             editorModel.mbSimulation
@@ -457,30 +486,47 @@ updateEditor msg editorModel =
                     in
                     ( False
                     , { editorModel
-                        | drag = Just <| Drag start xy path
-                        , mbSimulation = mbSimNew
-                        , eRoot = updateDrag editorModel.eRoot path xy
+                        | mbSimulation = mbSimNew
+                        , eRoot = updateDrag editorModel.eRoot drag mousePosNew
+                        , mousePos = mousePosNew
                       }
                     , Cmd.none
                     )
 
                 Nothing ->
-                    noUpdate editorModel
-
-        DragEnd xy ->
-            case editorModel.drag of
-                Just { path } ->
-                    let
-                        d =
-                            Debug.log "END" xy
-                    in
                     ( False
                     , { editorModel
-                        | eRoot = updateDrag editorModel.eRoot path xy
-                        , drag = Nothing
+                        | mousePos = mousePosNew
                       }
                     , Cmd.none
                     )
+
+        MouseUp mousePosNew ->
+            case editorModel.drag of
+                Just drag ->
+                    let
+                        mbVertex =
+                            nodeAt editorModel.eRoot drag.path
+                    in
+                    case mbVertex of
+                        Nothing ->
+                            noUpdate editorModel
+
+                        Just vertex ->
+                            let
+                                vertexGrabbed =
+                                    vertex |> addBool roleGrabbed False
+
+                                eRootNew =
+                                    replaceChildAtPath vertexGrabbed (pathOf vertex) editorModel.eRoot
+                            in
+                            ( False
+                            , { editorModel
+                                | eRoot = updateDrag eRootNew drag mousePosNew
+                                , drag = Nothing
+                              }
+                            , Cmd.none
+                            )
 
                 Nothing ->
                     noUpdate editorModel
@@ -516,16 +562,8 @@ updateEditor msg editorModel =
 tickGraphSimulations : EditorModel a -> ( Bool, EditorModel a, Cmd (Msg a) )
 tickGraphSimulations editorModel =
     let
-        eRootWithDrag =
-            case editorModel.drag of
-                Nothing ->
-                    editorModel.eRoot
-
-                Just { current, path } ->
-                    updateDrag editorModel.eRoot path (current |> Debug.log "tick at")
-
         mbCellGraph =
-            nodesOf (ContentCell GraphCell) eRootWithDrag |> List.head
+            nodesOf (ContentCell GraphCell) editorModel.eRoot |> List.head
     in
     case mbCellGraph of
         Nothing ->
@@ -559,8 +597,8 @@ tickGraphSimulations editorModel =
 
                         addPosToCell e =
                             e.value
-                                |> addFloat propX e.x
-                                |> addFloat propY e.y
+                                |> addFloat roleX e.x
+                                |> addFloat roleY e.y
 
                         ( newSimulationState, verticiesNew ) =
                             List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
@@ -571,31 +609,54 @@ tickGraphSimulations editorModel =
                                 ++ edges
 
                         cellGraphNew =
-                            replaceUnderFeature "default" childrenNew cellGraph
+                            replaceUnderFeature roleDefault childrenNew cellGraph
 
                         eRootNew =
-                            replaceChildAtPath cellGraphNew pathToGraph eRootWithDrag
+                            replaceChildAtPath cellGraphNew pathToGraph editorModel.eRoot
+
+                        eRootWithDrag =
+                            case editorModel.drag of
+                                Nothing ->
+                                    eRootNew
+
+                                Just drag ->
+                                    updateDrag eRootNew drag editorModel.mousePos
+
+                        f =
+                            Debug.log "simulating" ""
                     in
-                    ( False, { editorModel | eRoot = eRootNew, mbSimulation = Just <| newSimulationState }, Cmd.none )
+                    ( False, { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState }, Cmd.none )
 
 
-updateDrag : Node (Cell a) -> Path -> ( Float, Float ) -> Node (Cell a)
-updateDrag eRoot path ( x, y ) =
+updateDrag : Node (Cell a) -> Drag -> ( Float, Float ) -> Node (Cell a)
+updateDrag eRoot drag ( xCurrent, yCurrent ) =
     let
+        xDelta =
+            xCurrent - Tuple.first drag.mousePosStart
+
+        yDelta =
+            yCurrent - Tuple.second drag.mousePosStart
+
+        xNew =
+            Tuple.first drag.vertexPosStart + xDelta
+
+        yNew =
+            Tuple.second drag.vertexPosStart + yDelta
+
         eRootTemp =
-            updatePropertyByPath eRoot path ( propX, String.fromFloat x )
+            updatePropertyByPath eRoot drag.path ( roleX, String.fromFloat xNew )
     in
-    updatePropertyByPath eRootTemp path ( propY, String.fromFloat y )
+    updatePropertyByPath eRootTemp drag.path ( roleY, String.fromFloat yNew )
 
 
 updateOnInsertionEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
 updateOnInsertionEffect editorModel effect cellContext =
     case effect of
-        InsertionEffect { path, nodeToInsert, isReplace, feature } ->
+        InsertionEffect { path, nodeToInsert, isReplace, role } ->
             if isReplace then
                 let
                     dRootNew =
-                        addChildAtPath feature nodeToInsert path editorModel.dRoot |> updatePaths
+                        addChildAtPath role nodeToInsert path editorModel.dRoot |> updatePaths
                 in
                 ( True, { editorModel | dRoot = dRootNew }, Cmd.none )
 
@@ -616,7 +677,7 @@ updateOnDeleteEffect editorModel effect cellContext =
         DeletionEffect ({ selection } as effectData) ->
             let
                 textLength =
-                    textOf propInput cellContext |> String.length
+                    textOf roleInput cellContext |> String.length
 
                 isAtDeletePos =
                     selection.end == textLength
@@ -638,7 +699,7 @@ updateOnBackspaceEffect editorModel effect cellContext =
         DeletionEffect ({ selection } as effectData) ->
             let
                 textLength =
-                    textOf propInput cellContext |> String.length
+                    textOf roleInput cellContext |> String.length
 
                 isAtDeletePos =
                     selection.start == 0
@@ -657,8 +718,8 @@ updateOnBackspaceEffect editorModel effect cellContext =
 updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( Bool, EditorModel a, Cmd (Msg a) )
 updateOnInputEffect editorModel effect value =
     case effect of
-        InputEffect { path, key } ->
-            ( True, { editorModel | dRoot = updatePropertyByPath editorModel.dRoot path ( key, value ) |> updatePaths }, Cmd.none )
+        InputEffect { path, role } ->
+            ( True, { editorModel | dRoot = updatePropertyByPath editorModel.dRoot path ( role, value ) |> updatePaths }, Cmd.none )
 
         _ ->
             noUpdate editorModel
@@ -693,10 +754,10 @@ setScopeInformation domainModel scopeData =
     let
         optionNodes =
             nodesOf scopeData.isa domainModel
-                |> List.map (\s -> createNode scopeData.isa |> addText propScopeValue (textOf propName s))
+                |> List.map (\s -> createNode scopeData.isa |> addText roleScopeValue (textOf roleName s))
     in
     replaceRangeAtPath
-        featScope
+        roleScope
         optionNodes
         scopeData.pathContextNode
         domainModel
@@ -783,7 +844,7 @@ updateSelectionByOrientation editorModel navData orientation =
                         Cmd.none
 
                 ( R, Horiz ) ->
-                    if navData.selection.start >= (textOf propInput cellSelected |> String.length) then
+                    if navData.selection.start >= (textOf roleInput cellSelected |> String.length) then
                         moverTask findNextInputCell
 
                     else
@@ -998,7 +1059,7 @@ viewSplitCell cell =
         ContentCell _ ->
             let
                 bO =
-                    boolOf propIsHoriz cell
+                    boolOf roleIsHoriz cell
             in
             if bO then
                 viewHorizSplit cell
@@ -1082,7 +1143,7 @@ viewStackCell cell =
         ContentCell _ ->
             let
                 bO =
-                    boolOf propIsHoriz cell
+                    boolOf roleIsHoriz cell
             in
             if bO then
                 viewHorizStackCell cell
@@ -1149,7 +1210,7 @@ viewConstantCell cell =
                      ]
                         ++ marginsAndPaddings cell
                     )
-                    [ text (textOf propConstant cell) ]
+                    [ text (textOf roleConstant cell) ]
                 ]
 
         EffectCell _ ->
@@ -1162,7 +1223,7 @@ viewInputCell cell =
         ContentCell _ ->
             let
                 inputValue =
-                    textOf propInput cell
+                    textOf roleInput cell
 
                 inputSize =
                     if inputValue == "" then
@@ -1200,7 +1261,7 @@ viewPlaceholderCell cell =
         ContentCell _ ->
             let
                 placeholderValue =
-                    textOf propPlaceholder cell
+                    textOf rolePlaceholder cell
 
                 inputValue =
                     "<"
@@ -1245,7 +1306,7 @@ viewButtonCell cell =
         ContentCell _ ->
             let
                 onClick =
-                    isasUnderCustom featEffects cell
+                    isasUnderCustom roleEffects cell
                         |> List.head
                         |> Maybe.andThen
                             (\e ->
@@ -1258,7 +1319,7 @@ viewButtonCell cell =
                             )
                         |> Maybe.withDefault []
             in
-            button (marginsAndPaddings cell ++ onClick) [ text (textOf propText cell) ]
+            button (marginsAndPaddings cell ++ onClick) [ text (textOf roleText cell) ]
 
         EffectCell _ ->
             text ""
@@ -1270,7 +1331,7 @@ viewRefCell cell =
         ContentCell _ ->
             let
                 options =
-                    getUnderCustom featScope cell
+                    getUnderCustom roleScope cell
                         |> List.map optionFromScope
 
                 inputId =
@@ -1280,7 +1341,7 @@ viewRefCell cell =
                     inputId ++ "-datalist"
 
                 inputValue =
-                    textOf propInput cell
+                    textOf roleInput cell
 
                 inputSize =
                     if inputValue == "" then
@@ -1350,10 +1411,10 @@ forceEntityFromVertex : Int -> Node (Cell a) -> Force.Entity String { value : No
 forceEntityFromVertex index cell =
     let
         mbX =
-            tryFloatOf propX cell
+            tryFloatOf roleX cell
 
         mbY =
-            tryFloatOf propY cell
+            tryFloatOf roleY cell
 
         radius =
             sqrt (toFloat index) * initialRadius
@@ -1389,7 +1450,7 @@ forceEntityFromVertex index cell =
 dictNameToVertex : Node (Cell a) -> Dict.Dict String (Node (Cell a))
 dictNameToVertex cellGraph =
     nodesOf (ContentCell VertexCell) cellGraph
-        |> List.foldl (\v d -> Dict.insert (textOf propText v) v d) Dict.empty
+        |> List.foldl (\v d -> Dict.insert (textOf roleText v) v d) Dict.empty
 
 
 edgeForcesFromGraph : Node (Cell a) -> List ( String, String )
@@ -1401,7 +1462,7 @@ edgeForcesFromGraph cellGraph =
         idLookup edge =
             let
                 ( from, to ) =
-                    ( textOf propFrom edge, textOf propTo edge )
+                    ( textOf roleFrom edge, textOf roleTo edge )
 
                 lookupWithDefault key =
                     Dict.get key (dictNameToVertex cellGraph)
@@ -1422,7 +1483,7 @@ customEdgeForcesFromGraph cellGraph =
         forceLookup edge =
             let
                 ( from, to ) =
-                    ( textOf propFrom edge, textOf propTo edge )
+                    ( textOf roleFrom edge, textOf roleTo edge )
 
                 lookupWithDefault key =
                     Dict.get key (dictNameToVertex cellGraph)
@@ -1447,7 +1508,7 @@ viewEdgeCells cellGraph =
         fromToLookup edge =
             let
                 ( from, to ) =
-                    ( textOf propFrom edge, textOf propTo edge )
+                    ( textOf roleFrom edge, textOf roleTo edge )
 
                 lookup key =
                     Dict.get key (dictNameToVertex cellGraph)
@@ -1473,10 +1534,10 @@ viewEdgeCell fromTo =
             line
                 [ strokeWidth 2
                 , stroke <| Paint <| Color.rgb255 17 77 175
-                , x1 <| floatOf propX from
-                , y1 <| floatOf propY from
-                , x2 <| floatOf propX to
-                , y2 <| floatOf propY to
+                , x1 <| floatOf roleX from
+                , y1 <| floatOf roleY from
+                , x2 <| floatOf roleX to
+                , y2 <| floatOf roleY to
                 ]
                 []
 
@@ -1485,7 +1546,7 @@ viewVertexCell : Node (Cell a) -> Html (Msg a)
 viewVertexCell cell =
     let
         name =
-            tryTextOf propText cell |> Maybe.withDefault "<no name>"
+            tryTextOf roleText cell |> Maybe.withDefault "<no name>"
 
         nameNotEmpty =
             if name == "" then
@@ -1501,7 +1562,7 @@ viewVertexCell cell =
             40
 
         xPos =
-            floatOf propX cell
+            floatOf roleX cell
 
         xPosRect =
             xPos - (wRect / 2)
@@ -1510,7 +1571,7 @@ viewVertexCell cell =
             xPosRect + 9
 
         yPos =
-            floatOf propY cell
+            floatOf roleY cell
 
         yPosRect =
             yPos - (hRect / 2)
@@ -1524,6 +1585,12 @@ viewVertexCell cell =
 
             else
                 String.length nameNotEmpty
+
+        handle =
+            vertexHandle cell xPosRect yPosRect
+
+        content =
+            vertexContent cell xPosInput yPosInput wRect textWidth nameNotEmpty
     in
     g []
         [ rect
@@ -1538,50 +1605,82 @@ viewVertexCell cell =
             , ry 4
             ]
             []
-        , foreignObject
-            [ x xPosInput
-            , y yPosInput
-            , width wRect
-            , height 18
+        , content
+        , handle
+        ]
+
+
+vertexContent cell xp yp w textWidth name =
+    foreignObject
+        [ x xp
+        , y yp
+        , width w
+        , height 20
+        ]
+        [ form []
+            [ input
+                ([ HtmlA.style "border-width" "0px"
+                 , HtmlA.style "font-family" "Consolas"
+                 , HtmlA.style "font-size" "16px"
+                 , HtmlA.style "border" "none"
+                 , HtmlA.style "outline" "none"
+                 , HtmlA.placeholder "<no value>"
+                 , HtmlA.value name
+                 , HtmlA.size textWidth
+                 , HtmlA.style "background-color" "transparent"
+                 , HtmlA.disabled <| boolOf roleGrabbed cell
+                 ]
+                    ++ inputCellAttributesFromEffects cell
+                )
+                []
             ]
-            [ form []
-                [ input
-                    ([ HtmlA.style "border-width" "0px"
-                     , HtmlA.style "font-family" "Consolas"
-                     , HtmlA.style "font-size" "16px"
-                     , HtmlA.style "border" "none"
-                     , HtmlA.style "outline" "none"
-                     , HtmlA.placeholder "<no value>"
-                     , HtmlA.value nameNotEmpty
-                     , HtmlA.size textWidth
-                     , HtmlA.style "background-color" "transparent"
-                     ]
-                        ++ inputCellAttributesFromEffects cell
-                    )
-                    []
-                ]
-            ]
-        , circle
-            [ r 5
-            , cx xPosRect
-            , cy yPosRect
-            , onMouseDown (pathOf cell)
+        ]
+
+
+vertexHandle cell x y =
+    if boolOf roleGrabbed cell then
+        circle
+            [ r 10
+            , cx x
+            , cy y
             , fill <| Paint <| Color.rgb255 17 77 175
             ]
             []
-        ]
+
+    else
+        circle
+            [ r 5
+            , cx x
+            , cy y
+            , onMouseDown (pathOf cell)
+            , stroke <| Paint <| Color.rgb255 17 77 175
+            , strokeWidth 2
+            , fill <| Paint <| Color.rgb255 240 248 255
+            ]
+            []
+
+
+type alias MousePosition =
+    ( Float, Float )
+
+
+mousePosition : JsonD.Decoder MousePosition
+mousePosition =
+    JsonD.map2 (\x y -> ( x, y ))
+        (JsonD.field "clientX" JsonD.float)
+        (JsonD.field "clientY" JsonD.float)
 
 
 onMouseDown : Path -> Attribute (Msg a)
 onMouseDown path =
-    Mouse.onDown (.clientPos >> DragStart path)
+    TsvgE.onMouseDown (DragStart path)
 
 
 optionFromScope : Node (Cell a) -> Html (Msg a)
 optionFromScope scopeElement =
     let
         scopeValue =
-            textOf propConstant scopeElement
+            textOf roleConstant scopeElement
     in
     option
         [ HtmlA.value scopeValue ]
@@ -1590,7 +1689,7 @@ optionFromScope scopeElement =
 
 divRowAttributes : Node (Cell a) -> List (Attribute (Msg a))
 divRowAttributes cell =
-    if boolOf propIsGrid cell then
+    if boolOf roleIsGrid cell then
         [ HtmlA.style "display" "table-row" ]
 
     else
@@ -1599,7 +1698,7 @@ divRowAttributes cell =
 
 divCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
 divCellAttributes cell =
-    if boolOf propIsGrid cell then
+    if boolOf roleIsGrid cell then
         [ HtmlA.style "display" "table-cell" ]
 
     else
@@ -1615,23 +1714,23 @@ margins : Node (Cell a) -> Attribute (Msg a)
 margins cell =
     let
         indentMarginLeft =
-            if boolOf propIndent cell then
+            if boolOf roleIndent cell then
                 20
 
             else
                 0
 
         top =
-            (intOf propMarginTop cell |> String.fromInt) ++ "px "
+            (intOf roleMarginTop cell |> String.fromInt) ++ "px "
 
         right =
-            ((intOf propMarginRight cell + 5) |> String.fromInt) ++ "px "
+            ((intOf roleMarginRight cell + 5) |> String.fromInt) ++ "px "
 
         bottom =
-            (intOf propMarginBottom cell |> String.fromInt) ++ "px "
+            (intOf roleMarginBottom cell |> String.fromInt) ++ "px "
 
         left =
-            ((intOf propMarginLeft cell + indentMarginLeft) |> String.fromInt) ++ "px"
+            ((intOf roleMarginLeft cell + indentMarginLeft) |> String.fromInt) ++ "px"
     in
     HtmlA.style "margin" <| top ++ right ++ bottom ++ left
 
@@ -1646,7 +1745,7 @@ inputCellAttributesFromEffects cell =
     let
         effectGroups =
             grouped <|
-                isasUnderCustom featEffects cell
+                isasUnderCustom roleEffects cell
                     ++ navEffects (pathOf cell)
     in
     List.map (attributeFromEffectGroup cell) effectGroups
@@ -1785,15 +1884,15 @@ effectAttributeFromKey dictKeyToMsg =
             JsonD.field "key" JsonD.string
 
 
-isasUnderCustom : String -> Node a -> List a
-isasUnderCustom featureKey parent =
+isasUnderCustom : Role -> Node a -> List a
+isasUnderCustom role parent =
     let
         children =
-            if featureKey == "" then
+            if role == roleEmpty || role == roleDefault then
                 getUnderDefault parent
 
             else
-                getUnderCustom featureKey parent
+                getUnderCustom role parent
     in
     List.map isaOf children
 
@@ -1805,7 +1904,7 @@ orientationOf root cell =
             Just <|
                 let
                     bO =
-                        boolOf propIsHoriz cell
+                        boolOf roleIsHoriz cell
                 in
                 if bO then
                     Horiz
@@ -1845,7 +1944,7 @@ griddifyI isGridParent node =
     let
         nodeNew =
             if isGridParent then
-                addBool propIsGrid True node
+                addBool roleIsGrid True node
 
             else
                 node
@@ -1854,90 +1953,94 @@ griddifyI isGridParent node =
             getUnderDefault nodeNew
 
         isGrid =
-            boolOf propIsGrid nodeNew
+            boolOf roleIsGrid nodeNew
     in
-    replaceUnderFeature featDefault (List.map (griddifyI isGrid) children) nodeNew
+    replaceUnderFeature roleDefault (List.map (griddifyI isGrid) children) nodeNew
 
 
 
 -- CUSTOM FEATURE AND PROPERTY CONSTANTS
 
 
-featDefault =
-    "default"
+roleDefault =
+    roleFromString "default"
 
 
-featScope =
-    "scope"
+roleScope =
+    roleFromString "scope"
 
 
-featEffects =
-    "effects"
+roleEffects =
+    roleFromString "effects"
 
 
-propScopeValue =
-    "scopeValue"
+roleScopeValue =
+    roleFromString "scopeValue"
 
 
-propName =
-    "name"
+roleName =
+    roleFromString "name"
 
 
-propInput =
-    "input"
+roleInput =
+    roleFromString "input"
 
 
-propConstant =
-    "constant"
+roleConstant =
+    roleFromString "constant"
 
 
-propIsHoriz =
-    "isHoriz"
+roleIsHoriz =
+    roleFromString "isHoriz"
 
 
-propPlaceholder =
-    "placeholder"
+rolePlaceholder =
+    roleFromString "placeholder"
 
 
-propIsGrid =
-    "isGrid"
+roleIsGrid =
+    roleFromString "isGrid"
 
 
-propText =
-    "text"
+roleText =
+    roleFromString "text"
 
 
-propX =
-    "x"
+roleX =
+    roleFromString "x"
 
 
-propY =
-    "y"
+roleY =
+    roleFromString "y"
 
 
-propFrom =
-    "propFrom"
+roleFrom =
+    roleFromString "propFrom"
 
 
-propTo =
-    "propTo"
+roleTo =
+    roleFromString "propTo"
 
 
-propIndent =
-    "indent"
+roleIndent =
+    roleFromString "indent"
 
 
-propMarginTop =
-    "margin-top"
+roleMarginTop =
+    roleFromString "margin-top"
 
 
-propMarginBottom =
-    "margin-bottom"
+roleMarginBottom =
+    roleFromString "margin-bottom"
 
 
-propMarginRight =
-    "margin-right"
+roleMarginRight =
+    roleFromString "margin-right"
 
 
-propMarginLeft =
-    "margin-left"
+roleMarginLeft =
+    roleFromString "margin-left"
+
+
+roleGrabbed =
+    roleFromString "grabbed"

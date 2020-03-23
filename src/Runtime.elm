@@ -30,8 +30,8 @@ type alias Domain a b =
 type Msg a
     = EditorMsg (Editor.Msg a)
     | Tick (Editor.Msg a) Time.Posix
-    | DragAt (Editor.Msg a)
-    | DragEnd (Editor.Msg a)
+    | MouseUp (Editor.Msg a)
+    | MouseMove (Editor.Msg a)
 
 
 projection : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
@@ -57,57 +57,34 @@ projection rootD xform =
 
 subscriptions : Model a -> Sub (Msg a)
 subscriptions model =
-    case model.editorModel.drag of
-        Nothing ->
-            case model.editorModel.mbSimulation of
-                -- this trick makes it so to fire a animation every time the domain model changes
-                Just simulation ->
-                    if Force.isCompleted simulation then
-                        Sub.none
+    let
+        mouseMoveSub =
+            Browser.Events.onMouseMove
+                (JsonD.map (\mpos -> MouseMove (Editor.MouseMove mpos)) mousePosition)
 
-                    else
-                        Browser.Events.onAnimationFrame (Tick Editor.Tick)
-
+        dragSubs =
+            case model.editorModel.drag of
                 Nothing ->
-                    Browser.Events.onAnimationFrame (Tick Editor.Tick)
+                    case model.editorModel.mbSimulation of
+                        -- this trick makes it so to fire a animation every time the domain model changes
+                        Just simulation ->
+                            if Force.isCompleted simulation then
+                                []
 
-        Just _ ->
-            Sub.batch
-                [ Browser.Events.onMouseMove
-                    (JsonD.map
-                        (\mEvent ->
-                            let
-                                d =
-                                    Debug.log "offsetPos" mEvent.offsetPos
-                                e =
-                                    Debug.log "screenClient" mEvent.clientPos
-                            in
-                                
-                            DragAt (Editor.DragAt (Tuple.first mEvent.clientPos - 352, Tuple.second mEvent.clientPos ))
-                        )
-                        Mouse.eventDecoder
-                    )
-                , Browser.Events.onMouseUp (JsonD.map (\mEvent -> DragEnd (Editor.DragEnd  (Tuple.first mEvent.clientPos - 352, Tuple.second mEvent.clientPos ))) Mouse.eventDecoder)
+                            else
+                                [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
 
-                , Browser.Events.onAnimationFrame (Tick Editor.Tick)
-                ]
+                        Nothing ->
+                            [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
 
-
-type alias MouseData =
-    { clientX : Float
-    , clientY : Float
-    , offsetTop : Float
-    , offsetLeft : Float
-    }
-
-
-decoder : Decoder MouseData
-decoder =
-    JsonD.map4 MouseData
-        (JsonD.at [ "clientX" ] JsonD.float)
-        (JsonD.at [ "clientY" ] JsonD.float)
-        (JsonD.at [ "target", "offsetTop" ] JsonD.float)
-        (JsonD.at [ "target", "offsetLeft" ] JsonD.float)
+                Just _ ->
+                    [ Browser.Events.onMouseUp
+                        (JsonD.map (\mpos -> MouseUp (Editor.MouseUp mpos)) mousePosition)
+                    , Browser.Events.onAnimationFrame (Tick Editor.Tick)
+                    ]
+    in
+    Sub.batch
+        (mouseMoveSub :: dragSubs)
 
 
 update : Msg a -> Model a -> ( Model a, Cmd (Msg a) )
@@ -120,14 +97,14 @@ update msg ({ domain, editorModel } as model) =
             in
             ( { model | editorModel = editorModelUpdated }, Cmd.none )
 
-        DragAt eMsg ->
+        MouseMove eMsg ->
             let
                 ( runXform, editorModelUpdated, editorCmd ) =
                     updateEditor eMsg editorModel
             in
             ( { model | editorModel = editorModelUpdated }, Cmd.none )
 
-        DragEnd eMsg ->
+        MouseUp eMsg ->
             let
                 d =
                     Debug.log "dragEnd" eMsg
