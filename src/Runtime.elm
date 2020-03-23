@@ -61,7 +61,7 @@ subscriptions model =
             Browser.Events.onMouseMove
                 (JsonD.map (\mpos -> MouseMove (Editor.MouseMove mpos)) mousePosition)
 
-        dragSubs =
+        graphSubs =
             case model.editorModel.drag of
                 Nothing ->
                     case model.editorModel.mbSimulation of
@@ -73,7 +73,8 @@ subscriptions model =
                                 [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
 
                         Nothing ->
-                            [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
+                                [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
+
 
                 Just _ ->
                     [ Browser.Events.onMouseUp
@@ -82,46 +83,46 @@ subscriptions model =
                     ]
     in
     Sub.batch
-        (mouseMoveSub :: dragSubs)
+        (mouseMoveSub :: graphSubs)
 
 
 update : Msg a -> Model a -> ( Model a, Cmd (Msg a) )
 update msg ({ domain, editorModel } as model) =
+    let
+        updateEditorOnly eMsg =
+            let
+                ( editorModelUpdated, editorCmd ) =
+                    updateEditor eMsg model.editorModel
+            in
+            ( { model | editorModel = editorModelUpdated }, Cmd.map EditorMsg editorCmd )
+    in
     case msg of
         Tick eMsg _ ->
-            let
-                ( runXform, editorModelUpdated, editorCmd ) =
-                    updateEditor eMsg editorModel
-            in
-            ( { model | editorModel = editorModelUpdated }, Cmd.none )
+            updateEditorOnly eMsg
 
         MouseMove eMsg ->
-            let
-                ( runXform, editorModelUpdated, editorCmd ) =
-                    updateEditor eMsg editorModel
-            in
-            ( { model | editorModel = editorModelUpdated }, Cmd.none )
+            updateEditorOnly eMsg
 
         MouseUp eMsg ->
-            let
-                ( runXform, editorModelUpdated, editorCmd ) =
-                    updateEditor eMsg editorModel
-            in
-            ( { model | editorModel = editorModelUpdated }, Cmd.none )
+            updateEditorOnly eMsg
 
         EditorMsg eMsg ->
             let
-                ( runXform, editorModelUpdated, editorCmd ) =
+                ( editorModelUpdated, editorCmd ) =
                     updateEditor eMsg editorModel
 
                 modelNew =
-                    if runXform then
+                    if editorModelUpdated.runXform then
                         let
                             domainNew =
                                 { domain | root = editorModelUpdated.dRoot }
 
                             rootENew =
                                 runDomainXform domainNew
+                                    |> persistVertexPositions editorModelUpdated.eRoot
+{-
+                            graphsDiffer =
+                                graphComparer editorModel.eRoot rootENew == False --|> Debug.log "are different" --}
 
                             editorModelNew =
                                 { editorModelUpdated | eRoot = rootENew, mbSimulation = Nothing }
@@ -129,7 +130,14 @@ update msg ({ domain, editorModel } as model) =
                         { model | domain = domainNew, editorModel = editorModelNew }
 
                     else
-                        { model | editorModel = editorModelUpdated }
+                        let
+                            rootENew =
+                                persistVertexPositions editorModelUpdated.eRoot editorModelUpdated.eRoot
+
+                            editorModelNew =
+                                { editorModelUpdated | eRoot = rootENew, mbSimulation = Nothing }
+                        in
+                        { model | editorModel = editorModelNew }
             in
             ( modelNew, Cmd.map EditorMsg editorCmd )
 

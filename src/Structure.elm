@@ -14,10 +14,15 @@ module Structure exposing
     , addToCustom
     , addToDefault
     , ancestorOf
+    , asPBool
+    , asPFloat
+    , asPInt
+    , asPString
     , boolOf
     , createNode
     , createRoot
     , deleteNodeUnder
+    , flatNodeComparer
     , floatOf
     , getUnderCustom
     , getUnderDefault
@@ -37,11 +42,11 @@ module Structure exposing
     , replaceChildAtPath
     , replaceRangeAtPath
     , replaceUnderFeature
+    , roleDefault
     , roleEmpty
     , roleFromString
     , roleName
     , roleRoot
-    , roleDefault
     , textOf
     , tryBoolOf
     , tryFloatOf
@@ -156,6 +161,75 @@ pathSegmentAsId segment idPart =
     idPartWSeparator
         ++ feature
         ++ String.fromInt segment.index
+
+
+propsOf (Node { properties }) =
+    properties
+
+
+flatNodeComparer l r =
+    isaOf (l |> Debug.log "left ")
+        == isaOf (r |> Debug.log "right ")
+        && (pathAsIdFromNode l |> Debug.log "pathL")
+        == (pathAsIdFromNode r |> Debug.log "pathR")
+       -- && compareProperties l r
+
+
+compareProperties : Node a -> Node a -> Bool
+compareProperties l r =
+    let
+        lProps =
+            propsOf l |> Debug.log "lProps"
+
+        rProps =
+            propsOf r |> Debug.log "rProps"
+    in
+    if (List.length <| Dict.keys lProps) /= (List.length <| Dict.keys rProps) then
+        False
+
+    else
+        Dict.foldl
+            (\k lValue b ->
+                if b == False then
+                    False
+
+                else
+                    let
+                        mbRValue =
+                            Dict.get k rProps
+                    in
+                    case mbRValue of
+                        Nothing ->
+                            False
+
+                        Just rValue ->
+                            if rValue /= lValue then
+                                False
+
+                            else
+                                primitiveToString rValue == primitiveToString lValue
+            )
+            True
+            lProps
+
+
+primitiveToString p =
+    case p of
+        PString v ->
+            v
+
+        PBool b ->
+            if b then
+                "True"
+
+            else
+                "False"
+
+        PInt i ->
+            String.fromInt i
+
+        PFloat f ->
+            String.fromFloat f
 
 
 valueOf : Role -> Node a -> Maybe Primitive
@@ -277,6 +351,26 @@ createNodeInternal role isa =
         , properties = Dict.empty
         , features = emptyFeatures
         }
+
+
+asPString : String -> Primitive
+asPString s =
+    PString s
+
+
+asPInt : Int -> Primitive
+asPInt i =
+    PInt i
+
+
+asPBool : Bool -> Primitive
+asPBool b =
+    PBool b
+
+
+asPFloat : Float -> Primitive
+asPFloat f =
+    PFloat f
 
 
 addText : Role -> String -> Node a -> Node a
@@ -681,7 +775,7 @@ deleteNodeAt segment parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-updatePropertyByPath : Node a -> Path -> ( Role, String ) -> Node a
+updatePropertyByPath : Node a -> Path -> ( Role, Primitive ) -> Node a
 updatePropertyByPath root path kvp =
     let
         (Path segmentsNoRoot) =
@@ -690,7 +784,7 @@ updatePropertyByPath root path kvp =
     updatePropertyRec segmentsNoRoot kvp root
 
 
-updatePropertyRec : List PathSegment -> ( Role, String ) -> Node a -> Node a
+updatePropertyRec : List PathSegment -> ( Role, Primitive ) -> Node a -> Node a
 updatePropertyRec segments kvp parent =
     case segments of
         [] ->
@@ -700,7 +794,7 @@ updatePropertyRec segments kvp parent =
             updateChildrenUnder segment tail kvp parent
 
 
-updateChildrenUnder : PathSegment -> List PathSegment -> ( Role, String ) -> Node a -> Node a
+updateChildrenUnder : PathSegment -> List PathSegment -> ( Role, Primitive ) -> Node a -> Node a
 updateChildrenUnder segment tailSegments kvp parent =
     let
         updateAt i child =
@@ -717,38 +811,8 @@ updateChildrenUnder segment tailSegments kvp parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-updateProperty : ( Role, String ) -> Node a -> Node a
-updateProperty ( Role key, value ) (Node data) =
-    let
-        primitiveOld =
-            Dict.get key data.properties
-                |> Maybe.withDefault (PString "")
-
-        primitiveNew =
-            case primitiveOld of
-                PString _ ->
-                    PString value
-
-                PInt _ ->
-                    String.toInt value
-                        |> Maybe.andThen (\i -> Just <| PInt i)
-                        |> Maybe.withDefault primitiveOld
-
-                PBool _ ->
-                    if String.toLower value == "true" then
-                        PBool True
-
-                    else if String.toLower value == "false" then
-                        PBool False
-
-                    else
-                        primitiveOld
-
-                PFloat _ ->
-                    String.toFloat value
-                        |> Maybe.andThen (\f -> Just <| PFloat f)
-                        |> Maybe.withDefault primitiveOld
-    in
+updateProperty : ( Role, Primitive ) -> Node a -> Node a
+updateProperty ( Role key, primitiveNew ) (Node data) =
     Node { data | properties = Dict.insert key primitiveNew data.properties }
 
 

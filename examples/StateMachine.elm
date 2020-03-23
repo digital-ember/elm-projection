@@ -55,7 +55,7 @@ initStateMachine =
                 |> addToDefault
                     (createNode Transition
                         |> addText roleEventRef "doorClosed"
-                        |> addText roleStateRef "active"
+                        --|> addText roleStateRef "active"
                     )
             , createNode State
                 |> addText roleName "active"

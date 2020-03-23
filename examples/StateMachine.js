@@ -5813,13 +5813,9 @@ var $author$project$StateMachine$initStateMachine = A2(
 			$author$project$Structure$addToDefault,
 			A3(
 				$author$project$Structure$addText,
-				$author$project$StateMachine$roleStateRef,
-				'active',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$StateMachine$roleEventRef,
-					'doorClosed',
-					$author$project$Structure$createNode($author$project$StateMachine$Transition))),
+				$author$project$StateMachine$roleEventRef,
+				'doorClosed',
+				$author$project$Structure$createNode($author$project$StateMachine$Transition)),
 			A3(
 				$author$project$Structure$addText,
 				$author$project$Structure$roleName,
@@ -6586,7 +6582,9 @@ var $author$project$Editor$initEditorModel = F2(
 			drag: $elm$core$Maybe$Nothing,
 			eRoot: eRoot,
 			mbSimulation: $elm$core$Maybe$Nothing,
-			mousePos: _Utils_Tuple2(0, 0)
+			mousePos: _Utils_Tuple2(0, 0),
+			runSimulation: true,
+			runXform: true
 		};
 	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
@@ -7056,7 +7054,7 @@ var $author$project$Runtime$subscriptions = function (model) {
 					$author$project$Editor$MouseMove(mpos));
 			},
 			$author$project$Editor$mousePosition));
-	var dragSubs = function () {
+	var graphSubs = function () {
 		var _v0 = model.editorModel.drag;
 		if (_v0.$ === 'Nothing') {
 			var _v1 = model.editorModel.mbSimulation;
@@ -7091,13 +7089,172 @@ var $author$project$Runtime$subscriptions = function (model) {
 		}
 	}();
 	return $elm$core$Platform$Sub$batch(
-		A2($elm$core$List$cons, mouseMoveSub, dragSubs));
+		A2($elm$core$List$cons, mouseMoveSub, graphSubs));
 };
 var $author$project$Runtime$EditorMsg = function (a) {
 	return {$: 'EditorMsg', a: a};
 };
-var $elm$core$Debug$log = _Debug_log;
 var $elm$core$Platform$Cmd$map = _Platform_map;
+var $author$project$Structure$PFloat = function (a) {
+	return {$: 'PFloat', a: a};
+};
+var $author$project$Structure$asPFloat = function (f) {
+	return $author$project$Structure$PFloat(f);
+};
+var $elm$core$Dict$values = function (dict) {
+	return A3(
+		$elm$core$Dict$foldr,
+		F3(
+			function (key, value, valueList) {
+				return A2($elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
+var $author$project$Structure$getAllUnderCustoms = function (_v0) {
+	var features = _v0.a.features;
+	return $elm$core$List$concat(
+		$elm$core$Dict$values(features.custom));
+};
+var $author$project$Structure$isaOf = function (_v0) {
+	var isa = _v0.a.isa;
+	return isa;
+};
+var $author$project$Structure$nodesOfRec = F3(
+	function (isa, node, result) {
+		var _v0 = _Utils_eq(
+			$author$project$Structure$isaOf(node),
+			isa);
+		if (_v0) {
+			return A2($elm$core$List$cons, node, result);
+		} else {
+			var allChildren = A2(
+				$elm$core$List$append,
+				$author$project$Structure$getAllUnderCustoms(node),
+				$author$project$Structure$getUnderDefault(node));
+			return A3(
+				$elm$core$List$foldl,
+				$author$project$Structure$nodesOfRec(isa),
+				result,
+				allChildren);
+		}
+	});
+var $author$project$Structure$nodesOf = F2(
+	function (isa, root) {
+		return A3($author$project$Structure$nodesOfRec, isa, root, _List_Nil);
+	});
+var $author$project$Editor$roleX = $author$project$Structure$roleFromString('x');
+var $author$project$Editor$roleY = $author$project$Structure$roleFromString('y');
+var $author$project$Structure$tryFloatOf = F2(
+	function (role, node) {
+		return A2(
+			$elm$core$Maybe$andThen,
+			function (prop) {
+				if (prop.$ === 'PFloat') {
+					var v = prop.a;
+					return $elm$core$Maybe$Just(v);
+				} else {
+					return $elm$core$Maybe$Nothing;
+				}
+			},
+			A2($author$project$Structure$valueOf, role, node));
+	});
+var $author$project$Structure$dropRootSegment = function (path) {
+	var segments = path.a;
+	if (segments.b) {
+		var role = segments.a.role;
+		var tail = segments.b;
+		return _Utils_eq(role, $author$project$Structure$roleRoot) ? $author$project$Structure$Path(tail) : path;
+	} else {
+		return path;
+	}
+};
+var $author$project$Structure$getUnder = F2(
+	function (role, node) {
+		return _Utils_eq(role, $author$project$Structure$roleDefault) ? $author$project$Structure$getUnderDefault(node) : A2($author$project$Structure$getUnderCustom, role, node);
+	});
+var $author$project$Structure$updateProperty = F2(
+	function (_v0, _v1) {
+		var key = _v0.a.a;
+		var primitiveNew = _v0.b;
+		var data = _v1.a;
+		return $author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{
+					properties: A3($elm$core$Dict$insert, key, primitiveNew, data.properties)
+				}));
+	});
+var $author$project$Structure$updateChildrenUnder = F4(
+	function (segment, tailSegments, kvp, parent) {
+		var updateAt = F2(
+			function (i, child) {
+				return _Utils_eq(i, segment.index) ? A3($author$project$Structure$updatePropertyRec, tailSegments, kvp, child) : child;
+			});
+		var childrenNew = A2(
+			$elm$core$List$indexedMap,
+			updateAt,
+			A2($author$project$Structure$getUnder, segment.role, parent));
+		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
+	});
+var $author$project$Structure$updatePropertyRec = F3(
+	function (segments, kvp, parent) {
+		if (!segments.b) {
+			return A2($author$project$Structure$updateProperty, kvp, parent);
+		} else {
+			var segment = segments.a;
+			var tail = segments.b;
+			return A4($author$project$Structure$updateChildrenUnder, segment, tail, kvp, parent);
+		}
+	});
+var $author$project$Structure$updatePropertyByPath = F3(
+	function (root, path, kvp) {
+		var _v0 = $author$project$Structure$dropRootSegment(path);
+		var segmentsNoRoot = _v0.a;
+		return A3($author$project$Structure$updatePropertyRec, segmentsNoRoot, kvp, root);
+	});
+var $author$project$Editor$persistVertexPositions = F2(
+	function (eRootOld, eRootNew) {
+		var verticiesOld = A2(
+			$author$project$Structure$nodesOf,
+			$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
+			eRootOld);
+		var persistVertexPos = F2(
+			function (vOld, rootNew) {
+				var mby = A2($author$project$Structure$tryFloatOf, $author$project$Editor$roleY, vOld);
+				var mbx = A2($author$project$Structure$tryFloatOf, $author$project$Editor$roleX, vOld);
+				var _v0 = _Utils_Tuple2(mbx, mby);
+				if (_v0.a.$ === 'Nothing') {
+					var _v1 = _v0.a;
+					return rootNew;
+				} else {
+					if (_v0.b.$ === 'Nothing') {
+						var _v2 = _v0.b;
+						return rootNew;
+					} else {
+						var x = _v0.a.a;
+						var y = _v0.b.a;
+						var rootNew1 = A3(
+							$author$project$Structure$updatePropertyByPath,
+							rootNew,
+							$author$project$Structure$pathOf(vOld),
+							_Utils_Tuple2(
+								$author$project$Editor$roleX,
+								$author$project$Structure$asPFloat(x)));
+						var rootNew2 = A3(
+							$author$project$Structure$updatePropertyByPath,
+							rootNew1,
+							$author$project$Structure$pathOf(vOld),
+							_Utils_Tuple2(
+								$author$project$Editor$roleY,
+								$author$project$Structure$asPFloat(y)));
+						return rootNew2;
+					}
+				}
+			});
+		var _new = A3($elm$core$List$foldl, persistVertexPos, eRootNew, verticiesOld);
+		return _new;
+	});
 var $elm$core$Dict$map = F2(
 	function (func, dict) {
 		if (dict.$ === 'RBEmpty_elm_builtin') {
@@ -7167,20 +7324,6 @@ var $author$project$Editor$Drag = F3(
 	function (mousePosStart, vertexPosStart, path) {
 		return {mousePosStart: mousePosStart, path: path, vertexPosStart: vertexPosStart};
 	});
-var $author$project$Structure$tryFloatOf = F2(
-	function (role, node) {
-		return A2(
-			$elm$core$Maybe$andThen,
-			function (prop) {
-				if (prop.$ === 'PFloat') {
-					var v = prop.a;
-					return $elm$core$Maybe$Just(v);
-				} else {
-					return $elm$core$Maybe$Nothing;
-				}
-			},
-			A2($author$project$Structure$valueOf, role, node));
-	});
 var $author$project$Structure$floatOf = F2(
 	function (role, node) {
 		return A2(
@@ -7189,22 +7332,12 @@ var $author$project$Structure$floatOf = F2(
 			A2($author$project$Structure$tryFloatOf, role, node));
 	});
 var $author$project$Editor$noUpdate = function (editorModel) {
-	return _Utils_Tuple3(false, editorModel, $elm$core$Platform$Cmd$none);
+	return _Utils_Tuple2(
+		_Utils_update(
+			editorModel,
+			{runSimulation: false, runXform: false}),
+		$elm$core$Platform$Cmd$none);
 };
-var $author$project$Structure$dropRootSegment = function (path) {
-	var segments = path.a;
-	if (segments.b) {
-		var role = segments.a.role;
-		var tail = segments.b;
-		return _Utils_eq(role, $author$project$Structure$roleRoot) ? $author$project$Structure$Path(tail) : path;
-	} else {
-		return path;
-	}
-};
-var $author$project$Structure$getUnder = F2(
-	function (role, node) {
-		return _Utils_eq(role, $author$project$Structure$roleDefault) ? $author$project$Structure$getUnderDefault(node) : A2($author$project$Structure$getUnderCustom, role, node);
-	});
 var $author$project$Structure$nodeAtI = F2(
 	function (parent, segments) {
 		nodeAtI:
@@ -7354,11 +7487,6 @@ var $author$project$Structure$replaceChildAtPath = F3(
 		return A4($author$project$Structure$replaceChildAtPathRec, nodeNew, path, segmentsNoRoot, root);
 	});
 var $author$project$Editor$roleGrabbed = $author$project$Structure$roleFromString('grabbed');
-var $author$project$Editor$roleX = $author$project$Structure$roleFromString('x');
-var $author$project$Editor$roleY = $author$project$Structure$roleFromString('y');
-var $author$project$Structure$PFloat = function (a) {
-	return {$: 'PFloat', a: a};
-};
 var $author$project$Structure$addFloat = F3(
 	function (role, value, node) {
 		return A2(
@@ -7373,48 +7501,6 @@ var $gampleman$elm_visualization$Force$Center = F2(
 		return {$: 'Center', a: a, b: b};
 	});
 var $gampleman$elm_visualization$Force$center = $gampleman$elm_visualization$Force$Center;
-var $elm$core$Dict$values = function (dict) {
-	return A3(
-		$elm$core$Dict$foldr,
-		F3(
-			function (key, value, valueList) {
-				return A2($elm$core$List$cons, value, valueList);
-			}),
-		_List_Nil,
-		dict);
-};
-var $author$project$Structure$getAllUnderCustoms = function (_v0) {
-	var features = _v0.a.features;
-	return $elm$core$List$concat(
-		$elm$core$Dict$values(features.custom));
-};
-var $author$project$Structure$isaOf = function (_v0) {
-	var isa = _v0.a.isa;
-	return isa;
-};
-var $author$project$Structure$nodesOfRec = F3(
-	function (isa, node, result) {
-		var _v0 = _Utils_eq(
-			$author$project$Structure$isaOf(node),
-			isa);
-		if (_v0) {
-			return A2($elm$core$List$cons, node, result);
-		} else {
-			var allChildren = A2(
-				$elm$core$List$append,
-				$author$project$Structure$getAllUnderCustoms(node),
-				$author$project$Structure$getUnderDefault(node));
-			return A3(
-				$elm$core$List$foldl,
-				$author$project$Structure$nodesOfRec(isa),
-				result,
-				allChildren);
-		}
-	});
-var $author$project$Structure$nodesOf = F2(
-	function (isa, root) {
-		return A3($author$project$Structure$nodesOfRec, isa, root, _List_Nil);
-	});
 var $author$project$Editor$dictNameToVertex = function (cellGraph) {
 	return A3(
 		$elm$core$List$foldl,
@@ -7616,6 +7702,7 @@ var $elm$core$List$head = function (list) {
 		return $elm$core$Maybe$Nothing;
 	}
 };
+var $elm$core$Debug$log = _Debug_log;
 var $gampleman$elm_visualization$Force$ManyBody = F2(
 	function (a, b) {
 		return {$: 'ManyBody', a: a, b: b};
@@ -8423,87 +8510,10 @@ var $gampleman$elm_visualization$Force$tick = F2(
 				updateEntity,
 				$elm$core$Dict$values(newNodes)));
 	});
-var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$core$Tuple$second = function (_v0) {
 	var y = _v0.b;
 	return y;
 };
-var $elm$core$String$toFloat = _String_toFloat;
-var $elm$core$String$toLower = _String_toLower;
-var $author$project$Structure$updateProperty = F2(
-	function (_v0, _v1) {
-		var key = _v0.a.a;
-		var value = _v0.b;
-		var data = _v1.a;
-		var primitiveOld = A2(
-			$elm$core$Maybe$withDefault,
-			$author$project$Structure$PString(''),
-			A2($elm$core$Dict$get, key, data.properties));
-		var primitiveNew = function () {
-			switch (primitiveOld.$) {
-				case 'PString':
-					return $author$project$Structure$PString(value);
-				case 'PInt':
-					return A2(
-						$elm$core$Maybe$withDefault,
-						primitiveOld,
-						A2(
-							$elm$core$Maybe$andThen,
-							function (i) {
-								return $elm$core$Maybe$Just(
-									$author$project$Structure$PInt(i));
-							},
-							$elm$core$String$toInt(value)));
-				case 'PBool':
-					return ($elm$core$String$toLower(value) === 'true') ? $author$project$Structure$PBool(true) : (($elm$core$String$toLower(value) === 'false') ? $author$project$Structure$PBool(false) : primitiveOld);
-				default:
-					return A2(
-						$elm$core$Maybe$withDefault,
-						primitiveOld,
-						A2(
-							$elm$core$Maybe$andThen,
-							function (f) {
-								return $elm$core$Maybe$Just(
-									$author$project$Structure$PFloat(f));
-							},
-							$elm$core$String$toFloat(value)));
-			}
-		}();
-		return $author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{
-					properties: A3($elm$core$Dict$insert, key, primitiveNew, data.properties)
-				}));
-	});
-var $author$project$Structure$updateChildrenUnder = F4(
-	function (segment, tailSegments, kvp, parent) {
-		var updateAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A3($author$project$Structure$updatePropertyRec, tailSegments, kvp, child) : child;
-			});
-		var childrenNew = A2(
-			$elm$core$List$indexedMap,
-			updateAt,
-			A2($author$project$Structure$getUnder, segment.role, parent));
-		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
-	});
-var $author$project$Structure$updatePropertyRec = F3(
-	function (segments, kvp, parent) {
-		if (!segments.b) {
-			return A2($author$project$Structure$updateProperty, kvp, parent);
-		} else {
-			var segment = segments.a;
-			var tail = segments.b;
-			return A4($author$project$Structure$updateChildrenUnder, segment, tail, kvp, parent);
-		}
-	});
-var $author$project$Structure$updatePropertyByPath = F3(
-	function (root, path, kvp) {
-		var _v0 = $author$project$Structure$dropRootSegment(path);
-		var segmentsNoRoot = _v0.a;
-		return A3($author$project$Structure$updatePropertyRec, segmentsNoRoot, kvp, root);
-	});
 var $author$project$Editor$updateDrag = F3(
 	function (eRoot, drag, _v0) {
 		var xCurrent = _v0.a;
@@ -8518,14 +8528,14 @@ var $author$project$Editor$updateDrag = F3(
 			drag.path,
 			_Utils_Tuple2(
 				$author$project$Editor$roleX,
-				$elm$core$String$fromFloat(xNew)));
+				$author$project$Structure$asPFloat(xNew)));
 		return A3(
 			$author$project$Structure$updatePropertyByPath,
 			eRootTemp,
 			drag.path,
 			_Utils_Tuple2(
 				$author$project$Editor$roleY,
-				$elm$core$String$fromFloat(yNew)));
+				$author$project$Structure$asPFloat(yNew)));
 	});
 var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 	var mbCellGraph = $elm$core$List$head(
@@ -8533,6 +8543,7 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 			$author$project$Structure$nodesOf,
 			$author$project$Editor$ContentCell($author$project$Editor$GraphCell),
 			editorModel.eRoot));
+	var l = A2($elm$core$Debug$log, 'tick', 'tock');
 	if (mbCellGraph.$ === 'Nothing') {
 		return $author$project$Editor$noUpdate(editorModel);
 	} else {
@@ -8551,7 +8562,7 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 					$author$project$Editor$customEdgeForcesFromGraph(cellGraph)),
 					A2(
 					$gampleman$elm_visualization$Force$manyBodyStrength,
-					-1000,
+					-500,
 					A2(
 						$elm$core$List$map,
 						function (v) {
@@ -8560,13 +8571,14 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 						verticies)),
 					A2($gampleman$elm_visualization$Force$center, 400, 300)
 				]);
-			return _Utils_Tuple3(
-				false,
+			return _Utils_Tuple2(
 				_Utils_update(
 					editorModel,
 					{
 						mbSimulation: $elm$core$Maybe$Just(
-							$gampleman$elm_visualization$Force$simulation(forces))
+							$gampleman$elm_visualization$Force$simulation(forces)),
+						runSimulation: true,
+						runXform: false
 					}),
 				$elm$core$Platform$Cmd$none);
 		} else {
@@ -8576,7 +8588,6 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 				$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
 				cellGraph);
 			var pathToGraph = $author$project$Structure$pathOf(cellGraph);
-			var f = A2($elm$core$Debug$log, 'simulating', '');
 			var edges = A2(
 				$author$project$Structure$nodesOf,
 				$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
@@ -8614,13 +8625,14 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 					return A3($author$project$Editor$updateDrag, eRootNew, drag, editorModel.mousePos);
 				}
 			}();
-			return _Utils_Tuple3(
-				false,
+			return _Utils_Tuple2(
 				_Utils_update(
 					editorModel,
 					{
 						eRoot: eRootWithDrag,
-						mbSimulation: $elm$core$Maybe$Just(newSimulationState)
+						mbSimulation: $elm$core$Maybe$Just(newSimulationState),
+						runSimulation: true,
+						runXform: false
 					}),
 				$elm$core$Platform$Cmd$none);
 		}
@@ -8738,13 +8750,14 @@ var $author$project$Editor$tryDelete = F5(
 	function (editorModel, _v0, navFun, textLength, isAtDeletePos) {
 		var path = _v0.path;
 		if (!textLength) {
-			return _Utils_Tuple3(
-				true,
+			return _Utils_Tuple2(
 				_Utils_update(
 					editorModel,
 					{
 						dRoot: $author$project$Structure$updatePaths(
-							A2($author$project$Structure$deleteNodeUnder, path, editorModel.dRoot))
+							A2($author$project$Structure$deleteNodeUnder, path, editorModel.dRoot)),
+						runSimulation: true,
+						runXform: true
 					}),
 				$elm$core$Platform$Cmd$none);
 		} else {
@@ -8754,8 +8767,7 @@ var $author$project$Editor$tryDelete = F5(
 					return $author$project$Editor$noUpdate(editorModel);
 				} else {
 					var next = mbNext.a;
-					return _Utils_Tuple3(
-						true,
+					return _Utils_Tuple2(
 						_Utils_update(
 							editorModel,
 							{
@@ -8763,7 +8775,9 @@ var $author$project$Editor$tryDelete = F5(
 									A2(
 										$author$project$Structure$deleteNodeUnder,
 										$author$project$Structure$pathOf(next),
-										editorModel.dRoot))
+										editorModel.dRoot)),
+								runSimulation: true,
+								runXform: true
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
@@ -8832,12 +8846,13 @@ var $author$project$Editor$updateOnCreateScopeEffect = F2(
 	function (editorModel, effect) {
 		if (effect.$ === 'CreateScopeEffect') {
 			var scopeData = effect.a;
-			return _Utils_Tuple3(
-				true,
+			return _Utils_Tuple2(
 				_Utils_update(
 					editorModel,
 					{
-						dRoot: A2($author$project$Editor$setScopeInformation, editorModel.dRoot, scopeData)
+						dRoot: A2($author$project$Editor$setScopeInformation, editorModel.dRoot, scopeData),
+						runSimulation: false,
+						runXform: true
 					}),
 				$elm$core$Platform$Cmd$none);
 		} else {
@@ -8861,13 +8876,15 @@ var $author$project$Editor$updateOnDeleteEffect = F3(
 			return $author$project$Editor$noUpdate(editorModel);
 		}
 	});
+var $author$project$Structure$asPString = function (s) {
+	return $author$project$Structure$PString(s);
+};
 var $author$project$Editor$updateOnInputEffect = F3(
 	function (editorModel, effect, value) {
 		if (effect.$ === 'InputEffect') {
 			var path = effect.a.path;
 			var role = effect.a.role;
-			return _Utils_Tuple3(
-				true,
+			return _Utils_Tuple2(
 				_Utils_update(
 					editorModel,
 					{
@@ -8876,7 +8893,11 @@ var $author$project$Editor$updateOnInputEffect = F3(
 								$author$project$Structure$updatePropertyByPath,
 								editorModel.dRoot,
 								path,
-								_Utils_Tuple2(role, value)))
+								_Utils_Tuple2(
+									role,
+									$author$project$Structure$asPString(value)))),
+						runSimulation: false,
+						runXform: true
 					}),
 				$elm$core$Platform$Cmd$none);
 		} else {
@@ -9047,20 +9068,18 @@ var $author$project$Editor$updateOnInsertionEffect = F3(
 			if (isReplace) {
 				var dRootNew = $author$project$Structure$updatePaths(
 					A4($author$project$Structure$addChildAtPath, role, nodeToInsert, path, editorModel.dRoot));
-				return _Utils_Tuple3(
-					true,
+				return _Utils_Tuple2(
 					_Utils_update(
 						editorModel,
-						{dRoot: dRootNew}),
+						{dRoot: dRootNew, runSimulation: true, runXform: true}),
 					$elm$core$Platform$Cmd$none);
 			} else {
 				var dRootNew = $author$project$Structure$updatePaths(
 					A3($author$project$Structure$insertChildAfterPath, nodeToInsert, path, editorModel.dRoot));
-				return _Utils_Tuple3(
-					true,
+				return _Utils_Tuple2(
 					_Utils_update(
 						editorModel,
-						{dRoot: dRootNew}),
+						{dRoot: dRootNew, runSimulation: true, runXform: true}),
 					$author$project$Editor$updateSelectionOnEnter(cellContext));
 			}
 		} else {
@@ -9395,14 +9414,15 @@ var $author$project$Editor$updateEditor = F2(
 						vertexGrabbed,
 						$author$project$Structure$pathOf(vertex),
 						editorModel.eRoot);
-					return _Utils_Tuple3(
-						false,
+					return _Utils_Tuple2(
 						_Utils_update(
 							editorModel,
 							{
 								drag: $elm$core$Maybe$Just(
 									A3($author$project$Editor$Drag, editorModel.mousePos, vertextPosStart, path)),
-								eRoot: eRootNew
+								eRoot: eRootNew,
+								runSimulation: true,
+								runXform: false
 							}),
 						$elm$core$Platform$Cmd$none);
 				}
@@ -9418,22 +9438,22 @@ var $author$project$Editor$updateEditor = F2(
 								$gampleman$elm_visualization$Force$reheat(s));
 						},
 						editorModel.mbSimulation);
-					return _Utils_Tuple3(
-						false,
+					return _Utils_Tuple2(
 						_Utils_update(
 							editorModel,
 							{
 								eRoot: A3($author$project$Editor$updateDrag, editorModel.eRoot, drag, mousePosNew),
 								mbSimulation: mbSimNew,
-								mousePos: mousePosNew
+								mousePos: mousePosNew,
+								runSimulation: true,
+								runXform: false
 							}),
 						$elm$core$Platform$Cmd$none);
 				} else {
-					return _Utils_Tuple3(
-						false,
+					return _Utils_Tuple2(
 						_Utils_update(
 							editorModel,
-							{mousePos: mousePosNew}),
+							{mousePos: mousePosNew, runSimulation: false, runXform: false}),
 						$elm$core$Platform$Cmd$none);
 				}
 			case 'MouseUp':
@@ -9452,13 +9472,14 @@ var $author$project$Editor$updateEditor = F2(
 							vertexGrabbed,
 							$author$project$Structure$pathOf(vertex),
 							editorModel.eRoot);
-						return _Utils_Tuple3(
-							false,
+						return _Utils_Tuple2(
 							_Utils_update(
 								editorModel,
 								{
 									drag: $elm$core$Maybe$Nothing,
-									eRoot: A3($author$project$Editor$updateDrag, eRootNew, drag, mousePosNew)
+									eRoot: A3($author$project$Editor$updateDrag, eRootNew, drag, mousePosNew),
+									runSimulation: true,
+									runXform: false
 								}),
 							$elm$core$Platform$Cmd$none);
 					}
@@ -9491,9 +9512,10 @@ var $author$project$Editor$updateEditor = F2(
 				return A3($author$project$Editor$updateOnInputEffect, editorModel, effect, value);
 			case 'NavSelection':
 				var effect = msg.a;
-				return _Utils_Tuple3(
-					false,
-					editorModel,
+				return _Utils_Tuple2(
+					_Utils_update(
+						editorModel,
+						{runSimulation: false, runXform: false}),
 					A2($author$project$Editor$updateOnNavEffect, effect, editorModel.eRoot));
 			default:
 				var effect = msg.a;
@@ -9504,53 +9526,40 @@ var $author$project$Runtime$update = F2(
 	function (msg, model) {
 		var domain = model.domain;
 		var editorModel = model.editorModel;
+		var updateEditorOnly = function (eMsg) {
+			var _v2 = A2($author$project$Editor$updateEditor, eMsg, model.editorModel);
+			var editorModelUpdated = _v2.a;
+			var editorCmd = _v2.b;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{editorModel: editorModelUpdated}),
+				A2($elm$core$Platform$Cmd$map, $author$project$Runtime$EditorMsg, editorCmd));
+		};
 		switch (msg.$) {
 			case 'Tick':
 				var eMsg = msg.a;
-				var _v1 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
-				var runXform = _v1.a;
-				var editorModelUpdated = _v1.b;
-				var editorCmd = _v1.c;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{editorModel: editorModelUpdated}),
-					$elm$core$Platform$Cmd$none);
+				return updateEditorOnly(eMsg);
 			case 'MouseMove':
 				var eMsg = msg.a;
-				var _v2 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
-				var runXform = _v2.a;
-				var editorModelUpdated = _v2.b;
-				var editorCmd = _v2.c;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{editorModel: editorModelUpdated}),
-					$elm$core$Platform$Cmd$none);
+				return updateEditorOnly(eMsg);
 			case 'MouseUp':
 				var eMsg = msg.a;
-				var d = A2($elm$core$Debug$log, 'dragEnd', eMsg);
-				var _v3 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
-				var runXform = _v3.a;
-				var editorModelUpdated = _v3.b;
-				var editorCmd = _v3.c;
-				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{editorModel: editorModelUpdated}),
-					$elm$core$Platform$Cmd$none);
+				return updateEditorOnly(eMsg);
 			default:
 				var eMsg = msg.a;
-				var _v4 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
-				var runXform = _v4.a;
-				var editorModelUpdated = _v4.b;
-				var editorCmd = _v4.c;
+				var _v1 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
+				var editorModelUpdated = _v1.a;
+				var editorCmd = _v1.b;
 				var modelNew = function () {
-					if (runXform) {
+					if (editorModelUpdated.runXform) {
 						var domainNew = _Utils_update(
 							domain,
 							{root: editorModelUpdated.dRoot});
-						var rootENew = $author$project$Runtime$runDomainXform(domainNew);
+						var rootENew = A2(
+							$author$project$Editor$persistVertexPositions,
+							editorModelUpdated.eRoot,
+							$author$project$Runtime$runDomainXform(domainNew));
 						var editorModelNew = _Utils_update(
 							editorModelUpdated,
 							{eRoot: rootENew, mbSimulation: $elm$core$Maybe$Nothing});
@@ -9558,9 +9567,13 @@ var $author$project$Runtime$update = F2(
 							model,
 							{domain: domainNew, editorModel: editorModelNew});
 					} else {
+						var rootENew = A2($author$project$Editor$persistVertexPositions, editorModelUpdated.eRoot, editorModelUpdated.eRoot);
+						var editorModelNew = _Utils_update(
+							editorModelUpdated,
+							{eRoot: rootENew, mbSimulation: $elm$core$Maybe$Nothing});
 						return _Utils_update(
 							model,
-							{editorModel: editorModelUpdated});
+							{editorModel: editorModelNew});
 					}
 				}();
 				return _Utils_Tuple2(
@@ -9779,6 +9792,7 @@ var $elm_community$typed_svg$TypedSvg$Core$attribute = $elm$virtual_dom$VirtualD
 var $elm$core$String$concat = function (strings) {
 	return A2($elm$core$String$join, '', strings);
 };
+var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$core$Basics$round = _Basics_round;
 var $avh4$elm_color$Color$toCssString = function (_v0) {
 	var r = _v0.a;
@@ -10998,10 +11012,7 @@ var $author$project$Runtime$view = function (model) {
 	return A2(
 		$elm$html$Html$map,
 		function (eMsg) {
-			return A2(
-				$elm$core$Debug$log,
-				'receiving',
-				$author$project$Runtime$EditorMsg(eMsg));
+			return $author$project$Runtime$EditorMsg(eMsg);
 		},
 		$author$project$Editor$viewEditor(model.editorModel.eRoot));
 };

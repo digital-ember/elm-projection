@@ -11,6 +11,7 @@ module Editor exposing
     , deletionEffect
     , edgeCell
     , graphCell
+    , graphComparer
     , griddify
     , horizSplitCell
     , horizStackCell
@@ -19,6 +20,7 @@ module Editor exposing
     , inputEffect
     , insertionEffect
     , mousePosition
+    , persistVertexPositions
     , placeholderCell
     , refCell
     , replacementEffect
@@ -85,6 +87,8 @@ type alias EditorModel a =
     , mbSimulation : Maybe (Force.State String)
     , drag : Maybe Drag
     , mousePos : ( Float, Float )
+    , runXform : Bool
+    , runSimulation : Bool
     }
 
 
@@ -184,6 +188,8 @@ initEditorModel dRoot eRoot =
     , mbSimulation = Nothing
     , drag = Nothing
     , mousePos = ( 0, 0 )
+    , runXform = True
+    , runSimulation = True
     }
 
 
@@ -442,7 +448,7 @@ grouped effectCells =
 -- BEHAVIOR
 
 
-updateEditor : Msg a -> EditorModel a -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateEditor : Msg a -> EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 updateEditor msg editorModel =
     case msg of
         Tick ->
@@ -468,10 +474,11 @@ updateEditor msg editorModel =
                         eRootNew =
                             replaceChildAtPath vertexGrabbed (pathOf vertex) editorModel.eRoot
                     in
-                    ( False
-                    , { editorModel
+                    ( { editorModel
                         | drag = Just <| Drag editorModel.mousePos vertextPosStart path
                         , eRoot = eRootNew
+                        , runXform = False
+                        , runSimulation = True
                       }
                     , Cmd.none
                     )
@@ -484,19 +491,21 @@ updateEditor msg editorModel =
                             editorModel.mbSimulation
                                 |> Maybe.andThen (\s -> Just <| Force.reheat s)
                     in
-                    ( False
-                    , { editorModel
+                    ( { editorModel
                         | mbSimulation = mbSimNew
                         , eRoot = updateDrag editorModel.eRoot drag mousePosNew
                         , mousePos = mousePosNew
+                        , runXform = False
+                        , runSimulation = True
                       }
                     , Cmd.none
                     )
 
                 Nothing ->
-                    ( False
-                    , { editorModel
+                    ( { editorModel
                         | mousePos = mousePosNew
+                        , runXform = False
+                        , runSimulation = False
                       }
                     , Cmd.none
                     )
@@ -520,10 +529,11 @@ updateEditor msg editorModel =
                                 eRootNew =
                                     replaceChildAtPath vertexGrabbed (pathOf vertex) editorModel.eRoot
                             in
-                            ( False
-                            , { editorModel
+                            ( { editorModel
                                 | eRoot = updateDrag eRootNew drag mousePosNew
                                 , drag = Nothing
+                                , runXform = False
+                                , runSimulation = True
                               }
                             , Cmd.none
                             )
@@ -553,15 +563,55 @@ updateEditor msg editorModel =
             updateOnInputEffect editorModel effect value
 
         NavSelection effect ->
-            ( False, editorModel, updateOnNavEffect effect editorModel.eRoot )
+            ( { editorModel | runXform = False, runSimulation = False }, updateOnNavEffect effect editorModel.eRoot )
 
         UpdateScope effect ->
             updateOnCreateScopeEffect editorModel effect
 
 
-tickGraphSimulations : EditorModel a -> ( Bool, EditorModel a, Cmd (Msg a) )
+persistVertexPositions : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+persistVertexPositions eRootOld eRootNew =
+    let
+        verticiesOld =
+            nodesOf (ContentCell VertexCell) eRootOld
+
+        persistVertexPos vOld rootNew =
+            let
+                mbx =
+                    tryFloatOf roleX vOld
+
+                mby =
+                    tryFloatOf roleY vOld
+            in
+            case ( mbx, mby ) of
+                ( Nothing, _ ) ->
+                    rootNew
+
+                ( _, Nothing ) ->
+                    rootNew
+
+                ( Just x, Just y ) ->
+                    let
+                        rootNew1 =
+                            updatePropertyByPath rootNew (pathOf vOld) ( roleX, asPFloat x )
+
+                        rootNew2 =
+                            updatePropertyByPath rootNew1 (pathOf vOld) ( roleY, asPFloat y )
+                    in
+                    rootNew2
+
+        new =
+            List.foldl persistVertexPos eRootNew verticiesOld
+    in
+    new
+
+
+tickGraphSimulations : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 tickGraphSimulations editorModel =
     let
+        l =
+            Debug.log "tick" "tock"
+
         mbCellGraph =
             nodesOf (ContentCell GraphCell) editorModel.eRoot |> List.head
     in
@@ -578,11 +628,11 @@ tickGraphSimulations editorModel =
 
                         forces =
                             [ Force.customLinks 1 <| customEdgeForcesFromGraph cellGraph
-                            , Force.manyBodyStrength -1000 <| List.map (\v -> pathAsIdFromNode v) <| verticies
+                            , Force.manyBodyStrength -500 <| List.map (\v -> pathAsIdFromNode v) <| verticies
                             , Force.center 400 300
                             ]
                     in
-                    ( False, { editorModel | mbSimulation = Just <| Force.simulation forces }, Cmd.none )
+                    ( { editorModel | mbSimulation = Just <| Force.simulation forces, runXform = False, runSimulation = True }, Cmd.none )
 
                 Just simulation ->
                     let
@@ -621,9 +671,8 @@ tickGraphSimulations editorModel =
 
                                 Just drag ->
                                     updateDrag eRootNew drag editorModel.mousePos
-
                     in
-                    ( False, { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState }, Cmd.none )
+                    ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False, runSimulation = True }, Cmd.none )
 
 
 updateDrag : Node (Cell a) -> Drag -> ( Float, Float ) -> Node (Cell a)
@@ -642,12 +691,12 @@ updateDrag eRoot drag ( xCurrent, yCurrent ) =
             Tuple.second drag.vertexPosStart + yDelta
 
         eRootTemp =
-            updatePropertyByPath eRoot drag.path ( roleX, String.fromFloat xNew )
+            updatePropertyByPath eRoot drag.path ( roleX, asPFloat xNew )
     in
-    updatePropertyByPath eRootTemp drag.path ( roleY, String.fromFloat yNew )
+    updatePropertyByPath eRootTemp drag.path ( roleY, asPFloat yNew )
 
 
-updateOnInsertionEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnInsertionEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( EditorModel a, Cmd (Msg a) )
 updateOnInsertionEffect editorModel effect cellContext =
     case effect of
         InsertionEffect { path, nodeToInsert, isReplace, role } ->
@@ -656,20 +705,20 @@ updateOnInsertionEffect editorModel effect cellContext =
                     dRootNew =
                         addChildAtPath role nodeToInsert path editorModel.dRoot |> updatePaths
                 in
-                ( True, { editorModel | dRoot = dRootNew }, Cmd.none )
+                ( { editorModel | dRoot = dRootNew, runXform = True, runSimulation = True }, Cmd.none )
 
             else
                 let
                     dRootNew =
                         insertChildAfterPath nodeToInsert path editorModel.dRoot |> updatePaths
                 in
-                ( True, { editorModel | dRoot = dRootNew }, updateSelectionOnEnter cellContext )
+                ( { editorModel | dRoot = dRootNew, runXform = True, runSimulation = True }, updateSelectionOnEnter cellContext )
 
         _ ->
             noUpdate editorModel
 
 
-updateOnDeleteEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnDeleteEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( EditorModel a, Cmd (Msg a) )
 updateOnDeleteEffect editorModel effect cellContext =
     case effect of
         DeletionEffect ({ selection } as effectData) ->
@@ -691,7 +740,7 @@ updateOnDeleteEffect editorModel effect cellContext =
             noUpdate editorModel
 
 
-updateOnBackspaceEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnBackspaceEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( EditorModel a, Cmd (Msg a) )
 updateOnBackspaceEffect editorModel effect cellContext =
     case effect of
         DeletionEffect ({ selection } as effectData) ->
@@ -713,11 +762,17 @@ updateOnBackspaceEffect editorModel effect cellContext =
             noUpdate editorModel
 
 
-updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( EditorModel a, Cmd (Msg a) )
 updateOnInputEffect editorModel effect value =
     case effect of
         InputEffect { path, role } ->
-            ( True, { editorModel | dRoot = updatePropertyByPath editorModel.dRoot path ( role, value ) |> updatePaths }, Cmd.none )
+            ( { editorModel
+                | dRoot = updatePropertyByPath editorModel.dRoot path ( role, asPString value ) |> updatePaths
+                , runXform = True
+                , runSimulation = False
+              }
+            , Cmd.none
+            )
 
         _ ->
             noUpdate editorModel
@@ -733,18 +788,18 @@ updateOnNavEffect effect editorModel =
             Cmd.none
 
 
-updateOnCreateScopeEffect : EditorModel a -> EffectCell a -> ( Bool, EditorModel a, Cmd (Msg a) )
+updateOnCreateScopeEffect : EditorModel a -> EffectCell a -> ( EditorModel a, Cmd (Msg a) )
 updateOnCreateScopeEffect editorModel effect =
     case effect of
         CreateScopeEffect scopeData ->
-            ( True, { editorModel | dRoot = setScopeInformation editorModel.dRoot scopeData }, Cmd.none )
+            ( { editorModel | dRoot = setScopeInformation editorModel.dRoot scopeData, runXform = True, runSimulation = False }, Cmd.none )
 
         _ ->
             noUpdate editorModel
 
 
 noUpdate editorModel =
-    ( False, editorModel, Cmd.none )
+    ( { editorModel | runXform = False, runSimulation = False }, Cmd.none )
 
 
 setScopeInformation : Node a -> CreateScopeEffectData a -> Node a
@@ -761,10 +816,10 @@ setScopeInformation domainModel scopeData =
         domainModel
 
 
-tryDelete : EditorModel a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> ( Bool, EditorModel a, Cmd (Msg a) )
+tryDelete : EditorModel a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> ( EditorModel a, Cmd (Msg a) )
 tryDelete editorModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
-        ( True, { editorModel | dRoot = deleteNodeUnder path editorModel.dRoot |> updatePaths }, Cmd.none )
+        ( { editorModel | dRoot = deleteNodeUnder path editorModel.dRoot |> updatePaths, runXform = True, runSimulation = True }, Cmd.none )
 
     else if isAtDeletePos then
         let
@@ -776,7 +831,7 @@ tryDelete editorModel { path } navFun textLength isAtDeletePos =
                 noUpdate editorModel
 
             Just next ->
-                ( True, { editorModel | dRoot = deleteNodeUnder (pathOf next) editorModel.dRoot |> updatePaths }, Cmd.none )
+                ( { editorModel | dRoot = deleteNodeUnder (pathOf next) editorModel.dRoot |> updatePaths, runXform = True, runSimulation = True }, Cmd.none )
 
     else
         noUpdate editorModel
@@ -1954,6 +2009,55 @@ griddifyI isGridParent node =
             boolOf roleIsGrid nodeNew
     in
     replaceUnderFeature roleDefault (List.map (griddifyI isGrid) children) nodeNew
+
+
+graphComparer : Node (Cell a) -> Node (Cell a) -> Bool
+graphComparer lRoot rRoot =
+    let
+        mbLGraph =
+            nodesOf (ContentCell GraphCell) lRoot |> List.head |> Debug.log "LEFT"
+
+        mbRGraph =
+            nodesOf (ContentCell GraphCell) rRoot |> List.head |> Debug.log "RIGHT"
+    in
+    case ( mbLGraph, mbRGraph ) of
+        ( Nothing, Nothing ) ->
+            True |> Debug.log "graphs are nothing"
+
+        ( Nothing, Just _ ) ->
+            False
+
+        ( Just _, Nothing ) ->
+            False
+
+        ( Just lGraph, Just rGraph ) ->
+            let
+                lVertices =
+                    nodesOf (ContentCell VertexCell) lGraph
+
+                rVerticies =
+                    nodesOf (ContentCell VertexCell) rGraph
+
+                lEdges =
+                    nodesOf (ContentCell EdgeCell) lGraph
+
+                rEdges =
+                    nodesOf (ContentCell EdgeCell) rGraph
+            in
+            if List.length lVertices /= List.length rVerticies || List.length lEdges /= List.length rEdges then
+                False
+
+            else
+                (List.map2 flatNodeComparer lVertices rVerticies
+                    |> List.filter (\v -> v == False)
+                    |> List.length
+                )
+                    == 0
+                    && (List.map2 flatNodeComparer lEdges rEdges
+                            |> List.filter (\v -> v == False)
+                            |> List.length
+                       )
+                    == 0
 
 
 
