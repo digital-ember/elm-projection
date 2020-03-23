@@ -9,7 +9,6 @@ import Browser.Events
 import Editor exposing (..)
 import Force
 import Html exposing (..)
-import Html.Events.Extra.Mouse as Mouse exposing (Event)
 import Json.Decode as JsonD exposing (Decoder)
 import Structure exposing (..)
 import Time
