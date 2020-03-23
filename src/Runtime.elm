@@ -65,7 +65,6 @@ subscriptions model =
             case model.editorModel.drag of
                 Nothing ->
                     case model.editorModel.mbSimulation of
-                        -- this trick makes it so to fire a animation every time the domain model changes
                         Just simulation ->
                             if Force.isCompleted simulation then
                                 []
@@ -105,9 +104,6 @@ update msg ({ domain, editorModel } as model) =
 
         MouseUp eMsg ->
             let
-                d =
-                    Debug.log "dragEnd" eMsg
-
                 ( runXform, editorModelUpdated, editorCmd ) =
                     updateEditor eMsg editorModel
             in
@@ -140,7 +136,7 @@ update msg ({ domain, editorModel } as model) =
 
 view : Model a -> Html (Msg a)
 view model =
-    Html.map (\eMsg -> EditorMsg eMsg |> Debug.log "receiving") (viewEditor model.editorModel.eRoot)
+    Html.map (\eMsg -> EditorMsg eMsg) (viewEditor model.editorModel.eRoot)
 
 
 runDomainXform domain =

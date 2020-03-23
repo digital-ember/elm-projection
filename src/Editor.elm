@@ -622,8 +622,6 @@ tickGraphSimulations editorModel =
                                 Just drag ->
                                     updateDrag eRootNew drag editorModel.mousePos
 
-                        f =
-                            Debug.log "simulating" ""
                     in
                     ( False, { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState }, Cmd.none )
 
