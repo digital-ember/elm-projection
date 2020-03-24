@@ -1620,7 +1620,7 @@ viewVertexCell : Int -> Node (Cell a) -> Html (Msg a)
 viewVertexCell index cell =
     let
         noName =
-            "<no name>"
+            "<no value>"
 
         name =
             tryTextOf roleText cell |> Maybe.withDefault noName

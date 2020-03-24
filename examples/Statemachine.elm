@@ -1,13 +1,14 @@
 module Statemachine exposing (main)
 
 import Editor as E
-import Runtime as R exposing (Model, projection)
+import Runtime as R
 import Structure as S
 
 
-{-| We need to define a custom domain type.
-It contains constructors for each "domain concept" to tag Node\_s with via API.
--}
+
+-- DOMAIN TYPE
+
+
 type Domain
     = Statemachine
     | Event
@@ -15,53 +16,26 @@ type Domain
     | Transition
 
 
-roleEventRef =
-    S.roleFromString "eventRef"
-
-
-roleStateRef =
-    S.roleFromString "stateRef"
-
-
-roleEvents =
-    S.roleFromString "events"
-
-
-{-| Program is created by the Runtime.program function.
-It requires:
-
-  - initial root node (emptyStatemachine/initStatemachine)
-  - editor (top-level function to transform a domain model to a cell model)
-
--}
-main : Program () (Model Domain) (R.Msg Domain)
+main : Program () (R.Model Domain) (R.Msg Domain)
 main =
-    projection emptyStatemachine editor
+    R.projection emptyStatemachine editor
 
 
-{-| Initial root node to start the program with.
-Just an root node of variant Statemachine.
--}
 emptyStatemachine : S.Node Domain
 emptyStatemachine =
     S.createRoot Statemachine
 
 
-{-| Declarative way of building a "state machine editor".
-Using the Editor-API, one can stick together cell-based editors.
--}
+
+-- EDITOR
+
+
 editor : S.Node Domain -> S.Node (E.Cell Domain)
 editor sm =
     E.rootCell
         |> E.with (editorStatemachine sm)
 
 
-{-| A vertical stack of cells
-
-  - with the editor for the state machine name
-  - with the editor for the events
-
--}
 editorStatemachine : S.Node Domain -> S.Node (E.Cell Domain)
 editorStatemachine sm =
     E.vertSplitCell
@@ -78,14 +52,6 @@ editorStatemachine sm =
             )
 
 
-{-| A horizontal stack of cells
-
-  - with a constant cell containing "name:"
-  - with an input cell containing the "name" property of the state machine
-      - input has an onInputEffect node
-        Carries the input parameters and the update function itself to be evaluated in the editor update
-
--}
 editorStatemachineName : S.Node Domain -> S.Node (E.Cell Domain)
 editorStatemachineName sm =
     E.horizStackCell
@@ -94,10 +60,6 @@ editorStatemachineName sm =
         |> E.addMargin E.Bottom 20
 
 
-{-| If our statemachine does not contain any events, we put a placeholder cell to allow the user to add events
-Otherwise, we map over all events and create editor cells for them.
-The event editors themselves are wrapped by two constant cells ("events" and "end")
--}
 editorEvents : S.Node Domain -> S.Node (E.Cell Domain)
 editorEvents sm =
     let
@@ -224,17 +186,25 @@ editorStateVertex state =
 
 editorTransitionsEdges : S.Node Domain -> List (S.Node (E.Cell Domain))
 editorTransitionsEdges sm =
-    List.concat <|
-        List.map editorTransitionEdge <|
-            S.getUnderDefault sm
+    S.getUnderDefault sm
+        |> List.map editorTransitionEdge
+        |> List.concat
 
 
 editorTransitionEdge state =
     let
+        sourceName =
+            S.textOf S.roleName state
+
         edge transition =
-            E.edgeCell roleEventRef ( S.textOf S.roleName state, S.textOf roleStateRef transition ) transition
+            let
+                targetName =
+                    S.textOf roleStateRef transition
+            in
+            E.edgeCell roleEventRef ( sourceName, targetName ) transition
     in
-    List.map edge <| S.getUnderDefault state
+    S.getUnderDefault state
+        |> List.map edge
 
 
 
@@ -261,12 +231,42 @@ ctorTransition =
 
 
 
+-- ROLES
+
+
+roleEventRef =
+    S.roleFromString "eventRef"
+
+
+roleStateRef =
+    S.roleFromString "stateRef"
+
+
+roleEvents =
+    S.roleFromString "events"
+
+
+
 -- DEBUGGING STUFF
 
 
-initStatemachine : S.Node Domain
-initStatemachine =
+mrsHsSecretCompartmentDemo : S.Node Domain
+mrsHsSecretCompartmentDemo =
     S.createRoot Statemachine
+        |> S.addText S.roleName "Mrs H's secret compartment system"
+        |> S.addRangeToCustom roleEvents
+            [ S.createNode Event |> S.addText S.roleName "doorClosed"
+            , S.createNode Event |> S.addText S.roleName "drawOpened"
+            , S.createNode Event |> S.addText S.roleName "lightOn"
+            , S.createNode Event |> S.addText S.roleName "doorOpened"
+            , S.createNode Event |> S.addText S.roleName "panelClosed"
+            ]
+
+
+mrsHsSecretCompartment : S.Node Domain
+mrsHsSecretCompartment =
+    S.createRoot Statemachine
+        |> S.addText S.roleName "Mrs H's secret compartment system"
         |> S.addRangeToCustom roleEvents
             [ S.createNode Event |> S.addText S.roleName "doorClosed"
             , S.createNode Event |> S.addText S.roleName "drawOpened"
@@ -280,7 +280,7 @@ initStatemachine =
                 |> S.addToDefault
                     (S.createNode Transition
                         |> S.addText roleEventRef "doorClosed"
-                     --|> addText roleStateRef "active"
+                        |> S.addText roleStateRef "active"
                     )
             , S.createNode State
                 |> S.addText S.roleName "active"

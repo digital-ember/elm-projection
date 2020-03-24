@@ -4671,13 +4671,13 @@ var $author$project$Editor$constantCell = function (constantValue) {
 		$author$project$Structure$createNode(
 			$author$project$Editor$ContentCell($author$project$Editor$ConstantCell)));
 };
-var $author$project$StateMachine$Event = {$: 'Event'};
+var $author$project$Statemachine$Event = {$: 'Event'};
 var $author$project$Structure$roleName = $author$project$Structure$roleFromString('name');
-var $author$project$StateMachine$ctorEvent = A3(
+var $author$project$Statemachine$ctorEvent = A3(
 	$author$project$Structure$addText,
 	$author$project$Structure$roleName,
 	'',
-	$author$project$Structure$createNode($author$project$StateMachine$Event));
+	$author$project$Structure$createNode($author$project$Statemachine$Event));
 var $author$project$Editor$DeletionEffect = function (a) {
 	return {$: 'DeletionEffect', a: a};
 };
@@ -5278,13 +5278,13 @@ var $author$project$Editor$insertionEffect = F2(
 				false,
 				$author$project$Structure$roleEmpty));
 	});
-var $author$project$StateMachine$editorEvent = function (event) {
+var $author$project$Statemachine$editorEvent = function (event) {
 	return A2(
 		$author$project$Editor$withEffect,
 		$author$project$Editor$deletionEffect(event),
 		A2(
 			$author$project$Editor$withEffect,
-			A2($author$project$Editor$insertionEffect, event, $author$project$StateMachine$ctorEvent),
+			A2($author$project$Editor$insertionEffect, event, $author$project$Statemachine$ctorEvent),
 			A2($author$project$Editor$inputCell, $author$project$Structure$roleName, event)));
 };
 var $author$project$Editor$PlaceholderCell = {$: 'PlaceholderCell'};
@@ -5307,11 +5307,11 @@ var $author$project$Editor$replacementEffect = F3(
 				true,
 				role));
 	});
-var $author$project$StateMachine$roleEvents = $author$project$Structure$roleFromString('events');
-var $author$project$StateMachine$editorEventPlaceholder = function (sm) {
+var $author$project$Statemachine$roleEvents = $author$project$Structure$roleFromString('events');
+var $author$project$Statemachine$editorEventPlaceholder = function (sm) {
 	return A2(
 		$author$project$Editor$withEffect,
-		A3($author$project$Editor$replacementEffect, $author$project$StateMachine$roleEvents, sm, $author$project$StateMachine$ctorEvent),
+		A3($author$project$Editor$replacementEffect, $author$project$Statemachine$roleEvents, sm, $author$project$Statemachine$ctorEvent),
 		$author$project$Editor$placeholderCell('no events'));
 };
 var $author$project$Structure$getUnderCustom = F2(
@@ -5439,17 +5439,17 @@ var $author$project$Structure$addRangeToDefault = F2(
 var $author$project$Editor$withRange = function (children) {
 	return $author$project$Structure$addRangeToDefault(children);
 };
-var $author$project$StateMachine$editorEvents = function (sm) {
+var $author$project$Statemachine$editorEvents = function (sm) {
 	var editorEventsResult = function () {
-		var _v0 = A2($author$project$Structure$getUnderCustom, $author$project$StateMachine$roleEvents, sm);
+		var _v0 = A2($author$project$Structure$getUnderCustom, $author$project$Statemachine$roleEvents, sm);
 		if (!_v0.b) {
 			return _List_fromArray(
 				[
-					$author$project$StateMachine$editorEventPlaceholder(sm)
+					$author$project$Statemachine$editorEventPlaceholder(sm)
 				]);
 		} else {
 			var events = _v0;
-			return A2($elm$core$List$map, $author$project$StateMachine$editorEvent, events);
+			return A2($elm$core$List$map, $author$project$Statemachine$editorEvent, events);
 		}
 	}();
 	return A3(
@@ -5476,7 +5476,7 @@ var $author$project$Editor$horizStackCell = A3(
 	true,
 	$author$project$Structure$createNode(
 		$author$project$Editor$ContentCell($author$project$Editor$StackCell)));
-var $author$project$StateMachine$editorStateMachineName = function (sm) {
+var $author$project$Statemachine$editorStatemachineName = function (sm) {
 	return A3(
 		$author$project$Editor$addMargin,
 		$author$project$Editor$Bottom,
@@ -5499,13 +5499,13 @@ var $author$project$Editor$buttonCell = function (text) {
 		$author$project$Structure$createNode(
 			$author$project$Editor$ContentCell($author$project$Editor$ButtonCell)));
 };
-var $author$project$StateMachine$State = {$: 'State'};
-var $author$project$StateMachine$ctorState = A3(
+var $author$project$Statemachine$State = {$: 'State'};
+var $author$project$Statemachine$ctorState = A3(
 	$author$project$Structure$addText,
 	$author$project$Structure$roleName,
 	'',
-	$author$project$Structure$createNode($author$project$StateMachine$State));
-var $author$project$StateMachine$editorStateHead = function (state) {
+	$author$project$Structure$createNode($author$project$Statemachine$State));
+var $author$project$Statemachine$editorStateHead = function (state) {
 	return A2(
 		$author$project$Editor$with,
 		A2(
@@ -5513,25 +5513,25 @@ var $author$project$StateMachine$editorStateHead = function (state) {
 			$author$project$Editor$deletionEffect(state),
 			A2(
 				$author$project$Editor$withEffect,
-				A2($author$project$Editor$insertionEffect, state, $author$project$StateMachine$ctorState),
+				A2($author$project$Editor$insertionEffect, state, $author$project$Statemachine$ctorState),
 				A2($author$project$Editor$inputCell, $author$project$Structure$roleName, state))),
 		A2(
 			$author$project$Editor$with,
 			$author$project$Editor$constantCell('state'),
 			$author$project$Editor$horizStackCell));
 };
-var $author$project$StateMachine$Transition = {$: 'Transition'};
-var $author$project$StateMachine$roleEventRef = $author$project$Structure$roleFromString('eventRef');
-var $author$project$StateMachine$roleStateRef = $author$project$Structure$roleFromString('stateRef');
-var $author$project$StateMachine$ctorTransition = A3(
+var $author$project$Statemachine$Transition = {$: 'Transition'};
+var $author$project$Statemachine$roleEventRef = $author$project$Structure$roleFromString('eventRef');
+var $author$project$Statemachine$roleStateRef = $author$project$Structure$roleFromString('stateRef');
+var $author$project$Statemachine$ctorTransition = A3(
 	$author$project$Structure$addText,
-	$author$project$StateMachine$roleStateRef,
+	$author$project$Statemachine$roleStateRef,
 	'',
 	A3(
 		$author$project$Structure$addText,
-		$author$project$StateMachine$roleEventRef,
+		$author$project$Statemachine$roleEventRef,
 		'',
-		$author$project$Structure$createNode($author$project$StateMachine$Transition)));
+		$author$project$Structure$createNode($author$project$Statemachine$Transition)));
 var $author$project$Editor$RefCell = {$: 'RefCell'};
 var $author$project$Structure$addRangeToCustom = F3(
 	function (role, children, parent) {
@@ -5588,7 +5588,7 @@ var $author$project$Editor$refCell = F4(
 						$author$project$Structure$createNode(
 							$author$project$Editor$ContentCell($author$project$Editor$RefCell))))));
 	});
-var $author$project$StateMachine$editorTransition = function (transition) {
+var $author$project$Statemachine$editorTransition = function (transition) {
 	return A2(
 		$author$project$Editor$with,
 		A2(
@@ -5596,8 +5596,8 @@ var $author$project$StateMachine$editorTransition = function (transition) {
 			$author$project$Editor$deletionEffect(transition),
 			A2(
 				$author$project$Editor$withEffect,
-				A2($author$project$Editor$insertionEffect, transition, $author$project$StateMachine$ctorTransition),
-				A4($author$project$Editor$refCell, $author$project$StateMachine$State, $author$project$StateMachine$roleStateRef, transition, $elm$core$Maybe$Nothing))),
+				A2($author$project$Editor$insertionEffect, transition, $author$project$Statemachine$ctorTransition),
+				A4($author$project$Editor$refCell, $author$project$Statemachine$State, $author$project$Statemachine$roleStateRef, transition, $elm$core$Maybe$Nothing))),
 		A2(
 			$author$project$Editor$with,
 			$author$project$Editor$constantCell('⇒'),
@@ -5608,32 +5608,32 @@ var $author$project$StateMachine$editorTransition = function (transition) {
 					$author$project$Editor$deletionEffect(transition),
 					A2(
 						$author$project$Editor$withEffect,
-						A2($author$project$Editor$insertionEffect, transition, $author$project$StateMachine$ctorTransition),
-						A4($author$project$Editor$refCell, $author$project$StateMachine$Event, $author$project$StateMachine$roleEventRef, transition, $elm$core$Maybe$Nothing))),
+						A2($author$project$Editor$insertionEffect, transition, $author$project$Statemachine$ctorTransition),
+						A4($author$project$Editor$refCell, $author$project$Statemachine$Event, $author$project$Statemachine$roleEventRef, transition, $elm$core$Maybe$Nothing))),
 				$author$project$Editor$horizStackCell)));
 };
 var $author$project$Structure$roleDefault = $author$project$Structure$Role('default');
-var $author$project$StateMachine$editorTransitionPlaceholder = function (state) {
+var $author$project$Statemachine$editorTransitionPlaceholder = function (state) {
 	return A2(
 		$author$project$Editor$withEffect,
-		A3($author$project$Editor$replacementEffect, $author$project$Structure$roleDefault, state, $author$project$StateMachine$ctorTransition),
+		A3($author$project$Editor$replacementEffect, $author$project$Structure$roleDefault, state, $author$project$Statemachine$ctorTransition),
 		$author$project$Editor$placeholderCell('no transitions'));
 };
 var $author$project$Structure$getUnderDefault = function (_v0) {
 	var features = _v0.a.features;
 	return features._default;
 };
-var $author$project$StateMachine$editorState = function (state) {
+var $author$project$Statemachine$editorState = function (state) {
 	var editorTransitionsResult = function () {
 		var _v0 = $author$project$Structure$getUnderDefault(state);
 		if (!_v0.b) {
 			return _List_fromArray(
 				[
-					$author$project$StateMachine$editorTransitionPlaceholder(state)
+					$author$project$Statemachine$editorTransitionPlaceholder(state)
 				]);
 		} else {
 			var transitions = _v0;
-			return A2($elm$core$List$map, $author$project$StateMachine$editorTransition, transitions);
+			return A2($elm$core$List$map, $author$project$Statemachine$editorTransition, transitions);
 		}
 	}();
 	return A3(
@@ -5644,7 +5644,7 @@ var $author$project$StateMachine$editorState = function (state) {
 			$author$project$Editor$with,
 			A2(
 				$author$project$Editor$withEffect,
-				A2($author$project$Editor$insertionEffect, state, $author$project$StateMachine$ctorState),
+				A2($author$project$Editor$insertionEffect, state, $author$project$Statemachine$ctorState),
 				$author$project$Editor$buttonCell('+')),
 			A2(
 				$author$project$Editor$with,
@@ -5657,26 +5657,26 @@ var $author$project$StateMachine$editorState = function (state) {
 						$author$project$Editor$addIndent($author$project$Editor$vertStackCell)),
 					A2(
 						$author$project$Editor$with,
-						$author$project$StateMachine$editorStateHead(state),
+						$author$project$Statemachine$editorStateHead(state),
 						$author$project$Editor$vertStackCell)))));
 };
-var $author$project$StateMachine$editorStatesPlaceholder = function (sm) {
+var $author$project$Statemachine$editorStatesPlaceholder = function (sm) {
 	return A2(
 		$author$project$Editor$withEffect,
-		A3($author$project$Editor$replacementEffect, $author$project$Structure$roleDefault, sm, $author$project$StateMachine$ctorState),
+		A3($author$project$Editor$replacementEffect, $author$project$Structure$roleDefault, sm, $author$project$Statemachine$ctorState),
 		$author$project$Editor$placeholderCell('no states'));
 };
-var $author$project$StateMachine$editorStates = function (sm) {
+var $author$project$Statemachine$editorStates = function (sm) {
 	var editorStatesResult = function () {
 		var _v0 = $author$project$Structure$getUnderDefault(sm);
 		if (!_v0.b) {
 			return _List_fromArray(
 				[
-					$author$project$StateMachine$editorStatesPlaceholder(sm)
+					$author$project$Statemachine$editorStatesPlaceholder(sm)
 				]);
 		} else {
 			var states = _v0;
-			return A2($elm$core$List$map, $author$project$StateMachine$editorState, states);
+			return A2($elm$core$List$map, $author$project$Statemachine$editorState, states);
 		}
 	}();
 	return A2($author$project$Editor$withRange, editorStatesResult, $author$project$Editor$vertStackCell);
@@ -5697,13 +5697,13 @@ var $author$project$Editor$vertexCell = F2(
 				$author$project$Structure$createNode(
 					$author$project$Editor$ContentCell($author$project$Editor$VertexCell))));
 	});
-var $author$project$StateMachine$editorStateVertex = function (state) {
+var $author$project$Statemachine$editorStateVertex = function (state) {
 	return A2($author$project$Editor$vertexCell, $author$project$Structure$roleName, state);
 };
-var $author$project$StateMachine$editorStatesVerticies = function (sm) {
+var $author$project$Statemachine$editorStatesVerticies = function (sm) {
 	return A2(
 		$elm$core$List$map,
-		$author$project$StateMachine$editorStateVertex,
+		$author$project$Statemachine$editorStateVertex,
 		$author$project$Structure$getUnderDefault(sm));
 };
 var $elm$core$List$append = F2(
@@ -5739,14 +5739,14 @@ var $author$project$Editor$edgeCell = F3(
 					$author$project$Structure$createNode(
 						$author$project$Editor$ContentCell($author$project$Editor$EdgeCell)))));
 	});
-var $author$project$StateMachine$editorTransitionEdge = function (state) {
+var $author$project$Statemachine$editorTransitionEdge = function (state) {
+	var sourceName = A2($author$project$Structure$textOf, $author$project$Structure$roleName, state);
 	var edge = function (transition) {
+		var targetName = A2($author$project$Structure$textOf, $author$project$Statemachine$roleStateRef, transition);
 		return A3(
 			$author$project$Editor$edgeCell,
-			$author$project$StateMachine$roleEventRef,
-			_Utils_Tuple2(
-				A2($author$project$Structure$textOf, $author$project$Structure$roleName, state),
-				A2($author$project$Structure$textOf, $author$project$StateMachine$roleStateRef, transition)),
+			$author$project$Statemachine$roleEventRef,
+			_Utils_Tuple2(sourceName, targetName),
 			transition);
 	};
 	return A2(
@@ -5754,11 +5754,11 @@ var $author$project$StateMachine$editorTransitionEdge = function (state) {
 		edge,
 		$author$project$Structure$getUnderDefault(state));
 };
-var $author$project$StateMachine$editorTransitionsEdges = function (sm) {
+var $author$project$Statemachine$editorTransitionsEdges = function (sm) {
 	return $elm$core$List$concat(
 		A2(
 			$elm$core$List$map,
-			$author$project$StateMachine$editorTransitionEdge,
+			$author$project$Statemachine$editorTransitionEdge,
 			$author$project$Structure$getUnderDefault(sm)));
 };
 var $author$project$Editor$GraphCell = {$: 'GraphCell'};
@@ -5767,27 +5767,27 @@ var $author$project$Editor$graphCell = $author$project$Structure$createNode(
 var $author$project$Editor$SplitCell = {$: 'SplitCell'};
 var $author$project$Editor$vertSplitCell = $author$project$Structure$createNode(
 	$author$project$Editor$ContentCell($author$project$Editor$SplitCell));
-var $author$project$StateMachine$editorStateMachine = function (sm) {
+var $author$project$Statemachine$editorStatemachine = function (sm) {
 	return A2(
 		$author$project$Editor$with,
 		A2(
 			$author$project$Editor$withRange,
-			$author$project$StateMachine$editorTransitionsEdges(sm),
+			$author$project$Statemachine$editorTransitionsEdges(sm),
 			A2(
 				$author$project$Editor$withRange,
-				$author$project$StateMachine$editorStatesVerticies(sm),
+				$author$project$Statemachine$editorStatesVerticies(sm),
 				$author$project$Editor$graphCell)),
 		A2(
 			$author$project$Editor$with,
 			A2(
 				$author$project$Editor$with,
-				$author$project$StateMachine$editorStates(sm),
+				$author$project$Statemachine$editorStates(sm),
 				A2(
 					$author$project$Editor$with,
-					$author$project$StateMachine$editorEvents(sm),
+					$author$project$Statemachine$editorEvents(sm),
 					A2(
 						$author$project$Editor$with,
-						$author$project$StateMachine$editorStateMachineName(sm),
+						$author$project$Statemachine$editorStatemachineName(sm),
 						$author$project$Editor$vertStackCell))),
 			$author$project$Editor$vertSplitCell));
 };
@@ -5798,14 +5798,134 @@ var $author$project$Structure$createRoot = function (isa) {
 };
 var $author$project$Editor$rootCell = $author$project$Structure$createRoot(
 	$author$project$Editor$ContentCell($author$project$Editor$RootCell));
-var $author$project$StateMachine$editor = function (sm) {
+var $author$project$Statemachine$editor = function (sm) {
 	return A2(
 		$author$project$Editor$with,
-		$author$project$StateMachine$editorStateMachine(sm),
+		$author$project$Statemachine$editorStatemachine(sm),
 		$author$project$Editor$rootCell);
 };
-var $author$project$StateMachine$StateMachine = {$: 'StateMachine'};
-var $author$project$StateMachine$initStateMachine = $author$project$Structure$createRoot($author$project$StateMachine$StateMachine);
+var $author$project$Statemachine$Statemachine = {$: 'Statemachine'};
+var $author$project$Statemachine$mrsHsSecretCompartment = A2(
+	$author$project$Structure$addRangeToDefault,
+	_List_fromArray(
+		[
+			A2(
+			$author$project$Structure$addToDefault,
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Statemachine$roleStateRef,
+				'active',
+				A3(
+					$author$project$Structure$addText,
+					$author$project$Statemachine$roleEventRef,
+					'doorClosed',
+					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'idle',
+				$author$project$Structure$createNode($author$project$Statemachine$State))),
+			A2(
+			$author$project$Structure$addToDefault,
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Statemachine$roleStateRef,
+				'waitingForDraw',
+				A3(
+					$author$project$Structure$addText,
+					$author$project$Statemachine$roleEventRef,
+					'lightOn',
+					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
+			A2(
+				$author$project$Structure$addToDefault,
+				A3(
+					$author$project$Structure$addText,
+					$author$project$Statemachine$roleStateRef,
+					'waitingForLight',
+					A3(
+						$author$project$Structure$addText,
+						$author$project$Statemachine$roleEventRef,
+						'drawOpened',
+						$author$project$Structure$createNode($author$project$Statemachine$Transition))),
+				A3(
+					$author$project$Structure$addText,
+					$author$project$Structure$roleName,
+					'active',
+					$author$project$Structure$createNode($author$project$Statemachine$State)))),
+			A2(
+			$author$project$Structure$addToDefault,
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Statemachine$roleStateRef,
+				'unlockedPanel',
+				A3(
+					$author$project$Structure$addText,
+					$author$project$Statemachine$roleEventRef,
+					'lightOn',
+					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'waitingForLight',
+				$author$project$Structure$createNode($author$project$Statemachine$State))),
+			A2(
+			$author$project$Structure$addToDefault,
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Statemachine$roleStateRef,
+				'unlockedPanel',
+				A3(
+					$author$project$Structure$addText,
+					$author$project$Statemachine$roleEventRef,
+					'drawOpened',
+					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'waitingForDraw',
+				$author$project$Structure$createNode($author$project$Statemachine$State))),
+			A3(
+			$author$project$Structure$addText,
+			$author$project$Structure$roleName,
+			'unlockedPanel',
+			$author$project$Structure$createNode($author$project$Statemachine$State))
+		]),
+	A3(
+		$author$project$Structure$addRangeToCustom,
+		$author$project$Statemachine$roleEvents,
+		_List_fromArray(
+			[
+				A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'doorClosed',
+				$author$project$Structure$createNode($author$project$Statemachine$Event)),
+				A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'drawOpened',
+				$author$project$Structure$createNode($author$project$Statemachine$Event)),
+				A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'lightOn',
+				$author$project$Structure$createNode($author$project$Statemachine$Event)),
+				A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'doorOpened',
+				$author$project$Structure$createNode($author$project$Statemachine$Event)),
+				A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				'panelClosed',
+				$author$project$Structure$createNode($author$project$Statemachine$Event))
+			]),
+		A3(
+			$author$project$Structure$addText,
+			$author$project$Structure$roleName,
+			'Mrs H\'s secret compartment system',
+			$author$project$Structure$createRoot($author$project$Statemachine$Statemachine))));
 var $author$project$Runtime$Domain = F2(
 	function (root, xform) {
 		return {root: root, xform: xform};
@@ -10691,7 +10811,7 @@ var $avh4$elm_color$Color$white = A4($avh4$elm_color$Color$RgbaSpace, 255 / 255,
 var $author$project$Editor$viewVertexCell = F2(
 	function (index, cell) {
 		var radius = $elm$core$Basics$sqrt(index) * $author$project$Editor$initialRadius;
-		var noName = '<no name>';
+		var noName = '<no value>';
 		var name = A2(
 			$elm$core$Maybe$withDefault,
 			noName,
@@ -11183,6 +11303,6 @@ var $author$project$Runtime$projection = F2(
 		return $elm$browser$Browser$element(
 			{init: init, subscriptions: $author$project$Runtime$subscriptions, update: $author$project$Runtime$update, view: $author$project$Runtime$view});
 	});
-var $author$project$StateMachine$main = A2($author$project$Runtime$projection, $author$project$StateMachine$initStateMachine, $author$project$StateMachine$editor);
-_Platform_export({'StateMachine':{'init':$author$project$StateMachine$main(
+var $author$project$Statemachine$main = A2($author$project$Runtime$projection, $author$project$Statemachine$mrsHsSecretCompartment, $author$project$Statemachine$editor);
+_Platform_export({'Statemachine':{'init':$author$project$Statemachine$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
