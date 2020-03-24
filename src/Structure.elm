@@ -23,6 +23,7 @@ module Structure exposing
     , createRoot
     , deleteNodeUnder
     , flatNodeComparer
+    , flatNodeListComparer
     , floatOf
     , getUnderCustom
     , getUnderDefault
@@ -167,22 +168,42 @@ propsOf (Node { properties }) =
     properties
 
 
-flatNodeComparer l r =
-    isaOf (l |> Debug.log "left ")
-        == isaOf (r |> Debug.log "right ")
-        && (pathAsIdFromNode l |> Debug.log "pathL")
-        == (pathAsIdFromNode r |> Debug.log "pathR")
-       -- && compareProperties l r
+flatNodeListComparer mbRoles lNodes rNodes =
+    (List.map2 (flatNodeComparer mbRoles) lNodes rNodes
+        |> List.filter (\v -> v == False)
+        |> List.length
+    )
+        == 0
 
 
-compareProperties : Node a -> Node a -> Bool
-compareProperties l r =
+flatNodeComparer mbRoles l r =
+    isaOf l -- |> Debug.log "left ")
+        == isaOf r --|> Debug.log "right ")
+        && pathAsIdFromNode l --|> Debug.log "pathL")
+        == pathAsIdFromNode r --|> Debug.log "pathR")
+        && compareProperties mbRoles l r
+
+
+compareProperties : Maybe (List Role) -> Node a -> Node a -> Bool
+compareProperties mbRoles l r =
     let
+        filterRoles dict =
+            case mbRoles of
+                Nothing ->
+                    dict
+
+                Just roles ->
+                    Dict.filter
+                        (\k _ ->
+                            List.any (\(Role key) -> key == k) roles
+                        )
+                        dict
+
         lProps =
-            propsOf l |> Debug.log "lProps"
+            propsOf l |> filterRoles
 
         rProps =
-            propsOf r |> Debug.log "rProps"
+            propsOf r |> filterRoles
     in
     if (List.length <| Dict.keys lProps) /= (List.length <| Dict.keys rProps) then
         False

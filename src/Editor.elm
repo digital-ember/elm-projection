@@ -20,6 +20,7 @@ module Editor exposing
     , inputEffect
     , insertionEffect
     , mousePosition
+    , printPos
     , persistVertexPositions
     , placeholderCell
     , refCell
@@ -478,7 +479,7 @@ updateEditor msg editorModel =
                         | drag = Just <| Drag editorModel.mousePos vertextPosStart path
                         , eRoot = eRootNew
                         , runXform = False
-                        , runSimulation = True
+                        
                       }
                     , Cmd.none
                     )
@@ -496,7 +497,7 @@ updateEditor msg editorModel =
                         , eRoot = updateDrag editorModel.eRoot drag mousePosNew
                         , mousePos = mousePosNew
                         , runXform = False
-                        , runSimulation = True
+                        
                       }
                     , Cmd.none
                     )
@@ -533,7 +534,7 @@ updateEditor msg editorModel =
                                 | eRoot = updateDrag eRootNew drag mousePosNew
                                 , drag = Nothing
                                 , runXform = False
-                                , runSimulation = True
+                                
                               }
                             , Cmd.none
                             )
@@ -563,7 +564,7 @@ updateEditor msg editorModel =
             updateOnInputEffect editorModel effect value
 
         NavSelection effect ->
-            ( { editorModel | runXform = False, runSimulation = False }, updateOnNavEffect effect editorModel.eRoot )
+            ( { editorModel | runXform = False }, updateOnNavEffect effect editorModel.eRoot )
 
         UpdateScope effect ->
             updateOnCreateScopeEffect editorModel effect
@@ -606,6 +607,12 @@ persistVertexPositions eRootOld eRootNew =
     new
 
 
+printPos eRootNew =
+    nodesOf (ContentCell VertexCell) eRootNew
+        |> List.map (\v -> ( tryFloatOf roleX v, tryFloatOf roleY v ))
+        |> Debug.log "pos"
+
+
 tickGraphSimulations : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 tickGraphSimulations editorModel =
     let
@@ -632,7 +639,7 @@ tickGraphSimulations editorModel =
                             , Force.center 400 300
                             ]
                     in
-                    ( { editorModel | mbSimulation = Just <| Force.simulation forces, runXform = False, runSimulation = True }, Cmd.none )
+                    ( { editorModel | mbSimulation = Just <| Force.simulation forces, runXform = False }, Cmd.none )
 
                 Just simulation ->
                     let
@@ -672,7 +679,7 @@ tickGraphSimulations editorModel =
                                 Just drag ->
                                     updateDrag eRootNew drag editorModel.mousePos
                     in
-                    ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False, runSimulation = True }, Cmd.none )
+                    ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False }, Cmd.none )
 
 
 updateDrag : Node (Cell a) -> Drag -> ( Float, Float ) -> Node (Cell a)
@@ -705,14 +712,14 @@ updateOnInsertionEffect editorModel effect cellContext =
                     dRootNew =
                         addChildAtPath role nodeToInsert path editorModel.dRoot |> updatePaths
                 in
-                ( { editorModel | dRoot = dRootNew, runXform = True, runSimulation = True }, Cmd.none )
+                ( { editorModel | dRoot = dRootNew, runXform = True }, Cmd.none )
 
             else
                 let
                     dRootNew =
                         insertChildAfterPath nodeToInsert path editorModel.dRoot |> updatePaths
                 in
-                ( { editorModel | dRoot = dRootNew, runXform = True, runSimulation = True }, updateSelectionOnEnter cellContext )
+                ( { editorModel | dRoot = dRootNew, runXform = True }, updateSelectionOnEnter cellContext )
 
         _ ->
             noUpdate editorModel
@@ -769,7 +776,7 @@ updateOnInputEffect editorModel effect value =
             ( { editorModel
                 | dRoot = updatePropertyByPath editorModel.dRoot path ( role, asPString value ) |> updatePaths
                 , runXform = True
-                , runSimulation = False
+
               }
             , Cmd.none
             )
@@ -792,14 +799,14 @@ updateOnCreateScopeEffect : EditorModel a -> EffectCell a -> ( EditorModel a, Cm
 updateOnCreateScopeEffect editorModel effect =
     case effect of
         CreateScopeEffect scopeData ->
-            ( { editorModel | dRoot = setScopeInformation editorModel.dRoot scopeData, runXform = True, runSimulation = False }, Cmd.none )
+            ( { editorModel | dRoot = setScopeInformation editorModel.dRoot scopeData, runXform = True }, Cmd.none )
 
         _ ->
             noUpdate editorModel
 
 
 noUpdate editorModel =
-    ( { editorModel | runXform = False, runSimulation = False }, Cmd.none )
+    ( { editorModel | runXform = False }, Cmd.none )
 
 
 setScopeInformation : Node a -> CreateScopeEffectData a -> Node a
@@ -819,7 +826,7 @@ setScopeInformation domainModel scopeData =
 tryDelete : EditorModel a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> ( EditorModel a, Cmd (Msg a) )
 tryDelete editorModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
-        ( { editorModel | dRoot = deleteNodeUnder path editorModel.dRoot |> updatePaths, runXform = True, runSimulation = True }, Cmd.none )
+        ( { editorModel | dRoot = deleteNodeUnder path editorModel.dRoot |> updatePaths, runXform = True }, Cmd.none )
 
     else if isAtDeletePos then
         let
@@ -831,7 +838,7 @@ tryDelete editorModel { path } navFun textLength isAtDeletePos =
                 noUpdate editorModel
 
             Just next ->
-                ( { editorModel | dRoot = deleteNodeUnder (pathOf next) editorModel.dRoot |> updatePaths, runXform = True, runSimulation = True }, Cmd.none )
+                ( { editorModel | dRoot = deleteNodeUnder (pathOf next) editorModel.dRoot |> updatePaths, runXform = True }, Cmd.none )
 
     else
         noUpdate editorModel
@@ -1173,8 +1180,8 @@ viewHorizSplit cell =
                             )
 
                         first :: (second :: _) ->
-                            ( viewCell first
-                            , viewCell second
+                            ( viewContent first []
+                            , viewContent second []
                             )
             in
             div []
@@ -1398,7 +1405,7 @@ viewRefCell cell =
 
                 inputSize =
                     if inputValue == "" then
-                        String.length "<no value>" + 2
+                        String.length "<no target>" + 2
 
                     else
                         String.length inputValue + 2
@@ -1415,7 +1422,7 @@ viewRefCell cell =
                      , HtmlA.style "font-size" "16px"
                      , HtmlA.style "border" "none"
                      , HtmlA.style "outline" "none"
-                     , HtmlA.placeholder "<no value>"
+                     , HtmlA.placeholder "<no target>"
                      , HtmlA.size inputSize
                      , HtmlA.id inputId
                      , HtmlA.list datalistId
@@ -1441,7 +1448,7 @@ viewGraphCell cellGraph =
         [ g [] <|
             viewEdgeCells cellGraph
         , g [] <|
-            List.map viewVertexCell <|
+            List.indexedMap viewVertexCell <|
                 nodesOf (ContentCell VertexCell) cellGraph
         ]
 
@@ -1552,8 +1559,8 @@ customEdgeForcesFromGraph cellGraph =
     List.map forceLookup edges
 
 
-viewEdgeCells : Node (Cell a) -> List (Html (Msg a))
-viewEdgeCells cellGraph =
+fromToPairs : Node (Cell a) -> List ( Node (Cell a), Node (Cell a) )
+fromToPairs cellGraph =
     let
         edges =
             nodesOf (ContentCell EdgeCell) cellGraph
@@ -1567,43 +1574,52 @@ viewEdgeCells cellGraph =
                     Dict.get key (dictNameToVertex cellGraph)
             in
             ( lookup from, lookup to )
-
-        fromToPairs =
-            List.map fromToLookup edges
     in
-    List.map viewEdgeCell fromToPairs
+    List.map fromToLookup edges
+        |> List.filterMap
+            (\tuple ->
+                case tuple of
+                    ( Nothing, _ ) ->
+                        Nothing
+
+                    ( _, Nothing ) ->
+                        Nothing
+
+                    ( Just from, Just to ) ->
+                        Just ( from, to )
+            )
 
 
-viewEdgeCell : ( Maybe (Node (Cell a)), Maybe (Node (Cell a)) ) -> Html (Msg a)
-viewEdgeCell fromTo =
-    case fromTo of
-        ( Nothing, _ ) ->
-            text ""
-
-        ( _, Nothing ) ->
-            text ""
-
-        ( Just from, Just to ) ->
-            line
-                [ strokeWidth 2
-                , stroke <| Paint <| Color.rgb255 17 77 175
-                , x1 <| floatOf roleX from
-                , y1 <| floatOf roleY from
-                , x2 <| floatOf roleX to
-                , y2 <| floatOf roleY to
-                ]
-                []
+viewEdgeCells : Node (Cell a) -> List (Html (Msg a))
+viewEdgeCells cellGraph =
+    List.map viewEdgeCell (fromToPairs cellGraph)
 
 
-viewVertexCell : Node (Cell a) -> Html (Msg a)
-viewVertexCell cell =
+viewEdgeCell : ( Node (Cell a), Node (Cell a) ) -> Html (Msg a)
+viewEdgeCell ( from, to ) =
+    line
+        [ strokeWidth 2
+        , stroke <| Paint <| Color.rgb255 17 77 175
+        , x1 <| floatOf roleX from
+        , y1 <| floatOf roleY from
+        , x2 <| floatOf roleX to
+        , y2 <| floatOf roleY to
+        ]
+        []
+
+
+viewVertexCell : Int -> Node (Cell a) -> Html (Msg a)
+viewVertexCell index cell =
     let
+        noName =
+            "<no name>"
+
         name =
-            tryTextOf roleText cell |> Maybe.withDefault "<no name>"
+            tryTextOf roleText cell |> Maybe.withDefault noName
 
         nameNotEmpty =
             if name == "" then
-                "<no name>"
+                noName
 
             else
                 name
@@ -1614,9 +1630,17 @@ viewVertexCell cell =
         hRect =
             40
 
-        xPos =
-            floatOf roleX cell
+        radius =
+            sqrt (toFloat index) * initialRadius
 
+        angle =
+            toFloat index * initialAngle
+
+        xPos =
+            tryFloatOf roleX cell
+                |> Maybe.withDefault (radius * cos angle)
+
+        --|> Debug.log "X"
         xPosRect =
             xPos - (wRect / 2)
 
@@ -1624,8 +1648,10 @@ viewVertexCell cell =
             xPosRect + 9
 
         yPos =
-            floatOf roleY cell
+            tryFloatOf roleY cell
+                |> Maybe.withDefault (radius * cos angle)
 
+        --|> Debug.log "Y"
         yPosRect =
             yPos - (hRect / 2)
 
@@ -1634,7 +1660,7 @@ viewVertexCell cell =
 
         textWidth =
             if nameNotEmpty == "" then
-                String.length "<no value>"
+                String.length noName
 
             else
                 String.length nameNotEmpty
@@ -2015,14 +2041,14 @@ graphComparer : Node (Cell a) -> Node (Cell a) -> Bool
 graphComparer lRoot rRoot =
     let
         mbLGraph =
-            nodesOf (ContentCell GraphCell) lRoot |> List.head |> Debug.log "LEFT"
+            nodesOf (ContentCell GraphCell) lRoot |> List.head
 
         mbRGraph =
-            nodesOf (ContentCell GraphCell) rRoot |> List.head |> Debug.log "RIGHT"
+            nodesOf (ContentCell GraphCell) rRoot |> List.head
     in
     case ( mbLGraph, mbRGraph ) of
         ( Nothing, Nothing ) ->
-            True |> Debug.log "graphs are nothing"
+            True
 
         ( Nothing, Just _ ) ->
             False
@@ -2034,30 +2060,44 @@ graphComparer lRoot rRoot =
             let
                 lVertices =
                     nodesOf (ContentCell VertexCell) lGraph
+                        |> List.sortBy (\v -> pathAsIdFromNode v)
 
                 rVerticies =
                     nodesOf (ContentCell VertexCell) rGraph
+                        |> List.sortBy (\v -> pathAsIdFromNode v)
 
                 lEdges =
                     nodesOf (ContentCell EdgeCell) lGraph
+                        |> List.sortBy (\e -> pathAsIdFromNode e)
 
                 rEdges =
                     nodesOf (ContentCell EdgeCell) rGraph
+                        |> List.sortBy (\e -> pathAsIdFromNode e)
+
+                flatIsEqual =
+                    flatNodeListComparer (Just []) lVertices rVerticies
+                        && flatNodeListComparer (Just []) lEdges rEdges
+
+                lFromTo =
+                    fromToPairs lGraph
+
+                rFromTo =
+                    fromToPairs rGraph
+
+                numOfRealEdgesIsEqual =
+                    List.length lFromTo == List.length rFromTo
             in
             if List.length lVertices /= List.length rVerticies || List.length lEdges /= List.length rEdges then
                 False
 
+            else if flatIsEqual == False then
+                False
+
+            else if numOfRealEdgesIsEqual == False then
+                False
+
             else
-                (List.map2 flatNodeComparer lVertices rVerticies
-                    |> List.filter (\v -> v == False)
-                    |> List.length
-                )
-                    == 0
-                    && (List.map2 flatNodeComparer lEdges rEdges
-                            |> List.filter (\v -> v == False)
-                            |> List.length
-                       )
-                    == 0
+                True
 
 
 

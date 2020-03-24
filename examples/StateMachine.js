@@ -7066,11 +7066,11 @@ var $author$project$Runtime$subscriptions = function (model) {
 						$author$project$Runtime$Tick($author$project$Editor$Tick))
 					]);
 			} else {
-				return _List_fromArray(
+				return model.editorModel.runSimulation ? _List_fromArray(
 					[
 						$elm$browser$Browser$Events$onAnimationFrame(
 						$author$project$Runtime$Tick($author$project$Editor$Tick))
-					]);
+					]) : _List_Nil;
 			}
 		} else {
 			return _List_fromArray(
@@ -7094,13 +7094,167 @@ var $author$project$Runtime$subscriptions = function (model) {
 var $author$project$Runtime$EditorMsg = function (a) {
 	return {$: 'EditorMsg', a: a};
 };
-var $elm$core$Platform$Cmd$map = _Platform_map;
-var $author$project$Structure$PFloat = function (a) {
-	return {$: 'PFloat', a: a};
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var $elm$core$Dict$filter = F2(
+	function (isGood, dict) {
+		return A3(
+			$elm$core$Dict$foldl,
+			F3(
+				function (k, v, d) {
+					return A2(isGood, k, v) ? A3($elm$core$Dict$insert, k, v, d) : d;
+				}),
+			$elm$core$Dict$empty,
+			dict);
+	});
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $elm$core$String$fromFloat = _String_fromNumber;
+var $author$project$Structure$primitiveToString = function (p) {
+	switch (p.$) {
+		case 'PString':
+			var v = p.a;
+			return v;
+		case 'PBool':
+			var b = p.a;
+			return b ? 'True' : 'False';
+		case 'PInt':
+			var i = p.a;
+			return $elm$core$String$fromInt(i);
+		default:
+			var f = p.a;
+			return $elm$core$String$fromFloat(f);
+	}
 };
-var $author$project$Structure$asPFloat = function (f) {
-	return $author$project$Structure$PFloat(f);
+var $author$project$Structure$propsOf = function (_v0) {
+	var properties = _v0.a.properties;
+	return properties;
 };
+var $author$project$Structure$compareProperties = F3(
+	function (mbRoles, l, r) {
+		var filterRoles = function (dict) {
+			if (mbRoles.$ === 'Nothing') {
+				return dict;
+			} else {
+				var roles = mbRoles.a;
+				return A2(
+					$elm$core$Dict$filter,
+					F2(
+						function (k, _v2) {
+							return A2(
+								$elm$core$List$any,
+								function (_v3) {
+									var key = _v3.a;
+									return _Utils_eq(key, k);
+								},
+								roles);
+						}),
+					dict);
+			}
+		};
+		var lProps = filterRoles(
+			$author$project$Structure$propsOf(l));
+		var rProps = filterRoles(
+			$author$project$Structure$propsOf(r));
+		return (!_Utils_eq(
+			$elm$core$List$length(
+				$elm$core$Dict$keys(lProps)),
+			$elm$core$List$length(
+				$elm$core$Dict$keys(rProps)))) ? false : A3(
+			$elm$core$Dict$foldl,
+			F3(
+				function (k, lValue, b) {
+					if (!b) {
+						return false;
+					} else {
+						var mbRValue = A2($elm$core$Dict$get, k, rProps);
+						if (mbRValue.$ === 'Nothing') {
+							return false;
+						} else {
+							var rValue = mbRValue.a;
+							return (!_Utils_eq(rValue, lValue)) ? false : _Utils_eq(
+								$author$project$Structure$primitiveToString(rValue),
+								$author$project$Structure$primitiveToString(lValue));
+						}
+					}
+				}),
+			true,
+			lProps);
+	});
+var $author$project$Structure$isaOf = function (_v0) {
+	var isa = _v0.a.isa;
+	return isa;
+};
+var $author$project$Structure$pathSegmentAsId = F2(
+	function (segment, idPart) {
+		var idPartWSeparator = (idPart === '') ? '' : (idPart + '-');
+		var _v0 = segment.role;
+		var feature = _v0.a;
+		return _Utils_ap(
+			idPartWSeparator,
+			_Utils_ap(
+				feature,
+				$elm$core$String$fromInt(segment.index)));
+	});
+var $author$project$Structure$pathAsId = function (_v0) {
+	var segments = _v0.a;
+	return A3($elm$core$List$foldl, $author$project$Structure$pathSegmentAsId, '', segments);
+};
+var $author$project$Structure$pathAsIdFromNode = function (_v0) {
+	var path = _v0.a.path;
+	return $author$project$Structure$pathAsId(path);
+};
+var $author$project$Structure$flatNodeComparer = F3(
+	function (mbRoles, l, r) {
+		return _Utils_eq(
+			$author$project$Structure$isaOf(l),
+			$author$project$Structure$isaOf(r)) && (_Utils_eq(
+			$author$project$Structure$pathAsIdFromNode(l),
+			$author$project$Structure$pathAsIdFromNode(r)) && A3($author$project$Structure$compareProperties, mbRoles, l, r));
+	});
+var $author$project$Structure$flatNodeListComparer = F3(
+	function (mbRoles, lNodes, rNodes) {
+		return !$elm$core$List$length(
+			A2(
+				$elm$core$List$filter,
+				function (v) {
+					return !v;
+				},
+				A3(
+					$elm$core$List$map2,
+					$author$project$Structure$flatNodeComparer(mbRoles),
+					lNodes,
+					rNodes)));
+	});
 var $elm$core$Dict$values = function (dict) {
 	return A3(
 		$elm$core$Dict$foldr,
@@ -7115,10 +7269,6 @@ var $author$project$Structure$getAllUnderCustoms = function (_v0) {
 	var features = _v0.a.features;
 	return $elm$core$List$concat(
 		$elm$core$Dict$values(features.custom));
-};
-var $author$project$Structure$isaOf = function (_v0) {
-	var isa = _v0.a.isa;
-	return isa;
 };
 var $author$project$Structure$nodesOfRec = F3(
 	function (isa, node, result) {
@@ -7143,6 +7293,168 @@ var $author$project$Structure$nodesOf = F2(
 	function (isa, root) {
 		return A3($author$project$Structure$nodesOfRec, isa, root, _List_Nil);
 	});
+var $author$project$Editor$dictNameToVertex = function (cellGraph) {
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (v, d) {
+				return A3(
+					$elm$core$Dict$insert,
+					A2($author$project$Structure$textOf, $author$project$Editor$roleText, v),
+					v,
+					d);
+			}),
+		$elm$core$Dict$empty,
+		A2(
+			$author$project$Structure$nodesOf,
+			$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
+			cellGraph));
+};
+var $author$project$Editor$fromToPairs = function (cellGraph) {
+	var fromToLookup = function (edge) {
+		var lookup = function (key) {
+			return A2(
+				$elm$core$Dict$get,
+				key,
+				$author$project$Editor$dictNameToVertex(cellGraph));
+		};
+		var _v3 = _Utils_Tuple2(
+			A2($author$project$Structure$textOf, $author$project$Editor$roleFrom, edge),
+			A2($author$project$Structure$textOf, $author$project$Editor$roleTo, edge));
+		var from = _v3.a;
+		var to = _v3.b;
+		return _Utils_Tuple2(
+			lookup(from),
+			lookup(to));
+	};
+	var edges = A2(
+		$author$project$Structure$nodesOf,
+		$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
+		cellGraph);
+	return A2(
+		$elm$core$List$filterMap,
+		function (tuple) {
+			if (tuple.a.$ === 'Nothing') {
+				var _v1 = tuple.a;
+				return $elm$core$Maybe$Nothing;
+			} else {
+				if (tuple.b.$ === 'Nothing') {
+					var _v2 = tuple.b;
+					return $elm$core$Maybe$Nothing;
+				} else {
+					var from = tuple.a.a;
+					var to = tuple.b.a;
+					return $elm$core$Maybe$Just(
+						_Utils_Tuple2(from, to));
+				}
+			}
+		},
+		A2($elm$core$List$map, fromToLookup, edges));
+};
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$List$sortBy = _List_sortBy;
+var $author$project$Editor$graphComparer = F2(
+	function (lRoot, rRoot) {
+		var mbRGraph = $elm$core$List$head(
+			A2(
+				$author$project$Structure$nodesOf,
+				$author$project$Editor$ContentCell($author$project$Editor$GraphCell),
+				rRoot));
+		var mbLGraph = $elm$core$List$head(
+			A2(
+				$author$project$Structure$nodesOf,
+				$author$project$Editor$ContentCell($author$project$Editor$GraphCell),
+				lRoot));
+		var _v0 = _Utils_Tuple2(mbLGraph, mbRGraph);
+		if (_v0.a.$ === 'Nothing') {
+			if (_v0.b.$ === 'Nothing') {
+				var _v1 = _v0.a;
+				var _v2 = _v0.b;
+				return true;
+			} else {
+				var _v3 = _v0.a;
+				return false;
+			}
+		} else {
+			if (_v0.b.$ === 'Nothing') {
+				var _v4 = _v0.b;
+				return false;
+			} else {
+				var lGraph = _v0.a.a;
+				var rGraph = _v0.b.a;
+				var rVerticies = A2(
+					$elm$core$List$sortBy,
+					function (v) {
+						return $author$project$Structure$pathAsIdFromNode(v);
+					},
+					A2(
+						$author$project$Structure$nodesOf,
+						$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
+						rGraph));
+				var rFromTo = $author$project$Editor$fromToPairs(rGraph);
+				var rEdges = A2(
+					$elm$core$List$sortBy,
+					function (e) {
+						return $author$project$Structure$pathAsIdFromNode(e);
+					},
+					A2(
+						$author$project$Structure$nodesOf,
+						$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
+						rGraph));
+				var lVertices = A2(
+					$elm$core$List$sortBy,
+					function (v) {
+						return $author$project$Structure$pathAsIdFromNode(v);
+					},
+					A2(
+						$author$project$Structure$nodesOf,
+						$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
+						lGraph));
+				var lFromTo = $author$project$Editor$fromToPairs(lGraph);
+				var numOfRealEdgesIsEqual = _Utils_eq(
+					$elm$core$List$length(lFromTo),
+					$elm$core$List$length(rFromTo));
+				var lEdges = A2(
+					$elm$core$List$sortBy,
+					function (e) {
+						return $author$project$Structure$pathAsIdFromNode(e);
+					},
+					A2(
+						$author$project$Structure$nodesOf,
+						$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
+						lGraph));
+				var flatIsEqual = A3(
+					$author$project$Structure$flatNodeListComparer,
+					$elm$core$Maybe$Just(_List_Nil),
+					lVertices,
+					rVerticies) && A3(
+					$author$project$Structure$flatNodeListComparer,
+					$elm$core$Maybe$Just(_List_Nil),
+					lEdges,
+					rEdges);
+				return ((!_Utils_eq(
+					$elm$core$List$length(lVertices),
+					$elm$core$List$length(rVerticies))) || (!_Utils_eq(
+					$elm$core$List$length(lEdges),
+					$elm$core$List$length(rEdges)))) ? false : ((!flatIsEqual) ? false : ((!numOfRealEdgesIsEqual) ? false : true));
+			}
+		}
+	});
+var $elm$core$Platform$Cmd$map = _Platform_map;
+var $author$project$Structure$PFloat = function (a) {
+	return {$: 'PFloat', a: a};
+};
+var $author$project$Structure$asPFloat = function (f) {
+	return $author$project$Structure$PFloat(f);
+};
 var $author$project$Editor$roleX = $author$project$Structure$roleFromString('x');
 var $author$project$Editor$roleY = $author$project$Structure$roleFromString('y');
 var $author$project$Structure$tryFloatOf = F2(
@@ -7335,7 +7647,7 @@ var $author$project$Editor$noUpdate = function (editorModel) {
 	return _Utils_Tuple2(
 		_Utils_update(
 			editorModel,
-			{runSimulation: false, runXform: false}),
+			{runXform: false}),
 		$elm$core$Platform$Cmd$none);
 };
 var $author$project$Structure$nodeAtI = F2(
@@ -7501,42 +7813,6 @@ var $gampleman$elm_visualization$Force$Center = F2(
 		return {$: 'Center', a: a, b: b};
 	});
 var $gampleman$elm_visualization$Force$center = $gampleman$elm_visualization$Force$Center;
-var $author$project$Editor$dictNameToVertex = function (cellGraph) {
-	return A3(
-		$elm$core$List$foldl,
-		F2(
-			function (v, d) {
-				return A3(
-					$elm$core$Dict$insert,
-					A2($author$project$Structure$textOf, $author$project$Editor$roleText, v),
-					v,
-					d);
-			}),
-		$elm$core$Dict$empty,
-		A2(
-			$author$project$Structure$nodesOf,
-			$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
-			cellGraph));
-};
-var $author$project$Structure$pathSegmentAsId = F2(
-	function (segment, idPart) {
-		var idPartWSeparator = (idPart === '') ? '' : (idPart + '-');
-		var _v0 = segment.role;
-		var feature = _v0.a;
-		return _Utils_ap(
-			idPartWSeparator,
-			_Utils_ap(
-				feature,
-				$elm$core$String$fromInt(segment.index)));
-	});
-var $author$project$Structure$pathAsId = function (_v0) {
-	var segments = _v0.a;
-	return A3($elm$core$List$foldl, $author$project$Structure$pathSegmentAsId, '', segments);
-};
-var $author$project$Structure$pathAsIdFromNode = function (_v0) {
-	var path = _v0.a.path;
-	return $author$project$Structure$pathAsId(path);
-};
 var $author$project$Editor$customEdgeForcesFromGraph = function (cellGraph) {
 	var forceLookup = function (edge) {
 		var lookupWithDefault = function (key) {
@@ -7693,15 +7969,6 @@ var $author$project$Editor$forceEntityFromVertex = F2(
 			y: yNew
 		};
 	});
-var $elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(x);
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
 var $elm$core$Debug$log = _Debug_log;
 var $gampleman$elm_visualization$Force$ManyBody = F2(
 	function (a, b) {
@@ -8577,7 +8844,6 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 					{
 						mbSimulation: $elm$core$Maybe$Just(
 							$gampleman$elm_visualization$Force$simulation(forces)),
-						runSimulation: true,
 						runXform: false
 					}),
 				$elm$core$Platform$Cmd$none);
@@ -8631,7 +8897,6 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 					{
 						eRoot: eRootWithDrag,
 						mbSimulation: $elm$core$Maybe$Just(newSimulationState),
-						runSimulation: true,
 						runXform: false
 					}),
 				$elm$core$Platform$Cmd$none);
@@ -8756,7 +9021,6 @@ var $author$project$Editor$tryDelete = F5(
 					{
 						dRoot: $author$project$Structure$updatePaths(
 							A2($author$project$Structure$deleteNodeUnder, path, editorModel.dRoot)),
-						runSimulation: true,
 						runXform: true
 					}),
 				$elm$core$Platform$Cmd$none);
@@ -8776,7 +9040,6 @@ var $author$project$Editor$tryDelete = F5(
 										$author$project$Structure$deleteNodeUnder,
 										$author$project$Structure$pathOf(next),
 										editorModel.dRoot)),
-								runSimulation: true,
 								runXform: true
 							}),
 						$elm$core$Platform$Cmd$none);
@@ -8851,7 +9114,6 @@ var $author$project$Editor$updateOnCreateScopeEffect = F2(
 					editorModel,
 					{
 						dRoot: A2($author$project$Editor$setScopeInformation, editorModel.dRoot, scopeData),
-						runSimulation: false,
 						runXform: true
 					}),
 				$elm$core$Platform$Cmd$none);
@@ -8896,7 +9158,6 @@ var $author$project$Editor$updateOnInputEffect = F3(
 								_Utils_Tuple2(
 									role,
 									$author$project$Structure$asPString(value)))),
-						runSimulation: false,
 						runXform: true
 					}),
 				$elm$core$Platform$Cmd$none);
@@ -9071,7 +9332,7 @@ var $author$project$Editor$updateOnInsertionEffect = F3(
 				return _Utils_Tuple2(
 					_Utils_update(
 						editorModel,
-						{dRoot: dRootNew, runSimulation: true, runXform: true}),
+						{dRoot: dRootNew, runXform: true}),
 					$elm$core$Platform$Cmd$none);
 			} else {
 				var dRootNew = $author$project$Structure$updatePaths(
@@ -9079,7 +9340,7 @@ var $author$project$Editor$updateOnInsertionEffect = F3(
 				return _Utils_Tuple2(
 					_Utils_update(
 						editorModel,
-						{dRoot: dRootNew, runSimulation: true, runXform: true}),
+						{dRoot: dRootNew, runXform: true}),
 					$author$project$Editor$updateSelectionOnEnter(cellContext));
 			}
 		} else {
@@ -9421,7 +9682,6 @@ var $author$project$Editor$updateEditor = F2(
 								drag: $elm$core$Maybe$Just(
 									A3($author$project$Editor$Drag, editorModel.mousePos, vertextPosStart, path)),
 								eRoot: eRootNew,
-								runSimulation: true,
 								runXform: false
 							}),
 						$elm$core$Platform$Cmd$none);
@@ -9445,7 +9705,6 @@ var $author$project$Editor$updateEditor = F2(
 								eRoot: A3($author$project$Editor$updateDrag, editorModel.eRoot, drag, mousePosNew),
 								mbSimulation: mbSimNew,
 								mousePos: mousePosNew,
-								runSimulation: true,
 								runXform: false
 							}),
 						$elm$core$Platform$Cmd$none);
@@ -9478,7 +9737,6 @@ var $author$project$Editor$updateEditor = F2(
 								{
 									drag: $elm$core$Maybe$Nothing,
 									eRoot: A3($author$project$Editor$updateDrag, eRootNew, drag, mousePosNew),
-									runSimulation: true,
 									runXform: false
 								}),
 							$elm$core$Platform$Cmd$none);
@@ -9515,7 +9773,7 @@ var $author$project$Editor$updateEditor = F2(
 				return _Utils_Tuple2(
 					_Utils_update(
 						editorModel,
-						{runSimulation: false, runXform: false}),
+						{runXform: false}),
 					A2($author$project$Editor$updateOnNavEffect, effect, editorModel.eRoot));
 			default:
 				var effect = msg.a;
@@ -9548,6 +9806,10 @@ var $author$project$Runtime$update = F2(
 				return updateEditorOnly(eMsg);
 			default:
 				var eMsg = msg.a;
+				var updateSimul = F2(
+					function (graphsDiffer, simul) {
+						return $gampleman$elm_visualization$Force$isCompleted(simul) ? $elm$core$Maybe$Nothing : (graphsDiffer ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(simul));
+					});
 				var _v1 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
 				var editorModelUpdated = _v1.a;
 				var editorCmd = _v1.b;
@@ -9560,17 +9822,27 @@ var $author$project$Runtime$update = F2(
 							$author$project$Editor$persistVertexPositions,
 							editorModelUpdated.eRoot,
 							$author$project$Runtime$runDomainXform(domainNew));
+						var graphsDiffer = !A2($author$project$Editor$graphComparer, editorModel.eRoot, rootENew);
+						var mbSimulNew = A2(
+							$elm$core$Maybe$andThen,
+							updateSimul(graphsDiffer),
+							editorModelUpdated.mbSimulation);
 						var editorModelNew = _Utils_update(
 							editorModelUpdated,
-							{eRoot: rootENew, mbSimulation: $elm$core$Maybe$Nothing});
+							{eRoot: rootENew, mbSimulation: mbSimulNew, runSimulation: graphsDiffer});
 						return _Utils_update(
 							model,
 							{domain: domainNew, editorModel: editorModelNew});
 					} else {
 						var rootENew = A2($author$project$Editor$persistVertexPositions, editorModelUpdated.eRoot, editorModelUpdated.eRoot);
+						var graphsDiffer = !A2($author$project$Editor$graphComparer, editorModel.eRoot, rootENew);
+						var mbSimulNew = A2(
+							$elm$core$Maybe$andThen,
+							updateSimul(graphsDiffer),
+							editorModelUpdated.mbSimulation);
 						var editorModelNew = _Utils_update(
 							editorModelUpdated,
-							{eRoot: rootENew, mbSimulation: $elm$core$Maybe$Nothing});
+							{eRoot: rootENew, mbSimulation: mbSimulNew});
 						return _Utils_update(
 							model,
 							{editorModel: editorModelNew});
@@ -9792,7 +10064,6 @@ var $elm_community$typed_svg$TypedSvg$Core$attribute = $elm$virtual_dom$VirtualD
 var $elm$core$String$concat = function (strings) {
 	return A2($elm$core$String$join, '', strings);
 };
-var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$core$Basics$round = _Basics_round;
 var $avh4$elm_color$Color$toCssString = function (_v0) {
 	var r = _v0.a;
@@ -9933,61 +10204,33 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$y2 = function (value) {
 	return $elm_community$typed_svg$TypedSvg$Attributes$y2(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
-var $author$project$Editor$viewEdgeCell = function (fromTo) {
-	if (fromTo.a.$ === 'Nothing') {
-		var _v1 = fromTo.a;
-		return $elm$html$Html$text('');
-	} else {
-		if (fromTo.b.$ === 'Nothing') {
-			var _v2 = fromTo.b;
-			return $elm$html$Html$text('');
-		} else {
-			var from = fromTo.a.a;
-			var to = fromTo.b.a;
-			return A2(
-				$elm_community$typed_svg$TypedSvg$line,
-				_List_fromArray(
-					[
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
-						$elm_community$typed_svg$TypedSvg$Attributes$stroke(
-						$elm_community$typed_svg$TypedSvg$Types$Paint(
-							A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$x1(
-						A2($author$project$Structure$floatOf, $author$project$Editor$roleX, from)),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$y1(
-						A2($author$project$Structure$floatOf, $author$project$Editor$roleY, from)),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$x2(
-						A2($author$project$Structure$floatOf, $author$project$Editor$roleX, to)),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$y2(
-						A2($author$project$Structure$floatOf, $author$project$Editor$roleY, to))
-					]),
-				_List_Nil);
-		}
-	}
+var $author$project$Editor$viewEdgeCell = function (_v0) {
+	var from = _v0.a;
+	var to = _v0.b;
+	return A2(
+		$elm_community$typed_svg$TypedSvg$line,
+		_List_fromArray(
+			[
+				$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
+				$elm_community$typed_svg$TypedSvg$Attributes$stroke(
+				$elm_community$typed_svg$TypedSvg$Types$Paint(
+					A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
+				$elm_community$typed_svg$TypedSvg$Attributes$InPx$x1(
+				A2($author$project$Structure$floatOf, $author$project$Editor$roleX, from)),
+				$elm_community$typed_svg$TypedSvg$Attributes$InPx$y1(
+				A2($author$project$Structure$floatOf, $author$project$Editor$roleY, from)),
+				$elm_community$typed_svg$TypedSvg$Attributes$InPx$x2(
+				A2($author$project$Structure$floatOf, $author$project$Editor$roleX, to)),
+				$elm_community$typed_svg$TypedSvg$Attributes$InPx$y2(
+				A2($author$project$Structure$floatOf, $author$project$Editor$roleY, to))
+			]),
+		_List_Nil);
 };
 var $author$project$Editor$viewEdgeCells = function (cellGraph) {
-	var fromToLookup = function (edge) {
-		var lookup = function (key) {
-			return A2(
-				$elm$core$Dict$get,
-				key,
-				$author$project$Editor$dictNameToVertex(cellGraph));
-		};
-		var _v0 = _Utils_Tuple2(
-			A2($author$project$Structure$textOf, $author$project$Editor$roleFrom, edge),
-			A2($author$project$Structure$textOf, $author$project$Editor$roleTo, edge));
-		var from = _v0.a;
-		var to = _v0.b;
-		return _Utils_Tuple2(
-			lookup(from),
-			lookup(to));
-	};
-	var edges = A2(
-		$author$project$Structure$nodesOf,
-		$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
-		cellGraph);
-	var fromToPairs = A2($elm$core$List$map, fromToLookup, edges);
-	return A2($elm$core$List$map, $author$project$Editor$viewEdgeCell, fromToPairs);
+	return A2(
+		$elm$core$List$map,
+		$author$project$Editor$viewEdgeCell,
+		$author$project$Editor$fromToPairs(cellGraph));
 };
 var $elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
 	$elm$core$Basics$composeL,
@@ -10550,50 +10793,60 @@ var $author$project$Editor$vertexHandle = F3(
 			_List_Nil);
 	});
 var $avh4$elm_color$Color$white = A4($avh4$elm_color$Color$RgbaSpace, 255 / 255, 255 / 255, 255 / 255, 1.0);
-var $author$project$Editor$viewVertexCell = function (cell) {
-	var yPos = A2($author$project$Structure$floatOf, $author$project$Editor$roleY, cell);
-	var xPos = A2($author$project$Structure$floatOf, $author$project$Editor$roleX, cell);
-	var name = A2(
-		$elm$core$Maybe$withDefault,
-		'<no name>',
-		A2($author$project$Structure$tryTextOf, $author$project$Editor$roleText, cell));
-	var nameNotEmpty = (name === '') ? '<no name>' : name;
-	var textWidth = (nameNotEmpty === '') ? $elm$core$String$length('<no value>') : $elm$core$String$length(nameNotEmpty);
-	var wRect = ($elm$core$String$length(nameNotEmpty) * 8.797) + 18;
-	var xPosRect = xPos - (wRect / 2);
-	var xPosInput = xPosRect + 9;
-	var hRect = 40;
-	var yPosRect = yPos - (hRect / 2);
-	var handle = A3($author$project$Editor$vertexHandle, cell, xPosRect, yPosRect);
-	var yPosInput = yPosRect + 9;
-	var content = A6($author$project$Editor$vertexContent, cell, xPosInput, yPosInput, wRect, textWidth, nameNotEmpty);
-	return A2(
-		$elm_community$typed_svg$TypedSvg$g,
-		_List_Nil,
-		_List_fromArray(
-			[
-				A2(
-				$elm_community$typed_svg$TypedSvg$rect,
-				_List_fromArray(
-					[
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect),
-						$elm_community$typed_svg$TypedSvg$Attributes$fill(
-						$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$white)),
-						$elm_community$typed_svg$TypedSvg$Attributes$stroke(
-						$elm_community$typed_svg$TypedSvg$Types$Paint(
-							A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosRect),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosRect),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
-						$elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
-					]),
-				_List_Nil),
-				content,
-				handle
-			]));
-};
+var $author$project$Editor$viewVertexCell = F2(
+	function (index, cell) {
+		var radius = $elm$core$Basics$sqrt(index) * $author$project$Editor$initialRadius;
+		var noName = '<no name>';
+		var name = A2(
+			$elm$core$Maybe$withDefault,
+			noName,
+			A2($author$project$Structure$tryTextOf, $author$project$Editor$roleText, cell));
+		var nameNotEmpty = (name === '') ? noName : name;
+		var textWidth = (nameNotEmpty === '') ? $elm$core$String$length(noName) : $elm$core$String$length(nameNotEmpty);
+		var wRect = ($elm$core$String$length(nameNotEmpty) * 8.797) + 18;
+		var hRect = 40;
+		var angle = index * $author$project$Editor$initialAngle;
+		var xPos = A2(
+			$elm$core$Maybe$withDefault,
+			radius * $elm$core$Basics$cos(angle),
+			A2($author$project$Structure$tryFloatOf, $author$project$Editor$roleX, cell));
+		var xPosRect = xPos - (wRect / 2);
+		var xPosInput = xPosRect + 9;
+		var yPos = A2(
+			$elm$core$Maybe$withDefault,
+			radius * $elm$core$Basics$cos(angle),
+			A2($author$project$Structure$tryFloatOf, $author$project$Editor$roleY, cell));
+		var yPosRect = yPos - (hRect / 2);
+		var handle = A3($author$project$Editor$vertexHandle, cell, xPosRect, yPosRect);
+		var yPosInput = yPosRect + 9;
+		var content = A6($author$project$Editor$vertexContent, cell, xPosInput, yPosInput, wRect, textWidth, nameNotEmpty);
+		return A2(
+			$elm_community$typed_svg$TypedSvg$g,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$elm_community$typed_svg$TypedSvg$rect,
+					_List_fromArray(
+						[
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect),
+							$elm_community$typed_svg$TypedSvg$Attributes$fill(
+							$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$white)),
+							$elm_community$typed_svg$TypedSvg$Attributes$stroke(
+							$elm_community$typed_svg$TypedSvg$Types$Paint(
+								A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosRect),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosRect),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
+						]),
+					_List_Nil),
+					content,
+					handle
+				]));
+	});
 var $author$project$Editor$viewGraphCell = function (cellGraph) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$svg,
@@ -10613,7 +10866,7 @@ var $author$project$Editor$viewGraphCell = function (cellGraph) {
 				$elm_community$typed_svg$TypedSvg$g,
 				_List_Nil,
 				A2(
-					$elm$core$List$map,
+					$elm$core$List$indexedMap,
 					$author$project$Editor$viewVertexCell,
 					A2(
 						$author$project$Structure$nodesOf,
@@ -10718,7 +10971,7 @@ var $author$project$Editor$viewRefCell = function (cell) {
 			$author$project$Editor$optionFromScope,
 			A2($author$project$Structure$getUnderCustom, $author$project$Editor$roleScope, cell));
 		var inputValue = A2($author$project$Structure$textOf, $author$project$Editor$roleInput, cell);
-		var inputSize = (inputValue === '') ? ($elm$core$String$length('<no value>') + 2) : ($elm$core$String$length(inputValue) + 2);
+		var inputSize = (inputValue === '') ? ($elm$core$String$length('<no target>') + 2) : ($elm$core$String$length(inputValue) + 2);
 		var inputId = $author$project$Structure$pathAsIdFromNode(cell);
 		var datalistId = inputId + '-datalist';
 		return A2(
@@ -10743,7 +10996,7 @@ var $author$project$Editor$viewRefCell = function (cell) {
 								A2($elm$html$Html$Attributes$style, 'font-size', '16px'),
 								A2($elm$html$Html$Attributes$style, 'border', 'none'),
 								A2($elm$html$Html$Attributes$style, 'outline', 'none'),
-								$elm$html$Html$Attributes$placeholder('<no value>'),
+								$elm$html$Html$Attributes$placeholder('<no target>'),
 								$elm$html$Html$Attributes$size(inputSize),
 								$elm$html$Html$Attributes$id(inputId),
 								$elm$html$Html$Attributes$list(datalistId),
@@ -10844,8 +11097,8 @@ var $author$project$Editor$viewHorizSplit = function (cell) {
 					var _v11 = _v10.b;
 					var second = _v11.a;
 					return _Utils_Tuple2(
-						$author$project$Editor$viewCell(first),
-						$author$project$Editor$viewCell(second));
+						A2($author$project$Editor$viewContent, first, _List_Nil),
+						A2($author$project$Editor$viewContent, second, _List_Nil));
 				}
 			}
 		}();

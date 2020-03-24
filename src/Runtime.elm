@@ -73,8 +73,11 @@ subscriptions model =
                                 [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
 
                         Nothing ->
+                            if model.editorModel.runSimulation then
                                 [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
 
+                            else
+                                []
 
                 Just _ ->
                     [ Browser.Events.onMouseUp
@@ -111,6 +114,16 @@ update msg ({ domain, editorModel } as model) =
                 ( editorModelUpdated, editorCmd ) =
                     updateEditor eMsg editorModel
 
+                updateSimul graphsDiffer simul =
+                    if Force.isCompleted simul then
+                        Nothing
+
+                    else if graphsDiffer then
+                        Nothing
+
+                    else
+                        Just simul
+
                 modelNew =
                     if editorModelUpdated.runXform then
                         let
@@ -120,12 +133,16 @@ update msg ({ domain, editorModel } as model) =
                             rootENew =
                                 runDomainXform domainNew
                                     |> persistVertexPositions editorModelUpdated.eRoot
-{-
+
                             graphsDiffer =
-                                graphComparer editorModel.eRoot rootENew == False --|> Debug.log "are different" --}
+                                graphComparer editorModel.eRoot rootENew == False
+
+                            mbSimulNew =
+                                editorModelUpdated.mbSimulation
+                                    |> Maybe.andThen (updateSimul graphsDiffer)
 
                             editorModelNew =
-                                { editorModelUpdated | eRoot = rootENew, mbSimulation = Nothing }
+                                { editorModelUpdated | eRoot = rootENew, mbSimulation = mbSimulNew, runSimulation = graphsDiffer }
                         in
                         { model | domain = domainNew, editorModel = editorModelNew }
 
@@ -134,8 +151,15 @@ update msg ({ domain, editorModel } as model) =
                             rootENew =
                                 persistVertexPositions editorModelUpdated.eRoot editorModelUpdated.eRoot
 
+                            graphsDiffer =
+                                graphComparer editorModel.eRoot rootENew == False
+
+                            mbSimulNew =
+                                editorModelUpdated.mbSimulation
+                                    |> Maybe.andThen (updateSimul graphsDiffer)
+
                             editorModelNew =
-                                { editorModelUpdated | eRoot = rootENew, mbSimulation = Nothing }
+                                { editorModelUpdated | eRoot = rootENew, mbSimulation = mbSimulNew }
                         in
                         { model | editorModel = editorModelNew }
             in
