@@ -1,101 +1,59 @@
-module StateMachine exposing (Domain(..), ctorEvent, ctorState, ctorTransition, editor, editorEvent, editorEventPlaceholder, editorEvents, editorState, editorStateHead, editorStateMachine, editorStateMachineName, editorStates, editorStatesPlaceholder, editorTransition, editorTransitionPlaceholder, initStateMachine, main)
+module Statemachine exposing (main)
 
-import Editor exposing (..)
-import Runtime exposing (Model, projection)
-import Structure exposing (..)
+import Editor as E
+import Runtime as R exposing (Model, projection)
+import Structure as S
 
 
 {-| We need to define a custom domain type.
 It contains constructors for each "domain concept" to tag Node\_s with via API.
 -}
 type Domain
-    = StateMachine
+    = Statemachine
     | Event
     | State
     | Transition
 
 
 roleEventRef =
-    roleFromString "eventRef"
+    S.roleFromString "eventRef"
+
 
 roleStateRef =
-    roleFromString "stateRef"
+    S.roleFromString "stateRef"
+
 
 roleEvents =
-    roleFromString "events"
+    S.roleFromString "events"
+
 
 {-| Program is created by the Runtime.program function.
 It requires:
 
-  - initial root node (initStateMachine)
+  - initial root node (emptyStatemachine/initStatemachine)
   - editor (top-level function to transform a domain model to a cell model)
 
 -}
-main : Program () (Model Domain) (Runtime.Msg Domain)
+main : Program () (Model Domain) (R.Msg Domain)
 main =
-    projection initStateMachine editor
+    projection emptyStatemachine editor
 
 
 {-| Initial root node to start the program with.
-Just an root node of variant StateMachine.
+Just an root node of variant Statemachine.
 -}
-initStateMachine : Node Domain
-initStateMachine =
-    createRoot StateMachine
-        |> addRangeToCustom roleEvents
-            [ createNode Event |> addText roleName "doorClosed"
-            , createNode Event |> addText roleName "drawOpened"
-            , createNode Event |> addText roleName "lightOn"
-            , createNode Event |> addText roleName "doorOpened"
-            , createNode Event |> addText roleName "panelClosed"
-            ]
-        |> addRangeToDefault
-            [ createNode State
-                |> addText roleName "idle"
-                |> addToDefault
-                    (createNode Transition
-                        |> addText roleEventRef "doorClosed"
-                        --|> addText roleStateRef "active"
-                    )
-            , createNode State
-                |> addText roleName "active"
-                |> addToDefault
-                    (createNode Transition
-                        |> addText roleEventRef "drawOpened"
-                        |> addText roleStateRef "waitingForLight"
-                    )
-                |> addToDefault
-                    (createNode Transition
-                        |> addText roleEventRef "lightOn"
-                        |> addText roleStateRef "waitingForDraw"
-                    )
-            , createNode State
-                |> addText roleName "waitingForLight"
-                |> addToDefault
-                    (createNode Transition
-                        |> addText roleEventRef "lightOn"
-                        |> addText roleStateRef "unlockedPanel"
-                    )
-            , createNode State
-                |> addText roleName "waitingForDraw"
-                |> addToDefault
-                    (createNode Transition
-                        |> addText roleEventRef "drawOpened"
-                        |> addText roleStateRef "unlockedPanel"
-                    )
-            , createNode State
-                |> addText roleName "unlockedPanel"
-
-            ]
+emptyStatemachine : S.Node Domain
+emptyStatemachine =
+    S.createRoot Statemachine
 
 
 {-| Declarative way of building a "state machine editor".
 Using the Editor-API, one can stick together cell-based editors.
 -}
-editor : Node Domain -> Node (Cell Domain)
+editor : S.Node Domain -> S.Node (E.Cell Domain)
 editor sm =
-    rootCell
-        |> with (editorStateMachine sm)
+    E.rootCell
+        |> E.with (editorStatemachine sm)
 
 
 {-| A vertical stack of cells
@@ -104,19 +62,19 @@ editor sm =
   - with the editor for the events
 
 -}
-editorStateMachine : Node Domain -> Node (Cell Domain)
-editorStateMachine sm =
-    vertSplitCell
-        |> with
-            (vertStackCell
-                |> with (editorStateMachineName sm)
-                |> with (editorEvents sm)
-                |> with (editorStates sm)
+editorStatemachine : S.Node Domain -> S.Node (E.Cell Domain)
+editorStatemachine sm =
+    E.vertSplitCell
+        |> E.with
+            (E.vertStackCell
+                |> E.with (editorStatemachineName sm)
+                |> E.with (editorEvents sm)
+                |> E.with (editorStates sm)
             )
-        |> with
-            (graphCell
-                |> withRange (editorStatesVerticies sm)
-                |> withRange (editorTransitionsEdges sm)
+        |> E.with
+            (E.graphCell
+                |> E.withRange (editorStatesVerticies sm)
+                |> E.withRange (editorTransitionsEdges sm)
             )
 
 
@@ -128,175 +86,228 @@ editorStateMachine sm =
         Carries the input parameters and the update function itself to be evaluated in the editor update
 
 -}
-editorStateMachineName : Node Domain -> Node (Cell Domain)
-editorStateMachineName sm =
-    horizStackCell
-        |> with (constantCell "name:")
-        |> with (inputCell roleName sm)
-        |> addMargin Bottom 20
+editorStatemachineName : S.Node Domain -> S.Node (E.Cell Domain)
+editorStatemachineName sm =
+    E.horizStackCell
+        |> E.with (E.constantCell "name:")
+        |> E.with (E.inputCell S.roleName sm)
+        |> E.addMargin E.Bottom 20
 
 
 {-| If our statemachine does not contain any events, we put a placeholder cell to allow the user to add events
 Otherwise, we map over all events and create editor cells for them.
 The event editors themselves are wrapped by two constant cells ("events" and "end")
 -}
-editorEvents : Node Domain -> Node (Cell Domain)
+editorEvents : S.Node Domain -> S.Node (E.Cell Domain)
 editorEvents sm =
     let
         editorEventsResult =
-            case getUnderCustom roleEvents sm of
+            case S.getUnderCustom roleEvents sm of
                 [] ->
                     [ editorEventPlaceholder sm ]
 
                 events ->
                     List.map editorEvent events
     in
-    vertStackCell
-        |> with (constantCell "events")
-        |> with
-            (vertStackCell
-                |> addIndent
-                |> withRange editorEventsResult
+    E.vertStackCell
+        |> E.with (E.constantCell "events")
+        |> E.with
+            (E.vertStackCell
+                |> E.addIndent
+                |> E.withRange editorEventsResult
             )
-        |> with (constantCell "end")
-        |> addMargin Bottom 20
+        |> E.with (E.constantCell "end")
+        |> E.addMargin E.Bottom 20
 
 
-editorEvent : Node Domain -> Node (Cell Domain)
+editorEvent : S.Node Domain -> S.Node (E.Cell Domain)
 editorEvent event =
-    inputCell roleName event
-        |> withEffect (insertionEffect event ctorEvent)
-        |> withEffect (deletionEffect event)
+    E.inputCell S.roleName event
+        |> E.withEffect (E.insertionEffect event ctorEvent)
+        |> E.withEffect (E.deletionEffect event)
 
 
-editorEventPlaceholder : Node Domain -> Node (Cell Domain)
+editorEventPlaceholder : S.Node Domain -> S.Node (E.Cell Domain)
 editorEventPlaceholder sm =
-    placeholderCell "no events"
-        |> withEffect (replacementEffect roleEvents sm ctorEvent)
+    E.placeholderCell "no events"
+        |> E.withEffect (E.replacementEffect roleEvents sm ctorEvent)
 
 
-editorStates : Node Domain -> Node (Cell Domain)
+editorStates : S.Node Domain -> S.Node (E.Cell Domain)
 editorStates sm =
     let
         editorStatesResult =
-            case getUnderDefault sm of
+            case S.getUnderDefault sm of
                 [] ->
                     [ editorStatesPlaceholder sm ]
 
                 states ->
                     List.map editorState states
     in
-    vertStackCell
-        |> withRange editorStatesResult
+    E.vertStackCell
+        |> E.withRange editorStatesResult
 
 
-editorStatesPlaceholder : Node Domain -> Node (Cell Domain)
+editorStatesPlaceholder : S.Node Domain -> S.Node (E.Cell Domain)
 editorStatesPlaceholder sm =
-    placeholderCell "no states"
-        |> withEffect (replacementEffect roleDefault sm ctorState)
+    E.placeholderCell "no states"
+        |> E.withEffect (E.replacementEffect S.roleDefault sm ctorState)
 
 
-editorState : Node Domain -> Node (Cell Domain)
+editorState : S.Node Domain -> S.Node (E.Cell Domain)
 editorState state =
     let
         editorTransitionsResult =
-            case getUnderDefault state of
+            case S.getUnderDefault state of
                 [] ->
                     [ editorTransitionPlaceholder state ]
 
                 transitions ->
                     List.map editorTransition transitions
     in
-    vertStackCell
-        |> with (editorStateHead state)
-        |> with
-            (vertStackCell
-                |> addIndent
-                |> withRange editorTransitionsResult
+    E.vertStackCell
+        |> E.with (editorStateHead state)
+        |> E.with
+            (E.vertStackCell
+                |> E.addIndent
+                |> E.withRange editorTransitionsResult
             )
-        |> with (constantCell "end")
-        |> with
-            (buttonCell "+"
-                |> withEffect (insertionEffect state ctorState)
+        |> E.with (E.constantCell "end")
+        |> E.with
+            (E.buttonCell "+"
+                |> E.withEffect (E.insertionEffect state ctorState)
             )
-        |> addMargin Bottom 20
+        |> E.addMargin E.Bottom 20
 
 
-editorStateHead : Node Domain -> Node (Cell Domain)
+editorStateHead : S.Node Domain -> S.Node (E.Cell Domain)
 editorStateHead state =
-    horizStackCell
-        |> with (constantCell "state")
-        |> with
-            (inputCell roleName state
-                |> withEffect (insertionEffect state ctorState)
-                |> withEffect (deletionEffect state)
+    E.horizStackCell
+        |> E.with (E.constantCell "state")
+        |> E.with
+            (E.inputCell S.roleName state
+                |> E.withEffect (E.insertionEffect state ctorState)
+                |> E.withEffect (E.deletionEffect state)
             )
 
 
-editorTransitionPlaceholder : Node Domain -> Node (Cell Domain)
+editorTransitionPlaceholder : S.Node Domain -> S.Node (E.Cell Domain)
 editorTransitionPlaceholder state =
-    placeholderCell "no transitions"
-        |> withEffect (replacementEffect roleDefault state ctorTransition)
+    E.placeholderCell "no transitions"
+        |> E.withEffect (E.replacementEffect S.roleDefault state ctorTransition)
 
 
-editorTransition : Node Domain -> Node (Cell Domain)
+editorTransition : S.Node Domain -> S.Node (E.Cell Domain)
 editorTransition transition =
-    horizStackCell
-        |> with
-            (refCell Event roleEventRef transition Nothing
-                |> withEffect (insertionEffect transition ctorTransition)
-                |> withEffect (deletionEffect transition)
+    E.horizStackCell
+        |> E.with
+            (E.refCell Event roleEventRef transition Nothing
+                |> E.withEffect (E.insertionEffect transition ctorTransition)
+                |> E.withEffect (E.deletionEffect transition)
             )
-        |> with (constantCell "⇒")
-        |> with
-            (refCell State roleStateRef transition Nothing
-                |> withEffect (insertionEffect transition ctorTransition)
-                |> withEffect (deletionEffect transition)
+        |> E.with (E.constantCell "⇒")
+        |> E.with
+            (E.refCell State roleStateRef transition Nothing
+                |> E.withEffect (E.insertionEffect transition ctorTransition)
+                |> E.withEffect (E.deletionEffect transition)
             )
 
 
-editorStatesVerticies : Node Domain -> List (Node (Cell Domain))
+editorStatesVerticies : S.Node Domain -> List (S.Node (E.Cell Domain))
 editorStatesVerticies sm =
-    List.map editorStateVertex <| getUnderDefault sm
+    List.map editorStateVertex <| S.getUnderDefault sm
 
 
 editorStateVertex state =
-    vertexCell roleName state
+    E.vertexCell S.roleName state
 
 
-editorTransitionsEdges : Node Domain -> List (Node (Cell Domain))
+editorTransitionsEdges : S.Node Domain -> List (S.Node (E.Cell Domain))
 editorTransitionsEdges sm =
     List.concat <|
         List.map editorTransitionEdge <|
-            getUnderDefault sm
+            S.getUnderDefault sm
 
 
 editorTransitionEdge state =
     let
         edge transition =
-            edgeCell roleEventRef ( textOf roleName state, textOf roleStateRef transition ) transition
+            E.edgeCell roleEventRef ( S.textOf S.roleName state, S.textOf roleStateRef transition ) transition
     in
-    List.map edge <| getUnderDefault state
+    List.map edge <| S.getUnderDefault state
 
 
 
 -- CTORs
 
 
-ctorEvent : Node Domain
+ctorEvent : S.Node Domain
 ctorEvent =
-    createNode Event
-        |> addText roleName ""
+    S.createNode Event
+        |> S.addText S.roleName ""
 
 
-ctorState : Node Domain
+ctorState : S.Node Domain
 ctorState =
-    createNode State
-        |> addText roleName ""
+    S.createNode State
+        |> S.addText S.roleName ""
 
 
-ctorTransition : Node Domain
+ctorTransition : S.Node Domain
 ctorTransition =
-    createNode Transition
-        |> addText roleEventRef ""
-        |> addText roleStateRef ""
+    S.createNode Transition
+        |> S.addText roleEventRef ""
+        |> S.addText roleStateRef ""
+
+
+
+-- DEBUGGING STUFF
+
+
+initStatemachine : S.Node Domain
+initStatemachine =
+    S.createRoot Statemachine
+        |> S.addRangeToCustom roleEvents
+            [ S.createNode Event |> S.addText S.roleName "doorClosed"
+            , S.createNode Event |> S.addText S.roleName "drawOpened"
+            , S.createNode Event |> S.addText S.roleName "lightOn"
+            , S.createNode Event |> S.addText S.roleName "doorOpened"
+            , S.createNode Event |> S.addText S.roleName "panelClosed"
+            ]
+        |> S.addRangeToDefault
+            [ S.createNode State
+                |> S.addText S.roleName "idle"
+                |> S.addToDefault
+                    (S.createNode Transition
+                        |> S.addText roleEventRef "doorClosed"
+                     --|> addText roleStateRef "active"
+                    )
+            , S.createNode State
+                |> S.addText S.roleName "active"
+                |> S.addToDefault
+                    (S.createNode Transition
+                        |> S.addText roleEventRef "drawOpened"
+                        |> S.addText roleStateRef "waitingForLight"
+                    )
+                |> S.addToDefault
+                    (S.createNode Transition
+                        |> S.addText roleEventRef "lightOn"
+                        |> S.addText roleStateRef "waitingForDraw"
+                    )
+            , S.createNode State
+                |> S.addText S.roleName "waitingForLight"
+                |> S.addToDefault
+                    (S.createNode Transition
+                        |> S.addText roleEventRef "lightOn"
+                        |> S.addText roleStateRef "unlockedPanel"
+                    )
+            , S.createNode State
+                |> S.addText S.roleName "waitingForDraw"
+                |> S.addToDefault
+                    (S.createNode Transition
+                        |> S.addText roleEventRef "drawOpened"
+                        |> S.addText roleStateRef "unlockedPanel"
+                    )
+            , S.createNode State
+                |> S.addText S.roleName "unlockedPanel"
+            ]

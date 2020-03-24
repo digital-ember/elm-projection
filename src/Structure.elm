@@ -305,7 +305,7 @@ tryFloatOf role node =
             (\prop ->
                 case prop of
                     PFloat v ->
-                        Just v
+                        Just v --|> Debug.log "V--------------------------------------------------"
 
                     _ ->
                         Nothing

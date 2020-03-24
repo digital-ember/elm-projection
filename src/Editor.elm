@@ -20,7 +20,6 @@ module Editor exposing
     , inputEffect
     , insertionEffect
     , mousePosition
-    , printPos
     , persistVertexPositions
     , placeholderCell
     , refCell
@@ -479,7 +478,6 @@ updateEditor msg editorModel =
                         | drag = Just <| Drag editorModel.mousePos vertextPosStart path
                         , eRoot = eRootNew
                         , runXform = False
-                        
                       }
                     , Cmd.none
                     )
@@ -497,7 +495,6 @@ updateEditor msg editorModel =
                         , eRoot = updateDrag editorModel.eRoot drag mousePosNew
                         , mousePos = mousePosNew
                         , runXform = False
-                        
                       }
                     , Cmd.none
                     )
@@ -534,7 +531,6 @@ updateEditor msg editorModel =
                                 | eRoot = updateDrag eRootNew drag mousePosNew
                                 , drag = Nothing
                                 , runXform = False
-                                
                               }
                             , Cmd.none
                             )
@@ -607,18 +603,9 @@ persistVertexPositions eRootOld eRootNew =
     new
 
 
-printPos eRootNew =
-    nodesOf (ContentCell VertexCell) eRootNew
-        |> List.map (\v -> ( tryFloatOf roleX v, tryFloatOf roleY v ))
-        |> Debug.log "pos"
-
-
 tickGraphSimulations : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 tickGraphSimulations editorModel =
     let
-        l =
-            Debug.log "tick" "tock"
-
         mbCellGraph =
             nodesOf (ContentCell GraphCell) editorModel.eRoot |> List.head
     in
@@ -657,12 +644,20 @@ tickGraphSimulations editorModel =
                                 |> addFloat roleX e.x
                                 |> addFloat roleY e.y
 
-                        ( newSimulationState, verticiesNew ) =
-                            List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
-                                |> Force.tick simulation
+                        entities = List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
+
+                        --d2 = Debug.log "Input Force.tick" "(x, y) (vx, vy)"
+                        --d = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
+
+                        ( newSimulationState, entitiesNew ) =
+                                entities
+                                |> Force.tick simulation -- |> Debug.log "sim")
+
+                        --o2 = Debug.log "Output Force.tick" "(x, y) (vx, vy)"
+                        --o = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
 
                         childrenNew =
-                            List.map addPosToCell verticiesNew
+                            List.map addPosToCell entitiesNew
                                 ++ edges
 
                         cellGraphNew =
@@ -776,7 +771,6 @@ updateOnInputEffect editorModel effect value =
             ( { editorModel
                 | dRoot = updatePropertyByPath editorModel.dRoot path ( role, asPString value ) |> updatePaths
                 , runXform = True
-
               }
             , Cmd.none
             )
@@ -1545,18 +1539,32 @@ customEdgeForcesFromGraph cellGraph =
                 ( from, to ) =
                     ( textOf roleFrom edge, textOf roleTo edge )
 
-                lookupWithDefault key =
+                mbLookupWithDefault key =
                     Dict.get key (dictNameToVertex cellGraph)
                         |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
-                        |> Maybe.withDefault ""
+
+
+                mbSource = mbLookupWithDefault from
+                mbTarget = mbLookupWithDefault to
             in
-            { source = lookupWithDefault from
-            , target = lookupWithDefault to
-            , distance = 150
-            , strength = Nothing
-            }
+            case (mbSource, mbTarget) of
+                (Nothing, _) -> Nothing
+
+                (_, Nothing) -> Nothing
+
+                (Just source, Just target) ->
+                    if source == target then
+                        Nothing
+                    else
+                        Just
+                            { source = source
+                            , target = target
+                            , distance = 150
+                            , strength = Nothing
+                            }
     in
     List.map forceLookup edges
+        |> List.filterMap identity
 
 
 fromToPairs : Node (Cell a) -> List ( Node (Cell a), Node (Cell a) )
@@ -1640,7 +1648,6 @@ viewVertexCell index cell =
             tryFloatOf roleX cell
                 |> Maybe.withDefault (radius * cos angle)
 
-        --|> Debug.log "X"
         xPosRect =
             xPos - (wRect / 2)
 
@@ -1651,7 +1658,6 @@ viewVertexCell index cell =
             tryFloatOf roleY cell
                 |> Maybe.withDefault (radius * cos angle)
 
-        --|> Debug.log "Y"
         yPosRect =
             yPos - (hRect / 2)
 

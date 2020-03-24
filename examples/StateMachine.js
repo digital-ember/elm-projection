@@ -5805,119 +5805,7 @@ var $author$project$StateMachine$editor = function (sm) {
 		$author$project$Editor$rootCell);
 };
 var $author$project$StateMachine$StateMachine = {$: 'StateMachine'};
-var $author$project$StateMachine$initStateMachine = A2(
-	$author$project$Structure$addRangeToDefault,
-	_List_fromArray(
-		[
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$StateMachine$roleEventRef,
-				'doorClosed',
-				$author$project$Structure$createNode($author$project$StateMachine$Transition)),
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'idle',
-				$author$project$Structure$createNode($author$project$StateMachine$State))),
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$StateMachine$roleStateRef,
-				'waitingForDraw',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$StateMachine$roleEventRef,
-					'lightOn',
-					$author$project$Structure$createNode($author$project$StateMachine$Transition))),
-			A2(
-				$author$project$Structure$addToDefault,
-				A3(
-					$author$project$Structure$addText,
-					$author$project$StateMachine$roleStateRef,
-					'waitingForLight',
-					A3(
-						$author$project$Structure$addText,
-						$author$project$StateMachine$roleEventRef,
-						'drawOpened',
-						$author$project$Structure$createNode($author$project$StateMachine$Transition))),
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Structure$roleName,
-					'active',
-					$author$project$Structure$createNode($author$project$StateMachine$State)))),
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$StateMachine$roleStateRef,
-				'unlockedPanel',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$StateMachine$roleEventRef,
-					'lightOn',
-					$author$project$Structure$createNode($author$project$StateMachine$Transition))),
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'waitingForLight',
-				$author$project$Structure$createNode($author$project$StateMachine$State))),
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$StateMachine$roleStateRef,
-				'unlockedPanel',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$StateMachine$roleEventRef,
-					'drawOpened',
-					$author$project$Structure$createNode($author$project$StateMachine$Transition))),
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'waitingForDraw',
-				$author$project$Structure$createNode($author$project$StateMachine$State))),
-			A3(
-			$author$project$Structure$addText,
-			$author$project$Structure$roleName,
-			'unlockedPanel',
-			$author$project$Structure$createNode($author$project$StateMachine$State))
-		]),
-	A3(
-		$author$project$Structure$addRangeToCustom,
-		$author$project$StateMachine$roleEvents,
-		_List_fromArray(
-			[
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'doorClosed',
-				$author$project$Structure$createNode($author$project$StateMachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'drawOpened',
-				$author$project$Structure$createNode($author$project$StateMachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'lightOn',
-				$author$project$Structure$createNode($author$project$StateMachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'doorOpened',
-				$author$project$Structure$createNode($author$project$StateMachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'panelClosed',
-				$author$project$Structure$createNode($author$project$StateMachine$Event))
-			]),
-		$author$project$Structure$createRoot($author$project$StateMachine$StateMachine)));
+var $author$project$StateMachine$initStateMachine = $author$project$Structure$createRoot($author$project$StateMachine$StateMachine);
 var $author$project$Runtime$Domain = F2(
 	function (root, xform) {
 		return {root: root, xform: xform};
@@ -7815,38 +7703,49 @@ var $gampleman$elm_visualization$Force$Center = F2(
 var $gampleman$elm_visualization$Force$center = $gampleman$elm_visualization$Force$Center;
 var $author$project$Editor$customEdgeForcesFromGraph = function (cellGraph) {
 	var forceLookup = function (edge) {
-		var lookupWithDefault = function (key) {
+		var mbLookupWithDefault = function (key) {
 			return A2(
-				$elm$core$Maybe$withDefault,
-				'',
+				$elm$core$Maybe$andThen,
+				function (v) {
+					return $elm$core$Maybe$Just(
+						$author$project$Structure$pathAsIdFromNode(v));
+				},
 				A2(
-					$elm$core$Maybe$andThen,
-					function (v) {
-						return $elm$core$Maybe$Just(
-							$author$project$Structure$pathAsIdFromNode(v));
-					},
-					A2(
-						$elm$core$Dict$get,
-						key,
-						$author$project$Editor$dictNameToVertex(cellGraph))));
+					$elm$core$Dict$get,
+					key,
+					$author$project$Editor$dictNameToVertex(cellGraph)));
 		};
 		var _v0 = _Utils_Tuple2(
 			A2($author$project$Structure$textOf, $author$project$Editor$roleFrom, edge),
 			A2($author$project$Structure$textOf, $author$project$Editor$roleTo, edge));
 		var from = _v0.a;
 		var to = _v0.b;
-		return {
-			distance: 150,
-			source: lookupWithDefault(from),
-			strength: $elm$core$Maybe$Nothing,
-			target: lookupWithDefault(to)
-		};
+		var mbSource = mbLookupWithDefault(from);
+		var mbTarget = mbLookupWithDefault(to);
+		var _v1 = _Utils_Tuple2(mbSource, mbTarget);
+		if (_v1.a.$ === 'Nothing') {
+			var _v2 = _v1.a;
+			return $elm$core$Maybe$Nothing;
+		} else {
+			if (_v1.b.$ === 'Nothing') {
+				var _v3 = _v1.b;
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var source = _v1.a.a;
+				var target = _v1.b.a;
+				return _Utils_eq(source, target) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
+					{distance: 150, source: source, strength: $elm$core$Maybe$Nothing, target: target});
+			}
+		}
 	};
 	var edges = A2(
 		$author$project$Structure$nodesOf,
 		$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
 		cellGraph);
-	return A2($elm$core$List$map, forceLookup, edges);
+	return A2(
+		$elm$core$List$filterMap,
+		$elm$core$Basics$identity,
+		A2($elm$core$List$map, forceLookup, edges));
 };
 var $gampleman$elm_visualization$Force$Links = F2(
 	function (a, b) {
@@ -7969,7 +7868,6 @@ var $author$project$Editor$forceEntityFromVertex = F2(
 			y: yNew
 		};
 	});
-var $elm$core$Debug$log = _Debug_log;
 var $gampleman$elm_visualization$Force$ManyBody = F2(
 	function (a, b) {
 		return {$: 'ManyBody', a: a, b: b};
@@ -8810,7 +8708,6 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 			$author$project$Structure$nodesOf,
 			$author$project$Editor$ContentCell($author$project$Editor$GraphCell),
 			editorModel.eRoot));
-	var l = A2($elm$core$Debug$log, 'tick', 'tock');
 	if (mbCellGraph.$ === 'Nothing') {
 		return $author$project$Editor$noUpdate(editorModel);
 	} else {
@@ -8854,6 +8751,13 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 				$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
 				cellGraph);
 			var pathToGraph = $author$project$Structure$pathOf(cellGraph);
+			var entities = A2(
+				$elm$core$List$indexedMap,
+				F2(
+					function (i, v) {
+						return A2($author$project$Editor$forceEntityFromVertex, i, v);
+					}),
+				verticies);
 			var edges = A2(
 				$author$project$Structure$nodesOf,
 				$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
@@ -8865,20 +8769,11 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 					e.y,
 					A3($author$project$Structure$addFloat, $author$project$Editor$roleX, e.x, e.value));
 			};
-			var _v2 = A2(
-				$gampleman$elm_visualization$Force$tick,
-				simulation,
-				A2(
-					$elm$core$List$indexedMap,
-					F2(
-						function (i, v) {
-							return A2($author$project$Editor$forceEntityFromVertex, i, v);
-						}),
-					verticies));
+			var _v2 = A2($gampleman$elm_visualization$Force$tick, simulation, entities);
 			var newSimulationState = _v2.a;
-			var verticiesNew = _v2.b;
+			var entitiesNew = _v2.b;
 			var childrenNew = _Utils_ap(
-				A2($elm$core$List$map, addPosToCell, verticiesNew),
+				A2($elm$core$List$map, addPosToCell, entitiesNew),
 				edges);
 			var cellGraphNew = A3($author$project$Structure$replaceUnderFeature, $author$project$Editor$roleDefault, childrenNew, cellGraph);
 			var eRootNew = A3($author$project$Structure$replaceChildAtPath, cellGraphNew, pathToGraph, editorModel.eRoot);
