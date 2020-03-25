@@ -51,9 +51,9 @@ import Point2d as P2d exposing (Point2d)
 import Structure exposing (..)
 import Task as Task
 import Triangle2d as T2d exposing (Triangle2d)
-import TypedSvg exposing (circle, g, line, rect, svg)
+import TypedSvg exposing (circle, g, rect, svg)
 import TypedSvg.Attributes exposing (fill, stroke)
-import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
+import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, y)
 import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Events as TsvgE
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
@@ -178,6 +178,8 @@ type Msg a
     | DragStart Path
     | MouseMove Point2d
     | MouseUp Point2d
+    | MouseEnter Path
+    | MouseLeave Path
 
 
 type Dir
@@ -579,6 +581,12 @@ updateEditor msg editorModel =
 
                 Nothing ->
                     noUpdate editorModel
+
+        MouseEnter path ->
+            ( { editorModel | eRoot = updatePropertyByPath editorModel.eRoot path ( roleMouseEnter, asPBool True ), runXform = False }, Cmd.none )
+
+        MouseLeave path ->
+            ( { editorModel | eRoot = updatePropertyByPath editorModel.eRoot path ( roleMouseEnter, asPBool False ), runXform = False }, Cmd.none )
 
         NoOp ->
             noUpdate editorModel
@@ -1652,26 +1660,31 @@ vertexContent cell { posContent, widthVertex, widthContent, heightContent, conte
 
 vertexDragHandle : Node (Cell a) -> VertexProperties -> Html (Msg a)
 vertexDragHandle cell { posVertex } =
-    if boolOf roleGrabbed cell then
-        circle
-            [ r 10
-            , cx <| P2d.xCoordinate posVertex
-            , cy <| P2d.yCoordinate posVertex
-            , fill <| Paint <| colorGraphPrimary
-            ]
-            []
-
-    else
-        circle
+    let
+        attriutes =
             [ r 5
             , cx <| P2d.xCoordinate posVertex
             , cy <| P2d.yCoordinate posVertex
-            , TsvgE.onMouseDown (DragStart (pathOf cell))
             , stroke <| Paint <| colorGraphPrimary
             , strokeWidth 2
-            , fill <| Paint <| Color.rgb255 240 248 255
+            , fill <| Paint <| colorGraphBackground
             ]
-            []
+                ++ (if boolOf roleGrabbed cell then
+                        [ r 8
+                        , fill <| Paint <| colorGraphPrimary
+                        ]
+
+                    else if boolOf roleMouseEnter cell then
+                        [ r 8
+                        , TsvgE.onMouseDown (DragStart (pathOf cell))
+                        , TsvgE.onMouseLeave (MouseLeave (pathOf cell))
+                        ]
+
+                    else
+                        [ TsvgE.onMouseEnter (MouseEnter (pathOf cell)) ]
+                   )
+    in
+    circle attriutes []
 
 
 edgeWithArrowHead : LS2d.LineSegment2d -> Html (Msg a)
@@ -2257,6 +2270,10 @@ colorGraphPrimary =
     Color.rgb255 17 77 175
 
 
+colorGraphBackground =
+    Color.rgb255 240 248 255
+
+
 
 -- ROLES
 
@@ -2343,3 +2360,7 @@ roleMarginLeft =
 
 roleGrabbed =
     roleFromString "grabbed"
+
+
+roleMouseEnter =
+    roleFromString "mouseEnter"

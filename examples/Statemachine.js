@@ -7643,6 +7643,9 @@ var $author$project$Editor$Drag = F3(
 	function (mousePosStart, vertexPosStart, path) {
 		return {mousePosStart: mousePosStart, path: path, vertexPosStart: vertexPosStart};
 	});
+var $author$project$Structure$asPBool = function (b) {
+	return $author$project$Structure$PBool(b);
+};
 var $author$project$Editor$noUpdate = function (editorModel) {
 	return _Utils_Tuple2(
 		_Utils_update(
@@ -7812,6 +7815,7 @@ var $author$project$Structure$replaceChildAtPath = F3(
 		return A4($author$project$Structure$replaceChildAtPathRec, nodeNew, path, segmentsNoRoot, root);
 	});
 var $author$project$Editor$roleGrabbed = $author$project$Structure$roleFromString('grabbed');
+var $author$project$Editor$roleMouseEnter = $author$project$Structure$roleFromString('mouseEnter');
 var $author$project$Structure$addFloat = F3(
 	function (role, value, node) {
 		return A2(
@@ -9764,6 +9768,38 @@ var $author$project$Editor$updateEditor = F2(
 				} else {
 					return $author$project$Editor$noUpdate(editorModel);
 				}
+			case 'MouseEnter':
+				var path = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						editorModel,
+						{
+							eRoot: A3(
+								$author$project$Structure$updatePropertyByPath,
+								editorModel.eRoot,
+								path,
+								_Utils_Tuple2(
+									$author$project$Editor$roleMouseEnter,
+									$author$project$Structure$asPBool(true))),
+							runXform: false
+						}),
+					$elm$core$Platform$Cmd$none);
+			case 'MouseLeave':
+				var path = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						editorModel,
+						{
+							eRoot: A3(
+								$author$project$Structure$updatePropertyByPath,
+								editorModel.eRoot,
+								path,
+								_Utils_Tuple2(
+									$author$project$Editor$roleMouseEnter,
+									$author$project$Structure$asPBool(false))),
+							runXform: false
+						}),
+					$elm$core$Platform$Cmd$none);
 			case 'NoOp':
 				return $author$project$Editor$noUpdate(editorModel);
 			case 'Swallow':
@@ -11056,7 +11092,14 @@ var $author$project$Editor$vertexContent = F2(
 var $author$project$Editor$DragStart = function (a) {
 	return {$: 'DragStart', a: a};
 };
+var $author$project$Editor$MouseEnter = function (a) {
+	return {$: 'MouseEnter', a: a};
+};
+var $author$project$Editor$MouseLeave = function (a) {
+	return {$: 'MouseLeave', a: a};
+};
 var $elm_community$typed_svg$TypedSvg$circle = $elm_community$typed_svg$TypedSvg$Core$node('circle');
+var $author$project$Editor$colorGraphBackground = A3($avh4$elm_color$Color$rgb255, 240, 248, 255);
 var $elm_community$typed_svg$TypedSvg$Attributes$cx = function (length) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$Core$attribute,
@@ -11088,6 +11131,8 @@ var $elm_community$typed_svg$TypedSvg$Events$simpleOn = function (name) {
 	};
 };
 var $elm_community$typed_svg$TypedSvg$Events$onMouseDown = $elm_community$typed_svg$TypedSvg$Events$simpleOn('mousedown');
+var $elm_community$typed_svg$TypedSvg$Events$onMouseEnter = $elm_community$typed_svg$TypedSvg$Events$simpleOn('mouseenter');
+var $elm_community$typed_svg$TypedSvg$Events$onMouseLeave = $elm_community$typed_svg$TypedSvg$Events$simpleOn('mouseleave');
 var $elm_community$typed_svg$TypedSvg$Attributes$r = function (length) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$Core$attribute,
@@ -11101,20 +11146,7 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$r = function (value) {
 var $author$project$Editor$vertexDragHandle = F2(
 	function (cell, _v0) {
 		var posVertex = _v0.posVertex;
-		return A2($author$project$Structure$boolOf, $author$project$Editor$roleGrabbed, cell) ? A2(
-			$elm_community$typed_svg$TypedSvg$circle,
-			_List_fromArray(
-				[
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$r(10),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cx(
-					$ianmackenzie$elm_geometry$Point2d$xCoordinate(posVertex)),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cy(
-					$ianmackenzie$elm_geometry$Point2d$yCoordinate(posVertex)),
-					$elm_community$typed_svg$TypedSvg$Attributes$fill(
-					$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary))
-				]),
-			_List_Nil) : A2(
-			$elm_community$typed_svg$TypedSvg$circle,
+		var attriutes = _Utils_ap(
 			_List_fromArray(
 				[
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$r(5),
@@ -11122,17 +11154,33 @@ var $author$project$Editor$vertexDragHandle = F2(
 					$ianmackenzie$elm_geometry$Point2d$xCoordinate(posVertex)),
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cy(
 					$ianmackenzie$elm_geometry$Point2d$yCoordinate(posVertex)),
-					$elm_community$typed_svg$TypedSvg$Events$onMouseDown(
-					$author$project$Editor$DragStart(
-						$author$project$Structure$pathOf(cell))),
 					$elm_community$typed_svg$TypedSvg$Attributes$stroke(
 					$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary)),
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
 					$elm_community$typed_svg$TypedSvg$Attributes$fill(
-					$elm_community$typed_svg$TypedSvg$Types$Paint(
-						A3($avh4$elm_color$Color$rgb255, 240, 248, 255)))
+					$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphBackground))
 				]),
-			_List_Nil);
+			A2($author$project$Structure$boolOf, $author$project$Editor$roleGrabbed, cell) ? _List_fromArray(
+				[
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$r(8),
+					$elm_community$typed_svg$TypedSvg$Attributes$fill(
+					$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary))
+				]) : (A2($author$project$Structure$boolOf, $author$project$Editor$roleMouseEnter, cell) ? _List_fromArray(
+				[
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$r(8),
+					$elm_community$typed_svg$TypedSvg$Events$onMouseDown(
+					$author$project$Editor$DragStart(
+						$author$project$Structure$pathOf(cell))),
+					$elm_community$typed_svg$TypedSvg$Events$onMouseLeave(
+					$author$project$Editor$MouseLeave(
+						$author$project$Structure$pathOf(cell)))
+				]) : _List_fromArray(
+				[
+					$elm_community$typed_svg$TypedSvg$Events$onMouseEnter(
+					$author$project$Editor$MouseEnter(
+						$author$project$Structure$pathOf(cell)))
+				])));
+		return A2($elm_community$typed_svg$TypedSvg$circle, attriutes, _List_Nil);
 	});
 var $avh4$elm_color$Color$white = A4($avh4$elm_color$Color$RgbaSpace, 255 / 255, 255 / 255, 255 / 255, 1.0);
 var $author$project$Editor$viewVertexCell = function (cell) {
