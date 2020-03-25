@@ -37,21 +37,27 @@ module Editor exposing
     )
 
 import Browser.Dom as Dom
-import Color
-import Dict as Dict
+import Color exposing (Color)
+import Dict as Dict exposing (Dict)
+import Direction2d as D2d exposing (Direction2d)
 import Force exposing (Entity, Force, State)
+import Geometry.Svg as GSvg
 import Html exposing (..)
 import Html.Attributes as HtmlA
 import Html.Events as HtmlE
 import Json.Decode as JsonD
+import LineSegment2d as LS2d exposing (LineSegment2d)
+import Point2d as P2d exposing (Point2d)
 import Structure exposing (..)
 import Task as Task
+import Triangle2d as T2d exposing (Triangle2d)
 import TypedSvg exposing (circle, g, line, rect, svg)
 import TypedSvg.Attributes exposing (fill, stroke)
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Events as TsvgE
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
+import Vector2d as V2d exposing (Vector2d)
 
 
 type Cell a
@@ -86,15 +92,22 @@ type alias EditorModel a =
     , eRoot : Node (Cell a)
     , mbSimulation : Maybe (Force.State String)
     , drag : Maybe Drag
-    , mousePos : ( Float, Float )
+    , mousePos : Point2d
     , runXform : Bool
     , runSimulation : Bool
     }
 
 
+type alias Graph =
+    { mbSimulation : Maybe (Force.State String)
+    , drag : Maybe Drag
+    , runSimulation : Bool
+    }
+
+
 type alias Drag =
-    { mousePosStart : ( Float, Float )
-    , vertexPosStart : ( Float, Float )
+    { mousePosStart : Point2d
+    , vertexPosStart : Point2d
     , path : Path
     }
 
@@ -163,8 +176,8 @@ type Msg a
     | UpdateScope (EffectCell a)
     | Tick
     | DragStart Path
-    | MouseMove ( Float, Float )
-    | MouseUp ( Float, Float )
+    | MouseMove Point2d
+    | MouseUp Point2d
 
 
 type Dir
@@ -181,13 +194,37 @@ type MarginSide
     | Left
 
 
+type alias MousePosition =
+    Point2d
+
+
+type alias Entity a =
+    Force.Entity Int { value : Node (Cell a) }
+
+
+type alias VertexProperties =
+    { posVertex : Point2d
+    , posContent : Point2d
+    , widthVertex : Float
+    , heightVertex : Float
+    , angleAreas : List ( Float, Float )
+    , widthContent : Int
+    , heightContent : Float
+    , content : String
+    }
+
+
+
+-- CREATION
+
+
 initEditorModel : Node a -> Node (Cell a) -> EditorModel a
 initEditorModel dRoot eRoot =
     { dRoot = dRoot
     , eRoot = eRoot
     , mbSimulation = Nothing
     , drag = Nothing
-    , mousePos = ( 0, 0 )
+    , mousePos = P2d.origin
     , runXform = True
     , runSimulation = True
     }
@@ -218,7 +255,12 @@ refCell target role nodeContext scopeProvider =
 
 
 createRefScope nodeContext =
-    List.map (\scopeElement -> constantCell (textOf roleScopeValue scopeElement)) (getUnderCustom roleScope nodeContext)
+    let
+        scopeCell scopeElement =
+            constantCell (textOf roleScopeValue scopeElement)
+    in
+    getUnderCustom roleScope nodeContext
+        |> List.map scopeCell
 
 
 inputCell : Role -> Node a -> Node (Cell a)
@@ -466,7 +508,7 @@ updateEditor msg editorModel =
                 Just vertex ->
                     let
                         vertextPosStart =
-                            ( floatOf roleX vertex, floatOf roleY vertex )
+                            p2dFromCell vertex
 
                         vertexGrabbed =
                             vertex |> addBool roleGrabbed True
@@ -566,43 +608,6 @@ updateEditor msg editorModel =
             updateOnCreateScopeEffect editorModel effect
 
 
-persistVertexPositions : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
-persistVertexPositions eRootOld eRootNew =
-    let
-        verticiesOld =
-            nodesOf (ContentCell VertexCell) eRootOld
-
-        persistVertexPos vOld rootNew =
-            let
-                mbx =
-                    tryFloatOf roleX vOld
-
-                mby =
-                    tryFloatOf roleY vOld
-            in
-            case ( mbx, mby ) of
-                ( Nothing, _ ) ->
-                    rootNew
-
-                ( _, Nothing ) ->
-                    rootNew
-
-                ( Just x, Just y ) ->
-                    let
-                        rootNew1 =
-                            updatePropertyByPath rootNew (pathOf vOld) ( roleX, asPFloat x )
-
-                        rootNew2 =
-                            updatePropertyByPath rootNew1 (pathOf vOld) ( roleY, asPFloat y )
-                    in
-                    rootNew2
-
-        new =
-            List.foldl persistVertexPos eRootNew verticiesOld
-    in
-    new
-
-
 tickGraphSimulations : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 tickGraphSimulations editorModel =
     let
@@ -644,18 +649,18 @@ tickGraphSimulations editorModel =
                                 |> addFloat roleX e.x
                                 |> addFloat roleY e.y
 
-                        entities = List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
+                        entities =
+                            List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
 
                         --d2 = Debug.log "Input Force.tick" "(x, y) (vx, vy)"
                         --d = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
-
                         ( newSimulationState, entitiesNew ) =
-                                entities
-                                |> Force.tick simulation -- |> Debug.log "sim")
+                            entities
+                                |> Force.tick simulation
 
+                        -- |> Debug.log "sim")
                         --o2 = Debug.log "Output Force.tick" "(x, y) (vx, vy)"
                         --o = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
-
                         childrenNew =
                             List.map addPosToCell entitiesNew
                                 ++ edges
@@ -677,20 +682,14 @@ tickGraphSimulations editorModel =
                     ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False }, Cmd.none )
 
 
-updateDrag : Node (Cell a) -> Drag -> ( Float, Float ) -> Node (Cell a)
-updateDrag eRoot drag ( xCurrent, yCurrent ) =
+updateDrag : Node (Cell a) -> Drag -> Point2d -> Node (Cell a)
+updateDrag eRoot drag mousePosCurrent =
     let
-        xDelta =
-            xCurrent - Tuple.first drag.mousePosStart
+        delta =
+            V2d.from drag.mousePosStart mousePosCurrent
 
-        yDelta =
-            yCurrent - Tuple.second drag.mousePosStart
-
-        xNew =
-            Tuple.first drag.vertexPosStart + xDelta
-
-        yNew =
-            Tuple.second drag.vertexPosStart + yDelta
+        ( xNew, yNew ) =
+            drag.vertexPosStart |> P2d.translateBy delta |> P2d.coordinates
 
         eRootTemp =
             updatePropertyByPath eRoot drag.path ( roleX, asPFloat xNew )
@@ -1442,160 +1441,9 @@ viewGraphCell cellGraph =
         [ g [] <|
             viewEdgeCells cellGraph
         , g [] <|
-            List.indexedMap viewVertexCell <|
+            List.map viewVertexCell <|
                 nodesOf (ContentCell VertexCell) cellGraph
         ]
-
-
-type alias Entity a =
-    Force.Entity Int { value : Node (Cell a) }
-
-
-initialRadius : Float
-initialRadius =
-    10
-
-
-initialAngle : Float
-initialAngle =
-    pi * (3 - sqrt 5)
-
-
-forceEntityFromVertex : Int -> Node (Cell a) -> Force.Entity String { value : Node (Cell a) }
-forceEntityFromVertex index cell =
-    let
-        mbX =
-            tryFloatOf roleX cell
-
-        mbY =
-            tryFloatOf roleY cell
-
-        radius =
-            sqrt (toFloat index) * initialRadius
-
-        angle =
-            toFloat index * initialAngle
-
-        xNew =
-            case mbX of
-                Nothing ->
-                    radius * cos angle
-
-                Just xc ->
-                    xc
-
-        yNew =
-            case mbY of
-                Nothing ->
-                    radius * sin angle
-
-                Just yc ->
-                    yc
-    in
-    { x = xNew
-    , y = yNew
-    , vx = 0.0
-    , vy = 0.0
-    , id = pathAsIdFromNode cell
-    , value = cell
-    }
-
-
-dictNameToVertex : Node (Cell a) -> Dict.Dict String (Node (Cell a))
-dictNameToVertex cellGraph =
-    nodesOf (ContentCell VertexCell) cellGraph
-        |> List.foldl (\v d -> Dict.insert (textOf roleText v) v d) Dict.empty
-
-
-edgeForcesFromGraph : Node (Cell a) -> List ( String, String )
-edgeForcesFromGraph cellGraph =
-    let
-        edges =
-            nodesOf (ContentCell EdgeCell) cellGraph
-
-        idLookup edge =
-            let
-                ( from, to ) =
-                    ( textOf roleFrom edge, textOf roleTo edge )
-
-                lookupWithDefault key =
-                    Dict.get key (dictNameToVertex cellGraph)
-                        |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
-                        |> Maybe.withDefault ""
-            in
-            ( lookupWithDefault from, lookupWithDefault to )
-    in
-    List.map idLookup edges
-
-
-customEdgeForcesFromGraph : Node (Cell a) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
-customEdgeForcesFromGraph cellGraph =
-    let
-        edges =
-            nodesOf (ContentCell EdgeCell) cellGraph
-
-        forceLookup edge =
-            let
-                ( from, to ) =
-                    ( textOf roleFrom edge, textOf roleTo edge )
-
-                mbLookupWithDefault key =
-                    Dict.get key (dictNameToVertex cellGraph)
-                        |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
-
-
-                mbSource = mbLookupWithDefault from
-                mbTarget = mbLookupWithDefault to
-            in
-            case (mbSource, mbTarget) of
-                (Nothing, _) -> Nothing
-
-                (_, Nothing) -> Nothing
-
-                (Just source, Just target) ->
-                    if source == target then
-                        Nothing
-                    else
-                        Just
-                            { source = source
-                            , target = target
-                            , distance = 150
-                            , strength = Nothing
-                            }
-    in
-    List.map forceLookup edges
-        |> List.filterMap identity
-
-
-fromToPairs : Node (Cell a) -> List ( Node (Cell a), Node (Cell a) )
-fromToPairs cellGraph =
-    let
-        edges =
-            nodesOf (ContentCell EdgeCell) cellGraph
-
-        fromToLookup edge =
-            let
-                ( from, to ) =
-                    ( textOf roleFrom edge, textOf roleTo edge )
-
-                lookup key =
-                    Dict.get key (dictNameToVertex cellGraph)
-            in
-            ( lookup from, lookup to )
-    in
-    List.map fromToLookup edges
-        |> List.filterMap
-            (\tuple ->
-                case tuple of
-                    ( Nothing, _ ) ->
-                        Nothing
-
-                    ( _, Nothing ) ->
-                        Nothing
-
-                    ( Just from, Just to ) ->
-                        Just ( from, to )
-            )
 
 
 viewEdgeCells : Node (Cell a) -> List (Html (Msg a))
@@ -1604,88 +1452,167 @@ viewEdgeCells cellGraph =
 
 
 viewEdgeCell : ( Node (Cell a), Node (Cell a) ) -> Html (Msg a)
-viewEdgeCell ( from, to ) =
-    line
-        [ strokeWidth 2
-        , stroke <| Paint <| Color.rgb255 17 77 175
-        , x1 <| floatOf roleX from
-        , y1 <| floatOf roleY from
-        , x2 <| floatOf roleX to
-        , y2 <| floatOf roleY to
-        ]
-        []
+viewEdgeCell fromTo =
+    let
+        ( edgeStart, edgeEnd ) =
+            vertexAnchorsForEdge fromTo
+
+        edgeLine =
+            LS2d.from edgeStart edgeEnd
+    in
+    edgeWithArrowHead edgeLine
 
 
-viewVertexCell : Int -> Node (Cell a) -> Html (Msg a)
-viewVertexCell index cell =
+vertexAnchorsForEdge : ( Node (Cell a), Node (Cell a) ) -> ( Point2d, Point2d )
+vertexAnchorsForEdge ( from, to ) =
+    let
+        fProps =
+            vertexProperties from
+
+        tProps =
+            vertexProperties to
+
+        fSector =
+            sectorFromAngle fProps.angleAreas
+
+        tSector =
+            sectorFromAngle tProps.angleAreas
+
+        fPos =
+            p2dFromCell from
+
+        tPos =
+            p2dFromCell to
+
+        dir =
+            D2d.from fPos tPos |> Maybe.withDefault D2d.positiveX
+
+        angle =
+            D2d.toAngle dir
+
+        sectorFromAngle a =
+            a
+                |> List.indexedMap
+                    (\i ( lowest, highest ) ->
+                        if (pi + angle) >= lowest && (pi + angle) < highest then
+                            Just i
+
+                        else
+                            Nothing
+                    )
+                |> List.filterMap identity
+                |> List.head
+                |> Maybe.withDefault 0
+
+        translate s pos props inv =
+            case s of
+                0 ->
+                    P2d.translateIn dir (inv * (-props.widthVertex / 2) / cos angle) pos
+
+                1 ->
+                    P2d.translateIn dir (inv * (-props.heightVertex / 2) / cos ((pi / 2) - angle)) pos
+
+                2 ->
+                    P2d.translateIn dir (inv * (props.widthVertex / 2) / cos angle) pos
+
+                3 ->
+                    P2d.translateIn dir (inv * (props.heightVertex / 2) / cos ((pi / 2) - angle)) pos
+
+                _ ->
+                    pos
+    in
+    ( translate fSector fPos fProps 1, translate tSector tPos tProps -1 )
+
+
+vertexProperties : Node (Cell a) -> VertexProperties
+vertexProperties vertex =
     let
         noName =
             "<no value>"
 
         name =
-            tryTextOf roleText cell |> Maybe.withDefault noName
+            tryTextOf roleText vertex |> Maybe.withDefault noName
 
-        nameNotEmpty =
+        nameContent =
             if name == "" then
                 noName
 
             else
                 name
 
-        wRect =
-            (toFloat <| String.length <| nameNotEmpty) * 8.797 + 18
+        widthVertex =
+            (toFloat <| String.length <| nameContent) * 8.797 + 18
 
-        hRect =
+        heightVertex =
             40
 
-        radius =
-            sqrt (toFloat index) * initialRadius
+        halfH =
+            heightVertex / 2
 
-        angle =
-            toFloat index * initialAngle
+        halfW =
+            widthVertex / 2
 
-        xPos =
-            tryFloatOf roleX cell
-                |> Maybe.withDefault (radius * cos angle)
+        -- it's easier to work with 0..2pi than -pi to pi
+        edgeAngle =
+            atan2 halfH halfW
 
-        xPosRect =
-            xPos - (wRect / 2)
+        angleAreas =
+            [ ( 2 * pi - edgeAngle, edgeAngle )
+            , ( edgeAngle, pi - edgeAngle )
+            , ( pi - edgeAngle, pi + edgeAngle )
+            , ( pi + edgeAngle, 2 * pi - edgeAngle )
+            ]
 
-        xPosInput =
-            xPosRect + 9
+        midTranslation =
+            V2d.fromComponents ( -halfW, -halfH )
 
-        yPos =
-            tryFloatOf roleY cell
-                |> Maybe.withDefault (radius * cos angle)
+        posVertex =
+            p2dFromCell vertex
+                |> P2d.translateBy midTranslation
 
-        yPosRect =
-            yPos - (hRect / 2)
+        posContent =
+            posVertex
+                |> P2d.translateBy (V2d.fromComponents ( 9, 9 ))
 
-        yPosInput =
-            yPosRect + 9
-
-        textWidth =
-            if nameNotEmpty == "" then
+        widthContent =
+            if nameContent == "" then
                 String.length noName
 
             else
-                String.length nameNotEmpty
+                String.length nameContent
+    in
+    { posVertex = posVertex
+    , posContent = posContent
+    , widthVertex = widthVertex
+    , heightVertex = heightVertex
+    , angleAreas = angleAreas
+    , widthContent = widthContent
+    , heightContent = 20
+    , content = nameContent
+    }
+
+
+viewVertexCell : Node (Cell a) -> Html (Msg a)
+viewVertexCell cell =
+    let
+        vertexProps =
+            vertexProperties cell
 
         handle =
-            vertexHandle cell xPosRect yPosRect
+            vertexDragHandle cell vertexProps
 
         content =
-            vertexContent cell xPosInput yPosInput wRect textWidth nameNotEmpty
+            vertexContent cell vertexProps
     in
     g []
         [ rect
-            [ width wRect
-            , height hRect
+            [ width vertexProps.widthVertex
+            , height vertexProps.heightVertex
             , fill <| Paint <| Color.white
-            , stroke <| Paint <| Color.rgb255 17 77 175
+            , stroke <| Paint <| colorGraphPrimary
             , strokeWidth 2
-            , x xPosRect
-            , y yPosRect
+            , x <| P2d.xCoordinate vertexProps.posVertex
+            , y <| P2d.yCoordinate vertexProps.posVertex
             , rx 4
             , ry 4
             ]
@@ -1695,12 +1622,13 @@ viewVertexCell index cell =
         ]
 
 
-vertexContent cell xp yp w textWidth name =
+vertexContent : Node (Cell a) -> VertexProperties -> Html (Msg a)
+vertexContent cell { posContent, widthVertex, widthContent, heightContent, content } =
     foreignObject
-        [ x xp
-        , y yp
-        , width w
-        , height 20
+        [ x <| P2d.xCoordinate posContent
+        , y <| P2d.yCoordinate posContent
+        , width widthVertex
+        , height heightContent
         ]
         [ form []
             [ input
@@ -1710,8 +1638,8 @@ vertexContent cell xp yp w textWidth name =
                  , HtmlA.style "border" "none"
                  , HtmlA.style "outline" "none"
                  , HtmlA.placeholder "<no value>"
-                 , HtmlA.value name
-                 , HtmlA.size textWidth
+                 , HtmlA.value content
+                 , HtmlA.size widthContent
                  , HtmlA.style "background-color" "transparent"
                  , HtmlA.disabled <| boolOf roleGrabbed cell
                  ]
@@ -1722,43 +1650,77 @@ vertexContent cell xp yp w textWidth name =
         ]
 
 
-vertexHandle cell x y =
+vertexDragHandle : Node (Cell a) -> VertexProperties -> Html (Msg a)
+vertexDragHandle cell { posVertex } =
     if boolOf roleGrabbed cell then
         circle
             [ r 10
-            , cx x
-            , cy y
-            , fill <| Paint <| Color.rgb255 17 77 175
+            , cx <| P2d.xCoordinate posVertex
+            , cy <| P2d.yCoordinate posVertex
+            , fill <| Paint <| colorGraphPrimary
             ]
             []
 
     else
         circle
             [ r 5
-            , cx x
-            , cy y
-            , onMouseDown (pathOf cell)
-            , stroke <| Paint <| Color.rgb255 17 77 175
+            , cx <| P2d.xCoordinate posVertex
+            , cy <| P2d.yCoordinate posVertex
+            , TsvgE.onMouseDown (DragStart (pathOf cell))
+            , stroke <| Paint <| colorGraphPrimary
             , strokeWidth 2
             , fill <| Paint <| Color.rgb255 240 248 255
             ]
             []
 
 
-type alias MousePosition =
-    ( Float, Float )
+edgeWithArrowHead : LS2d.LineSegment2d -> Html (Msg a)
+edgeWithArrowHead lineSegment =
+    let
+        dir =
+            LS2d.direction lineSegment
+                |> Maybe.withDefault D2d.positiveX
 
+        angle =
+            D2d.toAngle dir
 
-mousePosition : JsonD.Decoder MousePosition
-mousePosition =
-    JsonD.map2 (\x y -> ( x, y ))
-        (JsonD.field "clientX" JsonD.float)
-        (JsonD.field "clientY" JsonD.float)
+        vecFromOriginToEndPoint =
+            LS2d.endPoint lineSegment
+                |> P2d.coordinates
+                |> V2d.fromComponents
 
+        headWidth =
+            15
 
-onMouseDown : Path -> Attribute (Msg a)
-onMouseDown path =
-    TsvgE.onMouseDown (DragStart path)
+        headLength =
+            15
+
+        arrowHead =
+            T2d.fromVertices
+                ( P2d.fromCoordinates ( 0, -headWidth / 2 )
+                , P2d.fromCoordinates ( 0, headWidth / 2 )
+                , P2d.fromCoordinates ( headLength, 0 )
+                )
+                |> T2d.rotateAround P2d.origin angle
+                |> T2d.translateBy vecFromOriginToEndPoint
+                |> T2d.translateIn dir -headLength
+    in
+    g []
+        [ GSvg.lineSegment2d
+            [ stroke <| Paint colorGraphPrimary
+            , strokeWidth 2
+            ]
+            (LS2d.from
+                (LS2d.startPoint lineSegment)
+                (LS2d.endPoint lineSegment
+                    |> P2d.translateIn dir -headLength
+                )
+            )
+        , GSvg.triangle2d
+            [ fill <| Paint colorGraphPrimary
+            ]
+            arrowHead
+        ]
 
 
 optionFromScope : Node (Cell a) -> Html (Msg a)
@@ -1969,19 +1931,6 @@ effectAttributeFromKey dictKeyToMsg =
             JsonD.field "key" JsonD.string
 
 
-isasUnderCustom : Role -> Node a -> List a
-isasUnderCustom role parent =
-    let
-        children =
-            if role == roleEmpty || role == roleDefault then
-                getUnderDefault parent
-
-            else
-                getUnderCustom role parent
-    in
-    List.map isaOf children
-
-
 orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation
 orientationOf root cell =
     case isaOf cell of
@@ -2041,6 +1990,199 @@ griddifyI isGridParent node =
             boolOf roleIsGrid nodeNew
     in
     replaceUnderFeature roleDefault (List.map (griddifyI isGrid) children) nodeNew
+
+
+mousePosition : JsonD.Decoder MousePosition
+mousePosition =
+    JsonD.map2 (\x y -> P2d.fromCoordinates ( x, y ))
+        (JsonD.field "clientX" JsonD.float)
+        (JsonD.field "clientY" JsonD.float)
+
+
+initialRadius : Float
+initialRadius =
+    10
+
+
+initialAngle : Float
+initialAngle =
+    pi * (3 - sqrt 5)
+
+
+forceEntityFromVertex : Int -> Node (Cell a) -> Force.Entity String { value : Node (Cell a) }
+forceEntityFromVertex index cell =
+    let
+        mbX =
+            tryFloatOf roleX cell
+
+        mbY =
+            tryFloatOf roleY cell
+
+        radius =
+            sqrt (toFloat index) * initialRadius
+
+        angle =
+            toFloat index * initialAngle
+
+        xNew =
+            case mbX of
+                Nothing ->
+                    radius * cos angle
+
+                Just xc ->
+                    xc
+
+        yNew =
+            case mbY of
+                Nothing ->
+                    radius * sin angle
+
+                Just yc ->
+                    yc
+    in
+    { x = xNew
+    , y = yNew
+    , vx = 0.0
+    , vy = 0.0
+    , id = pathAsIdFromNode cell
+    , value = cell
+    }
+
+
+dictNameToVertex : Node (Cell a) -> Dict.Dict String (Node (Cell a))
+dictNameToVertex cellGraph =
+    nodesOf (ContentCell VertexCell) cellGraph
+        |> List.foldl (\v d -> Dict.insert (textOf roleText v) v d) Dict.empty
+
+
+edgeForcesFromGraph : Node (Cell a) -> List ( String, String )
+edgeForcesFromGraph cellGraph =
+    let
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph
+
+        idLookup edge =
+            let
+                ( from, to ) =
+                    ( textOf roleFrom edge, textOf roleTo edge )
+
+                lookupWithDefault key =
+                    Dict.get key (dictNameToVertex cellGraph)
+                        |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
+                        |> Maybe.withDefault ""
+            in
+            ( lookupWithDefault from, lookupWithDefault to )
+    in
+    List.map idLookup edges
+
+
+customEdgeForcesFromGraph : Node (Cell a) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
+customEdgeForcesFromGraph cellGraph =
+    let
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph
+
+        forceLookup edge =
+            let
+                ( from, to ) =
+                    ( textOf roleFrom edge, textOf roleTo edge )
+
+                mbLookupWithDefault key =
+                    Dict.get key (dictNameToVertex cellGraph)
+                        |> Maybe.andThen (\v -> Just <| pathAsIdFromNode v)
+
+                mbSource =
+                    mbLookupWithDefault from
+
+                mbTarget =
+                    mbLookupWithDefault to
+            in
+            case ( mbSource, mbTarget ) of
+                ( Nothing, _ ) ->
+                    Nothing
+
+                ( _, Nothing ) ->
+                    Nothing
+
+                ( Just source, Just target ) ->
+                    if source == target then
+                        Nothing
+
+                    else
+                        Just
+                            { source = source
+                            , target = target
+                            , distance = 150
+                            , strength = Nothing
+                            }
+    in
+    List.map forceLookup edges
+        |> List.filterMap identity
+
+
+fromToPairs : Node (Cell a) -> List ( Node (Cell a), Node (Cell a) )
+fromToPairs cellGraph =
+    let
+        edges =
+            nodesOf (ContentCell EdgeCell) cellGraph
+
+        fromToLookup edge =
+            let
+                ( from, to ) =
+                    ( textOf roleFrom edge, textOf roleTo edge )
+
+                lookup key =
+                    Dict.get key (dictNameToVertex cellGraph)
+            in
+            ( lookup from, lookup to )
+    in
+    List.map fromToLookup edges
+        |> List.filterMap
+            (\tuple ->
+                case tuple of
+                    ( Nothing, _ ) ->
+                        Nothing
+
+                    ( _, Nothing ) ->
+                        Nothing
+
+                    ( Just from, Just to ) ->
+                        Just ( from, to )
+            )
+
+
+persistVertexPositions : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+persistVertexPositions eRootOld eRootNew =
+    let
+        verticiesOld =
+            nodesOf (ContentCell VertexCell) eRootOld
+
+        persistVertexPos vOld rootNew =
+            let
+                mbx =
+                    tryFloatOf roleX vOld
+
+                mby =
+                    tryFloatOf roleY vOld
+            in
+            case ( mbx, mby ) of
+                ( Nothing, _ ) ->
+                    rootNew
+
+                ( _, Nothing ) ->
+                    rootNew
+
+                ( Just x, Just y ) ->
+                    let
+                        rootNew1 =
+                            updatePropertyByPath rootNew (pathOf vOld) ( roleX, asPFloat x )
+
+                        rootNew2 =
+                            updatePropertyByPath rootNew1 (pathOf vOld) ( roleY, asPFloat y )
+                    in
+                    rootNew2
+    in
+    List.foldl persistVertexPos eRootNew verticiesOld
 
 
 graphComparer : Node (Cell a) -> Node (Cell a) -> Bool
@@ -2106,8 +2248,17 @@ graphComparer lRoot rRoot =
                 True
 
 
+p2dFromCell : Node (Cell a) -> Point2d
+p2dFromCell cell =
+    P2d.fromCoordinates ( floatOf roleX cell, floatOf roleY cell )
 
--- CUSTOM FEATURE AND PROPERTY CONSTANTS
+
+colorGraphPrimary =
+    Color.rgb255 17 77 175
+
+
+
+-- ROLES
 
 
 roleDefault =

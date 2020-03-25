@@ -30,6 +30,7 @@ module Structure exposing
     , insertChildAfterPath
     , intOf
     , isaOf
+    , isasUnderCustom
     , nextSibling
     , nodeAt
     , nodesOf
@@ -114,6 +115,18 @@ isaOf : Node a -> a
 isaOf (Node { isa }) =
     isa
 
+
+isasUnderCustom : Role -> Node a -> List a
+isasUnderCustom role parent =
+    let
+        children =
+            if role == roleEmpty || role == roleDefault then
+                getUnderDefault parent
+
+            else
+                getUnderCustom role parent
+    in
+    List.map isaOf children
 
 pathOf : Node a -> Path
 pathOf (Node { path }) =
@@ -305,7 +318,7 @@ tryFloatOf role node =
             (\prop ->
                 case prop of
                     PFloat v ->
-                        Just v --|> Debug.log "V--------------------------------------------------"
+                        Just v
 
                     _ ->
                         Nothing

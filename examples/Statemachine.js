@@ -5544,12 +5544,13 @@ var $author$project$Structure$addRangeToCustom = F3(
 var $author$project$Editor$roleScope = $author$project$Structure$roleFromString('scope');
 var $author$project$Editor$roleScopeValue = $author$project$Structure$roleFromString('scopeValue');
 var $author$project$Editor$createRefScope = function (nodeContext) {
+	var scopeCell = function (scopeElement) {
+		return $author$project$Editor$constantCell(
+			A2($author$project$Structure$textOf, $author$project$Editor$roleScopeValue, scopeElement));
+	};
 	return A2(
 		$elm$core$List$map,
-		function (scopeElement) {
-			return $author$project$Editor$constantCell(
-				A2($author$project$Structure$textOf, $author$project$Editor$roleScopeValue, scopeElement));
-		},
+		scopeCell,
 		A2($author$project$Structure$getUnderCustom, $author$project$Editor$roleScope, nodeContext));
 };
 var $author$project$Editor$CreateScopeEffect = function (a) {
@@ -6583,17 +6584,15 @@ var $author$project$Editor$griddifyI = F2(
 			nodeNew);
 	});
 var $author$project$Editor$griddify = $author$project$Editor$griddifyI(false);
+var $ianmackenzie$elm_geometry$Geometry$Types$Point2d = function (a) {
+	return {$: 'Point2d', a: a};
+};
+var $ianmackenzie$elm_geometry$Point2d$fromCoordinates = $ianmackenzie$elm_geometry$Geometry$Types$Point2d;
+var $ianmackenzie$elm_geometry$Point2d$origin = $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+	_Utils_Tuple2(0, 0));
 var $author$project$Editor$initEditorModel = F2(
 	function (dRoot, eRoot) {
-		return {
-			dRoot: dRoot,
-			drag: $elm$core$Maybe$Nothing,
-			eRoot: eRoot,
-			mbSimulation: $elm$core$Maybe$Nothing,
-			mousePos: _Utils_Tuple2(0, 0),
-			runSimulation: true,
-			runXform: true
-		};
+		return {dRoot: dRoot, drag: $elm$core$Maybe$Nothing, eRoot: eRoot, mbSimulation: $elm$core$Maybe$Nothing, mousePos: $ianmackenzie$elm_geometry$Point2d$origin, runSimulation: true, runXform: true};
 	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
@@ -6626,7 +6625,8 @@ var $author$project$Editor$mousePosition = A3(
 	$elm$json$Json$Decode$map2,
 	F2(
 		function (x, y) {
-			return _Utils_Tuple2(x, y);
+			return $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+				_Utils_Tuple2(x, y));
 		}),
 	A2($elm$json$Json$Decode$field, 'clientX', $elm$json$Json$Decode$float),
 	A2($elm$json$Json$Decode$field, 'clientY', $elm$json$Json$Decode$float));
@@ -7572,8 +7572,7 @@ var $author$project$Editor$persistVertexPositions = F2(
 					}
 				}
 			});
-		var _new = A3($elm$core$List$foldl, persistVertexPos, eRootNew, verticiesOld);
-		return _new;
+		return A3($elm$core$List$foldl, persistVertexPos, eRootNew, verticiesOld);
 	});
 var $elm$core$Dict$map = F2(
 	function (func, dict) {
@@ -7644,13 +7643,6 @@ var $author$project$Editor$Drag = F3(
 	function (mousePosStart, vertexPosStart, path) {
 		return {mousePosStart: mousePosStart, path: path, vertexPosStart: vertexPosStart};
 	});
-var $author$project$Structure$floatOf = F2(
-	function (role, node) {
-		return A2(
-			$elm$core$Maybe$withDefault,
-			0,
-			A2($author$project$Structure$tryFloatOf, role, node));
-	});
 var $author$project$Editor$noUpdate = function (editorModel) {
 	return _Utils_Tuple2(
 		_Utils_update(
@@ -7698,6 +7690,19 @@ var $author$project$Structure$nodeAt = F2(
 		var segmentsNoRoot = _v0.a;
 		return A2($author$project$Structure$nodeAtI, parent, segmentsNoRoot);
 	});
+var $author$project$Structure$floatOf = F2(
+	function (role, node) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			0,
+			A2($author$project$Structure$tryFloatOf, role, node));
+	});
+var $author$project$Editor$p2dFromCell = function (cell) {
+	return $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+		_Utils_Tuple2(
+			A2($author$project$Structure$floatOf, $author$project$Editor$roleX, cell),
+			A2($author$project$Structure$floatOf, $author$project$Editor$roleY, cell)));
+};
 var $gampleman$elm_visualization$Force$State = function (a) {
 	return {$: 'State', a: a};
 };
@@ -8065,10 +8070,6 @@ var $ianmackenzie$elm_geometry$Vector2d$components = function (_v0) {
 	var components_ = _v0.a;
 	return components_;
 };
-var $ianmackenzie$elm_geometry$Geometry$Types$Point2d = function (a) {
-	return {$: 'Point2d', a: a};
-};
-var $ianmackenzie$elm_geometry$Point2d$fromCoordinates = $ianmackenzie$elm_geometry$Geometry$Types$Point2d;
 var $ianmackenzie$elm_geometry$BoundingBox2d$maxX = function (_v0) {
 	var boundingBox = _v0.a;
 	return boundingBox.maxX;
@@ -8795,18 +8796,24 @@ var $gampleman$elm_visualization$Force$tick = F2(
 				updateEntity,
 				$elm$core$Dict$values(newNodes)));
 	});
-var $elm$core$Tuple$second = function (_v0) {
-	var y = _v0.b;
-	return y;
-};
+var $ianmackenzie$elm_geometry$Point2d$translateBy = F2(
+	function (vector, point) {
+		var _v0 = $ianmackenzie$elm_geometry$Vector2d$components(vector);
+		var vx = _v0.a;
+		var vy = _v0.b;
+		var _v1 = $ianmackenzie$elm_geometry$Point2d$coordinates(point);
+		var px = _v1.a;
+		var py = _v1.b;
+		return $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+			_Utils_Tuple2(px + vx, py + vy));
+	});
 var $author$project$Editor$updateDrag = F3(
-	function (eRoot, drag, _v0) {
-		var xCurrent = _v0.a;
-		var yCurrent = _v0.b;
-		var yDelta = yCurrent - drag.mousePosStart.b;
-		var yNew = drag.vertexPosStart.b + yDelta;
-		var xDelta = xCurrent - drag.mousePosStart.a;
-		var xNew = drag.vertexPosStart.a + xDelta;
+	function (eRoot, drag, mousePosCurrent) {
+		var delta = A2($ianmackenzie$elm_geometry$Vector2d$from, drag.mousePosStart, mousePosCurrent);
+		var _v0 = $ianmackenzie$elm_geometry$Point2d$coordinates(
+			A2($ianmackenzie$elm_geometry$Point2d$translateBy, delta, drag.vertexPosStart));
+		var xNew = _v0.a;
+		var yNew = _v0.b;
 		var eRootTemp = A3(
 			$author$project$Structure$updatePropertyByPath,
 			eRoot,
@@ -9681,9 +9688,7 @@ var $author$project$Editor$updateEditor = F2(
 					return $author$project$Editor$noUpdate(editorModel);
 				} else {
 					var vertex = mbVertex.a;
-					var vertextPosStart = _Utils_Tuple2(
-						A2($author$project$Structure$floatOf, $author$project$Editor$roleX, vertex),
-						A2($author$project$Structure$floatOf, $author$project$Editor$roleY, vertex));
+					var vertextPosStart = $author$project$Editor$p2dFromCell(vertex);
 					var vertexGrabbed = A3($author$project$Structure$addBool, $author$project$Editor$roleGrabbed, true, vertex);
 					var eRootNew = A3(
 						$author$project$Structure$replaceChildAtPath,
@@ -9946,9 +9951,9 @@ var $author$project$Editor$OnClick = F2(
 		return {$: 'OnClick', a: a, b: b};
 	});
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $author$project$Editor$isasUnderCustom = F2(
+var $author$project$Structure$isasUnderCustom = F2(
 	function (role, parent) {
-		var children = (_Utils_eq(role, $author$project$Structure$roleEmpty) || _Utils_eq(role, $author$project$Editor$roleDefault)) ? $author$project$Structure$getUnderDefault(parent) : A2($author$project$Structure$getUnderCustom, role, parent);
+		var children = (_Utils_eq(role, $author$project$Structure$roleEmpty) || _Utils_eq(role, $author$project$Structure$roleDefault)) ? $author$project$Structure$getUnderDefault(parent) : A2($author$project$Structure$getUnderCustom, role, parent);
 		return A2($elm$core$List$map, $author$project$Structure$isaOf, children);
 	});
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
@@ -9990,7 +9995,7 @@ var $author$project$Editor$viewButtonCell = function (cell) {
 					}
 				},
 				$elm$core$List$head(
-					A2($author$project$Editor$isasUnderCustom, $author$project$Editor$roleEffects, cell))));
+					A2($author$project$Structure$isasUnderCustom, $author$project$Editor$roleEffects, cell))));
 		return A2(
 			$elm$html$Html$button,
 			_Utils_ap(
@@ -10051,7 +10056,6 @@ var $elm_community$typed_svg$TypedSvg$svg = $elm_community$typed_svg$TypedSvg$Co
 var $elm_community$typed_svg$TypedSvg$Types$Paint = function (a) {
 	return {$: 'Paint', a: a};
 };
-var $elm_community$typed_svg$TypedSvg$line = $elm_community$typed_svg$TypedSvg$Core$node('line');
 var $avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {
 		return {$: 'RgbaSpace', a: a, b: b, c: c, d: d};
@@ -10068,6 +10072,44 @@ var $avh4$elm_color$Color$rgb255 = F3(
 			$avh4$elm_color$Color$scaleFrom255(b),
 			1.0);
 	});
+var $author$project$Editor$colorGraphPrimary = A3($avh4$elm_color$Color$rgb255, 17, 77, 175);
+var $ianmackenzie$elm_geometry$Vector2d$length = function (vector) {
+	return $elm$core$Basics$sqrt(
+		$ianmackenzie$elm_geometry$Vector2d$squaredLength(vector));
+};
+var $ianmackenzie$elm_geometry$Geometry$Types$Direction2d = function (a) {
+	return {$: 'Direction2d', a: a};
+};
+var $ianmackenzie$elm_geometry$Bootstrap$Direction2d$unsafe = $ianmackenzie$elm_geometry$Geometry$Types$Direction2d;
+var $ianmackenzie$elm_geometry$Vector2d$direction = function (vector) {
+	if (_Utils_eq(vector, $ianmackenzie$elm_geometry$Vector2d$zero)) {
+		return $elm$core$Maybe$Nothing;
+	} else {
+		var normalizedVector = A2(
+			$ianmackenzie$elm_geometry$Vector2d$scaleBy,
+			1 / $ianmackenzie$elm_geometry$Vector2d$length(vector),
+			vector);
+		return $elm$core$Maybe$Just(
+			$ianmackenzie$elm_geometry$Bootstrap$Direction2d$unsafe(
+				$ianmackenzie$elm_geometry$Vector2d$components(normalizedVector)));
+	}
+};
+var $ianmackenzie$elm_geometry$LineSegment2d$endpoints = function (_v0) {
+	var endpoints_ = _v0.a;
+	return endpoints_;
+};
+var $ianmackenzie$elm_geometry$LineSegment2d$vector = function (lineSegment) {
+	var _v0 = $ianmackenzie$elm_geometry$LineSegment2d$endpoints(lineSegment);
+	var p1 = _v0.a;
+	var p2 = _v0.b;
+	return A2($ianmackenzie$elm_geometry$Vector2d$from, p1, p2);
+};
+var $ianmackenzie$elm_geometry$LineSegment2d$direction = A2($elm$core$Basics$composeR, $ianmackenzie$elm_geometry$LineSegment2d$vector, $ianmackenzie$elm_geometry$Vector2d$direction);
+var $ianmackenzie$elm_geometry$LineSegment2d$endPoint = function (_v0) {
+	var _v1 = _v0.a;
+	var end = _v1.b;
+	return end;
+};
 var $elm$virtual_dom$VirtualDom$attribute = F2(
 	function (key, value) {
 		return A2(
@@ -10127,6 +10169,108 @@ var $elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString = function (p
 			return 'none';
 	}
 };
+var $elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
+	$elm$core$Basics$composeL,
+	$elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
+	$elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
+var $ianmackenzie$elm_geometry$Geometry$Types$LineSegment2d = function (a) {
+	return {$: 'LineSegment2d', a: a};
+};
+var $ianmackenzie$elm_geometry$LineSegment2d$fromEndpoints = $ianmackenzie$elm_geometry$Geometry$Types$LineSegment2d;
+var $ianmackenzie$elm_geometry$LineSegment2d$from = F2(
+	function (startPoint_, endPoint_) {
+		return $ianmackenzie$elm_geometry$LineSegment2d$fromEndpoints(
+			_Utils_Tuple2(startPoint_, endPoint_));
+	});
+var $ianmackenzie$elm_geometry$Geometry$Types$Triangle2d = function (a) {
+	return {$: 'Triangle2d', a: a};
+};
+var $ianmackenzie$elm_geometry$Triangle2d$fromVertices = $ianmackenzie$elm_geometry$Geometry$Types$Triangle2d;
+var $ianmackenzie$elm_geometry_svg$Geometry$Svg$coordinatesString = function (point) {
+	var _v0 = $ianmackenzie$elm_geometry$Point2d$coordinates(point);
+	var x = _v0.a;
+	var y = _v0.b;
+	return $elm$core$String$fromFloat(x) + (',' + $elm$core$String$fromFloat(y));
+};
+var $elm$svg$Svg$Attributes$points = _VirtualDom_attribute('points');
+var $ianmackenzie$elm_geometry_svg$Geometry$Svg$pointsAttribute = function (points) {
+	return $elm$svg$Svg$Attributes$points(
+		A2(
+			$elm$core$String$join,
+			' ',
+			A2($elm$core$List$map, $ianmackenzie$elm_geometry_svg$Geometry$Svg$coordinatesString, points)));
+};
+var $elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
+var $elm$svg$Svg$polyline = $elm$svg$Svg$trustedNode('polyline');
+var $ianmackenzie$elm_geometry_svg$Geometry$Svg$lineSegment2d = F2(
+	function (attributes, lineSegment) {
+		var _v0 = $ianmackenzie$elm_geometry$LineSegment2d$endpoints(lineSegment);
+		var p1 = _v0.a;
+		var p2 = _v0.b;
+		return A2(
+			$elm$svg$Svg$polyline,
+			A2(
+				$elm$core$List$cons,
+				$ianmackenzie$elm_geometry_svg$Geometry$Svg$pointsAttribute(
+					_List_fromArray(
+						[p1, p2])),
+				attributes),
+			_List_Nil);
+	});
+var $ianmackenzie$elm_geometry$Direction2d$unsafe = $ianmackenzie$elm_geometry$Geometry$Types$Direction2d;
+var $ianmackenzie$elm_geometry$Direction2d$positiveX = $ianmackenzie$elm_geometry$Direction2d$unsafe(
+	_Utils_Tuple2(1, 0));
+var $ianmackenzie$elm_geometry$Triangle2d$vertices = function (_v0) {
+	var vertices_ = _v0.a;
+	return vertices_;
+};
+var $ianmackenzie$elm_geometry$Triangle2d$mapVertices = F2(
+	function (_function, triangle) {
+		var _v0 = $ianmackenzie$elm_geometry$Triangle2d$vertices(triangle);
+		var p1 = _v0.a;
+		var p2 = _v0.b;
+		var p3 = _v0.c;
+		return $ianmackenzie$elm_geometry$Triangle2d$fromVertices(
+			_Utils_Tuple3(
+				_function(p1),
+				_function(p2),
+				_function(p3)));
+	});
+var $ianmackenzie$elm_geometry$Point2d$addTo = F2(
+	function (point, vector) {
+		return A2($ianmackenzie$elm_geometry$Point2d$translateBy, vector, point);
+	});
+var $ianmackenzie$elm_geometry$Vector2d$rotateBy = function (angle) {
+	var sine = $elm$core$Basics$sin(angle);
+	var cosine = $elm$core$Basics$cos(angle);
+	return function (vector) {
+		var _v0 = $ianmackenzie$elm_geometry$Vector2d$components(vector);
+		var x = _v0.a;
+		var y = _v0.b;
+		return $ianmackenzie$elm_geometry$Vector2d$fromComponents(
+			_Utils_Tuple2((x * cosine) - (y * sine), (y * cosine) + (x * sine)));
+	};
+};
+var $ianmackenzie$elm_geometry$Point2d$rotateAround = F2(
+	function (centerPoint, angle) {
+		return A2(
+			$elm$core$Basics$composeR,
+			$ianmackenzie$elm_geometry$Vector2d$from(centerPoint),
+			A2(
+				$elm$core$Basics$composeR,
+				$ianmackenzie$elm_geometry$Vector2d$rotateBy(angle),
+				$ianmackenzie$elm_geometry$Point2d$addTo(centerPoint)));
+	});
+var $ianmackenzie$elm_geometry$Triangle2d$rotateAround = F2(
+	function (centerPoint, angle) {
+		return $ianmackenzie$elm_geometry$Triangle2d$mapVertices(
+			A2($ianmackenzie$elm_geometry$Point2d$rotateAround, centerPoint, angle));
+	});
+var $ianmackenzie$elm_geometry$LineSegment2d$startPoint = function (_v0) {
+	var _v1 = _v0.a;
+	var start = _v1.a;
+	return start;
+};
 var $elm_community$typed_svg$TypedSvg$Attributes$stroke = A2(
 	$elm$core$Basics$composeL,
 	$elm_community$typed_svg$TypedSvg$Core$attribute('stroke'),
@@ -10179,67 +10323,237 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth = function (va
 	return $elm_community$typed_svg$TypedSvg$Attributes$strokeWidth(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
-var $elm_community$typed_svg$TypedSvg$Attributes$x1 = function (position) {
+var $elm$core$Basics$atan2 = _Basics_atan2;
+var $ianmackenzie$elm_geometry$Bootstrap$Direction2d$components = function (_v0) {
+	var components_ = _v0.a;
+	return components_;
+};
+var $ianmackenzie$elm_geometry$Direction2d$components = $ianmackenzie$elm_geometry$Bootstrap$Direction2d$components;
+var $ianmackenzie$elm_geometry$Direction2d$toAngle = function (direction) {
+	var _v0 = $ianmackenzie$elm_geometry$Direction2d$components(direction);
+	var xComponent_ = _v0.a;
+	var yComponent_ = _v0.b;
+	return A2($elm$core$Basics$atan2, yComponent_, xComponent_);
+};
+var $ianmackenzie$elm_geometry$Triangle2d$translateBy = function (vector) {
+	return $ianmackenzie$elm_geometry$Triangle2d$mapVertices(
+		$ianmackenzie$elm_geometry$Point2d$translateBy(vector));
+};
+var $ianmackenzie$elm_geometry$Point2d$translateIn = F3(
+	function (direction, distance, point) {
+		var _v0 = $ianmackenzie$elm_geometry$Point2d$coordinates(point);
+		var px = _v0.a;
+		var py = _v0.b;
+		var _v1 = $ianmackenzie$elm_geometry$Direction2d$components(direction);
+		var dx = _v1.a;
+		var dy = _v1.b;
+		return $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+			_Utils_Tuple2(px + (distance * dx), py + (distance * dy)));
+	});
+var $ianmackenzie$elm_geometry$Vector2d$withLength = F2(
+	function (length_, direction_) {
+		var _v0 = $ianmackenzie$elm_geometry$Bootstrap$Direction2d$components(direction_);
+		var dx = _v0.a;
+		var dy = _v0.b;
+		return $ianmackenzie$elm_geometry$Vector2d$fromComponents(
+			_Utils_Tuple2(length_ * dx, length_ * dy));
+	});
+var $ianmackenzie$elm_geometry$Triangle2d$translateIn = F3(
+	function (direction, distance, triangle) {
+		return A2(
+			$ianmackenzie$elm_geometry$Triangle2d$translateBy,
+			A2($ianmackenzie$elm_geometry$Vector2d$withLength, distance, direction),
+			triangle);
+	});
+var $elm$svg$Svg$polygon = $elm$svg$Svg$trustedNode('polygon');
+var $ianmackenzie$elm_geometry_svg$Geometry$Svg$triangle2d = F2(
+	function (attributes, triangle) {
+		var _v0 = $ianmackenzie$elm_geometry$Triangle2d$vertices(triangle);
+		var p1 = _v0.a;
+		var p2 = _v0.b;
+		var p3 = _v0.c;
+		return A2(
+			$elm$svg$Svg$polygon,
+			A2(
+				$elm$core$List$cons,
+				$ianmackenzie$elm_geometry_svg$Geometry$Svg$pointsAttribute(
+					_List_fromArray(
+						[p1, p2, p3])),
+				attributes),
+			_List_Nil);
+	});
+var $author$project$Editor$edgeWithArrowHead = function (lineSegment) {
+	var vecFromOriginToEndPoint = $ianmackenzie$elm_geometry$Vector2d$fromComponents(
+		$ianmackenzie$elm_geometry$Point2d$coordinates(
+			$ianmackenzie$elm_geometry$LineSegment2d$endPoint(lineSegment)));
+	var headWidth = 15;
+	var headLength = 15;
+	var dir = A2(
+		$elm$core$Maybe$withDefault,
+		$ianmackenzie$elm_geometry$Direction2d$positiveX,
+		$ianmackenzie$elm_geometry$LineSegment2d$direction(lineSegment));
+	var angle = $ianmackenzie$elm_geometry$Direction2d$toAngle(dir);
+	var arrowHead = A3(
+		$ianmackenzie$elm_geometry$Triangle2d$translateIn,
+		dir,
+		-headLength,
+		A2(
+			$ianmackenzie$elm_geometry$Triangle2d$translateBy,
+			vecFromOriginToEndPoint,
+			A3(
+				$ianmackenzie$elm_geometry$Triangle2d$rotateAround,
+				$ianmackenzie$elm_geometry$Point2d$origin,
+				angle,
+				$ianmackenzie$elm_geometry$Triangle2d$fromVertices(
+					_Utils_Tuple3(
+						$ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+							_Utils_Tuple2(0, (-headWidth) / 2)),
+						$ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+							_Utils_Tuple2(0, headWidth / 2)),
+						$ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+							_Utils_Tuple2(headLength, 0)))))));
 	return A2(
-		$elm_community$typed_svg$TypedSvg$Core$attribute,
-		'x1',
-		$elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$InPx$x1 = function (value) {
-	return $elm_community$typed_svg$TypedSvg$Attributes$x1(
-		$elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$x2 = function (position) {
-	return A2(
-		$elm_community$typed_svg$TypedSvg$Core$attribute,
-		'x2',
-		$elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$InPx$x2 = function (value) {
-	return $elm_community$typed_svg$TypedSvg$Attributes$x2(
-		$elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$y1 = function (position) {
-	return A2(
-		$elm_community$typed_svg$TypedSvg$Core$attribute,
-		'y1',
-		$elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$InPx$y1 = function (value) {
-	return $elm_community$typed_svg$TypedSvg$Attributes$y1(
-		$elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$y2 = function (position) {
-	return A2(
-		$elm_community$typed_svg$TypedSvg$Core$attribute,
-		'y2',
-		$elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(position));
-};
-var $elm_community$typed_svg$TypedSvg$Attributes$InPx$y2 = function (value) {
-	return $elm_community$typed_svg$TypedSvg$Attributes$y2(
-		$elm_community$typed_svg$TypedSvg$Types$px(value));
-};
-var $author$project$Editor$viewEdgeCell = function (_v0) {
-	var from = _v0.a;
-	var to = _v0.b;
-	return A2(
-		$elm_community$typed_svg$TypedSvg$line,
+		$elm_community$typed_svg$TypedSvg$g,
+		_List_Nil,
 		_List_fromArray(
 			[
-				$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
-				$elm_community$typed_svg$TypedSvg$Attributes$stroke(
-				$elm_community$typed_svg$TypedSvg$Types$Paint(
-					A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
-				$elm_community$typed_svg$TypedSvg$Attributes$InPx$x1(
-				A2($author$project$Structure$floatOf, $author$project$Editor$roleX, from)),
-				$elm_community$typed_svg$TypedSvg$Attributes$InPx$y1(
-				A2($author$project$Structure$floatOf, $author$project$Editor$roleY, from)),
-				$elm_community$typed_svg$TypedSvg$Attributes$InPx$x2(
-				A2($author$project$Structure$floatOf, $author$project$Editor$roleX, to)),
-				$elm_community$typed_svg$TypedSvg$Attributes$InPx$y2(
-				A2($author$project$Structure$floatOf, $author$project$Editor$roleY, to))
-			]),
-		_List_Nil);
+				A2(
+				$ianmackenzie$elm_geometry_svg$Geometry$Svg$lineSegment2d,
+				_List_fromArray(
+					[
+						$elm_community$typed_svg$TypedSvg$Attributes$stroke(
+						$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary)),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2)
+					]),
+				A2(
+					$ianmackenzie$elm_geometry$LineSegment2d$from,
+					$ianmackenzie$elm_geometry$LineSegment2d$startPoint(lineSegment),
+					A3(
+						$ianmackenzie$elm_geometry$Point2d$translateIn,
+						dir,
+						-headLength,
+						$ianmackenzie$elm_geometry$LineSegment2d$endPoint(lineSegment)))),
+				A2(
+				$ianmackenzie$elm_geometry_svg$Geometry$Svg$triangle2d,
+				_List_fromArray(
+					[
+						$elm_community$typed_svg$TypedSvg$Attributes$fill(
+						$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary))
+					]),
+				arrowHead)
+			]));
+};
+var $ianmackenzie$elm_geometry$Direction2d$from = F2(
+	function (firstPoint, secondPoint) {
+		return $ianmackenzie$elm_geometry$Vector2d$direction(
+			A2($ianmackenzie$elm_geometry$Vector2d$from, firstPoint, secondPoint));
+	});
+var $author$project$Editor$vertexProperties = function (vertex) {
+	var noName = '<no value>';
+	var name = A2(
+		$elm$core$Maybe$withDefault,
+		noName,
+		A2($author$project$Structure$tryTextOf, $author$project$Editor$roleText, vertex));
+	var nameContent = (name === '') ? noName : name;
+	var widthContent = (nameContent === '') ? $elm$core$String$length(noName) : $elm$core$String$length(nameContent);
+	var widthVertex = ($elm$core$String$length(nameContent) * 8.797) + 18;
+	var heightVertex = 40;
+	var halfW = widthVertex / 2;
+	var halfH = heightVertex / 2;
+	var midTranslation = $ianmackenzie$elm_geometry$Vector2d$fromComponents(
+		_Utils_Tuple2(-halfW, -halfH));
+	var posVertex = A2(
+		$ianmackenzie$elm_geometry$Point2d$translateBy,
+		midTranslation,
+		$author$project$Editor$p2dFromCell(vertex));
+	var posContent = A2(
+		$ianmackenzie$elm_geometry$Point2d$translateBy,
+		$ianmackenzie$elm_geometry$Vector2d$fromComponents(
+			_Utils_Tuple2(9, 9)),
+		posVertex);
+	var edgeAngle = A2($elm$core$Basics$atan2, halfH, halfW);
+	var angleAreas = _List_fromArray(
+		[
+			_Utils_Tuple2((2 * $elm$core$Basics$pi) - edgeAngle, edgeAngle),
+			_Utils_Tuple2(edgeAngle, $elm$core$Basics$pi - edgeAngle),
+			_Utils_Tuple2($elm$core$Basics$pi - edgeAngle, $elm$core$Basics$pi + edgeAngle),
+			_Utils_Tuple2($elm$core$Basics$pi + edgeAngle, (2 * $elm$core$Basics$pi) - edgeAngle)
+		]);
+	return {angleAreas: angleAreas, content: nameContent, heightContent: 20, heightVertex: heightVertex, posContent: posContent, posVertex: posVertex, widthContent: widthContent, widthVertex: widthVertex};
+};
+var $author$project$Editor$vertexAnchorsForEdge = function (_v0) {
+	var from = _v0.a;
+	var to = _v0.b;
+	var tProps = $author$project$Editor$vertexProperties(to);
+	var tPos = $author$project$Editor$p2dFromCell(to);
+	var fProps = $author$project$Editor$vertexProperties(from);
+	var fPos = $author$project$Editor$p2dFromCell(from);
+	var dir = A2(
+		$elm$core$Maybe$withDefault,
+		$ianmackenzie$elm_geometry$Direction2d$positiveX,
+		A2($ianmackenzie$elm_geometry$Direction2d$from, fPos, tPos));
+	var angle = $ianmackenzie$elm_geometry$Direction2d$toAngle(dir);
+	var sectorFromAngle = function (a) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			0,
+			$elm$core$List$head(
+				A2(
+					$elm$core$List$filterMap,
+					$elm$core$Basics$identity,
+					A2(
+						$elm$core$List$indexedMap,
+						F2(
+							function (i, _v2) {
+								var lowest = _v2.a;
+								var highest = _v2.b;
+								return ((_Utils_cmp($elm$core$Basics$pi + angle, lowest) > -1) && (_Utils_cmp($elm$core$Basics$pi + angle, highest) < 0)) ? $elm$core$Maybe$Just(i) : $elm$core$Maybe$Nothing;
+							}),
+						a))));
+	};
+	var fSector = sectorFromAngle(fProps.angleAreas);
+	var tSector = sectorFromAngle(tProps.angleAreas);
+	var translate = F4(
+		function (s, pos, props, inv) {
+			switch (s) {
+				case 0:
+					return A3(
+						$ianmackenzie$elm_geometry$Point2d$translateIn,
+						dir,
+						(inv * ((-props.widthVertex) / 2)) / $elm$core$Basics$cos(angle),
+						pos);
+				case 1:
+					return A3(
+						$ianmackenzie$elm_geometry$Point2d$translateIn,
+						dir,
+						(inv * ((-props.heightVertex) / 2)) / $elm$core$Basics$cos(($elm$core$Basics$pi / 2) - angle),
+						pos);
+				case 2:
+					return A3(
+						$ianmackenzie$elm_geometry$Point2d$translateIn,
+						dir,
+						(inv * (props.widthVertex / 2)) / $elm$core$Basics$cos(angle),
+						pos);
+				case 3:
+					return A3(
+						$ianmackenzie$elm_geometry$Point2d$translateIn,
+						dir,
+						(inv * (props.heightVertex / 2)) / $elm$core$Basics$cos(($elm$core$Basics$pi / 2) - angle),
+						pos);
+				default:
+					return pos;
+			}
+		});
+	return _Utils_Tuple2(
+		A4(translate, fSector, fPos, fProps, 1),
+		A4(translate, tSector, tPos, tProps, -1));
+};
+var $author$project$Editor$viewEdgeCell = function (fromTo) {
+	var _v0 = $author$project$Editor$vertexAnchorsForEdge(fromTo);
+	var edgeStart = _v0.a;
+	var edgeEnd = _v0.b;
+	var edgeLine = A2($ianmackenzie$elm_geometry$LineSegment2d$from, edgeStart, edgeEnd);
+	return $author$project$Editor$edgeWithArrowHead(edgeLine);
 };
 var $author$project$Editor$viewEdgeCells = function (cellGraph) {
 	return A2(
@@ -10247,10 +10561,6 @@ var $author$project$Editor$viewEdgeCells = function (cellGraph) {
 		$author$project$Editor$viewEdgeCell,
 		$author$project$Editor$fromToPairs(cellGraph));
 };
-var $elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
-	$elm$core$Basics$composeL,
-	$elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
-	$elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
 var $elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$Core$attribute,
@@ -10637,7 +10947,7 @@ var $author$project$Editor$navEffects = function (path) {
 var $author$project$Editor$inputCellAttributesFromEffects = function (cell) {
 	var effectGroups = $author$project$Editor$grouped(
 		_Utils_ap(
-			A2($author$project$Editor$isasUnderCustom, $author$project$Editor$roleEffects, cell),
+			A2($author$project$Structure$isasUnderCustom, $author$project$Editor$roleEffects, cell),
 			$author$project$Editor$navEffects(
 				$author$project$Structure$pathOf(cell))));
 	return A2(
@@ -10676,6 +10986,11 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$x = function (value) {
 	return $elm_community$typed_svg$TypedSvg$Attributes$x(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
+var $ianmackenzie$elm_geometry$Point2d$xCoordinate = function (_v0) {
+	var _v1 = _v0.a;
+	var x = _v1.a;
+	return x;
+};
 var $elm_community$typed_svg$TypedSvg$Attributes$y = function (length) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$Core$attribute,
@@ -10686,16 +11001,28 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$y = function (value) {
 	return $elm_community$typed_svg$TypedSvg$Attributes$y(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
-var $author$project$Editor$vertexContent = F6(
-	function (cell, xp, yp, w, textWidth, name) {
+var $ianmackenzie$elm_geometry$Point2d$yCoordinate = function (_v0) {
+	var _v1 = _v0.a;
+	var y = _v1.b;
+	return y;
+};
+var $author$project$Editor$vertexContent = F2(
+	function (cell, _v0) {
+		var posContent = _v0.posContent;
+		var widthVertex = _v0.widthVertex;
+		var widthContent = _v0.widthContent;
+		var heightContent = _v0.heightContent;
+		var content = _v0.content;
 		return A2(
 			$elm_community$typed_svg$TypedSvg$Core$foreignObject,
 			_List_fromArray(
 				[
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xp),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yp),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$width(w),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$height(20)
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(
+					$ianmackenzie$elm_geometry$Point2d$xCoordinate(posContent)),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(
+					$ianmackenzie$elm_geometry$Point2d$yCoordinate(posContent)),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$width(widthVertex),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$height(heightContent)
 				]),
 			_List_fromArray(
 				[
@@ -10715,8 +11042,8 @@ var $author$project$Editor$vertexContent = F6(
 										A2($elm$html$Html$Attributes$style, 'border', 'none'),
 										A2($elm$html$Html$Attributes$style, 'outline', 'none'),
 										$elm$html$Html$Attributes$placeholder('<no value>'),
-										$elm$html$Html$Attributes$value(name),
-										$elm$html$Html$Attributes$size(textWidth),
+										$elm$html$Html$Attributes$value(content),
+										$elm$html$Html$Attributes$size(widthContent),
 										A2($elm$html$Html$Attributes$style, 'background-color', 'transparent'),
 										$elm$html$Html$Attributes$disabled(
 										A2($author$project$Structure$boolOf, $author$project$Editor$roleGrabbed, cell))
@@ -10726,6 +11053,9 @@ var $author$project$Editor$vertexContent = F6(
 						]))
 				]));
 	});
+var $author$project$Editor$DragStart = function (a) {
+	return {$: 'DragStart', a: a};
+};
 var $elm_community$typed_svg$TypedSvg$circle = $elm_community$typed_svg$TypedSvg$Core$node('circle');
 var $elm_community$typed_svg$TypedSvg$Attributes$cx = function (length) {
 	return A2(
@@ -10747,9 +11077,6 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$cy = function (value) {
 	return $elm_community$typed_svg$TypedSvg$Attributes$cy(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
-var $author$project$Editor$DragStart = function (a) {
-	return {$: 'DragStart', a: a};
-};
 var $elm_community$typed_svg$TypedSvg$Events$on = $elm$virtual_dom$VirtualDom$on;
 var $elm_community$typed_svg$TypedSvg$Events$simpleOn = function (name) {
 	return function (msg) {
@@ -10761,10 +11088,6 @@ var $elm_community$typed_svg$TypedSvg$Events$simpleOn = function (name) {
 	};
 };
 var $elm_community$typed_svg$TypedSvg$Events$onMouseDown = $elm_community$typed_svg$TypedSvg$Events$simpleOn('mousedown');
-var $author$project$Editor$onMouseDown = function (path) {
-	return $elm_community$typed_svg$TypedSvg$Events$onMouseDown(
-		$author$project$Editor$DragStart(path));
-};
 var $elm_community$typed_svg$TypedSvg$Attributes$r = function (length) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$Core$attribute,
@@ -10775,31 +11098,35 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$r = function (value) {
 	return $elm_community$typed_svg$TypedSvg$Attributes$r(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
-var $author$project$Editor$vertexHandle = F3(
-	function (cell, x, y) {
+var $author$project$Editor$vertexDragHandle = F2(
+	function (cell, _v0) {
+		var posVertex = _v0.posVertex;
 		return A2($author$project$Structure$boolOf, $author$project$Editor$roleGrabbed, cell) ? A2(
 			$elm_community$typed_svg$TypedSvg$circle,
 			_List_fromArray(
 				[
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$r(10),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cx(x),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cy(y),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cx(
+					$ianmackenzie$elm_geometry$Point2d$xCoordinate(posVertex)),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cy(
+					$ianmackenzie$elm_geometry$Point2d$yCoordinate(posVertex)),
 					$elm_community$typed_svg$TypedSvg$Attributes$fill(
-					$elm_community$typed_svg$TypedSvg$Types$Paint(
-						A3($avh4$elm_color$Color$rgb255, 17, 77, 175)))
+					$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary))
 				]),
 			_List_Nil) : A2(
 			$elm_community$typed_svg$TypedSvg$circle,
 			_List_fromArray(
 				[
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$r(5),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cx(x),
-					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cy(y),
-					$author$project$Editor$onMouseDown(
-					$author$project$Structure$pathOf(cell)),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cx(
+					$ianmackenzie$elm_geometry$Point2d$xCoordinate(posVertex)),
+					$elm_community$typed_svg$TypedSvg$Attributes$InPx$cy(
+					$ianmackenzie$elm_geometry$Point2d$yCoordinate(posVertex)),
+					$elm_community$typed_svg$TypedSvg$Events$onMouseDown(
+					$author$project$Editor$DragStart(
+						$author$project$Structure$pathOf(cell))),
 					$elm_community$typed_svg$TypedSvg$Attributes$stroke(
-					$elm_community$typed_svg$TypedSvg$Types$Paint(
-						A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
+					$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary)),
 					$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
 					$elm_community$typed_svg$TypedSvg$Attributes$fill(
 					$elm_community$typed_svg$TypedSvg$Types$Paint(
@@ -10808,60 +11135,38 @@ var $author$project$Editor$vertexHandle = F3(
 			_List_Nil);
 	});
 var $avh4$elm_color$Color$white = A4($avh4$elm_color$Color$RgbaSpace, 255 / 255, 255 / 255, 255 / 255, 1.0);
-var $author$project$Editor$viewVertexCell = F2(
-	function (index, cell) {
-		var radius = $elm$core$Basics$sqrt(index) * $author$project$Editor$initialRadius;
-		var noName = '<no value>';
-		var name = A2(
-			$elm$core$Maybe$withDefault,
-			noName,
-			A2($author$project$Structure$tryTextOf, $author$project$Editor$roleText, cell));
-		var nameNotEmpty = (name === '') ? noName : name;
-		var textWidth = (nameNotEmpty === '') ? $elm$core$String$length(noName) : $elm$core$String$length(nameNotEmpty);
-		var wRect = ($elm$core$String$length(nameNotEmpty) * 8.797) + 18;
-		var hRect = 40;
-		var angle = index * $author$project$Editor$initialAngle;
-		var xPos = A2(
-			$elm$core$Maybe$withDefault,
-			radius * $elm$core$Basics$cos(angle),
-			A2($author$project$Structure$tryFloatOf, $author$project$Editor$roleX, cell));
-		var xPosRect = xPos - (wRect / 2);
-		var xPosInput = xPosRect + 9;
-		var yPos = A2(
-			$elm$core$Maybe$withDefault,
-			radius * $elm$core$Basics$cos(angle),
-			A2($author$project$Structure$tryFloatOf, $author$project$Editor$roleY, cell));
-		var yPosRect = yPos - (hRect / 2);
-		var handle = A3($author$project$Editor$vertexHandle, cell, xPosRect, yPosRect);
-		var yPosInput = yPosRect + 9;
-		var content = A6($author$project$Editor$vertexContent, cell, xPosInput, yPosInput, wRect, textWidth, nameNotEmpty);
-		return A2(
-			$elm_community$typed_svg$TypedSvg$g,
-			_List_Nil,
-			_List_fromArray(
-				[
-					A2(
-					$elm_community$typed_svg$TypedSvg$rect,
-					_List_fromArray(
-						[
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$width(wRect),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$height(hRect),
-							$elm_community$typed_svg$TypedSvg$Attributes$fill(
-							$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$white)),
-							$elm_community$typed_svg$TypedSvg$Attributes$stroke(
-							$elm_community$typed_svg$TypedSvg$Types$Paint(
-								A3($avh4$elm_color$Color$rgb255, 17, 77, 175))),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(xPosRect),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(yPosRect),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
-						]),
-					_List_Nil),
-					content,
-					handle
-				]));
-	});
+var $author$project$Editor$viewVertexCell = function (cell) {
+	var vertexProps = $author$project$Editor$vertexProperties(cell);
+	var handle = A2($author$project$Editor$vertexDragHandle, cell, vertexProps);
+	var content = A2($author$project$Editor$vertexContent, cell, vertexProps);
+	return A2(
+		$elm_community$typed_svg$TypedSvg$g,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				$elm_community$typed_svg$TypedSvg$rect,
+				_List_fromArray(
+					[
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$width(vertexProps.widthVertex),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$height(vertexProps.heightVertex),
+						$elm_community$typed_svg$TypedSvg$Attributes$fill(
+						$elm_community$typed_svg$TypedSvg$Types$Paint($avh4$elm_color$Color$white)),
+						$elm_community$typed_svg$TypedSvg$Attributes$stroke(
+						$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGraphPrimary)),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$strokeWidth(2),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(
+						$ianmackenzie$elm_geometry$Point2d$xCoordinate(vertexProps.posVertex)),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(
+						$ianmackenzie$elm_geometry$Point2d$yCoordinate(vertexProps.posVertex)),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$rx(4),
+						$elm_community$typed_svg$TypedSvg$Attributes$InPx$ry(4)
+					]),
+				_List_Nil),
+				content,
+				handle
+			]));
+};
 var $author$project$Editor$viewGraphCell = function (cellGraph) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$svg,
@@ -10881,7 +11186,7 @@ var $author$project$Editor$viewGraphCell = function (cellGraph) {
 				$elm_community$typed_svg$TypedSvg$g,
 				_List_Nil,
 				A2(
-					$elm$core$List$indexedMap,
+					$elm$core$List$map,
 					$author$project$Editor$viewVertexCell,
 					A2(
 						$author$project$Structure$nodesOf,

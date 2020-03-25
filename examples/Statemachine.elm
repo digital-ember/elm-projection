@@ -18,7 +18,7 @@ type Domain
 
 main : Program () (R.Model Domain) (R.Msg Domain)
 main =
-    R.projection emptyStatemachine editor
+    R.projection mrsHsSecretCompartment editor
 
 
 emptyStatemachine : S.Node Domain
