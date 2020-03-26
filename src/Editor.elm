@@ -1818,7 +1818,7 @@ attributeFromEffectGroup cell effectGroup =
         InputEffectGroup effects ->
             case effects of
                 effect :: [] ->
-                    Just (effectAttributeFromInput (OnInput effect))
+                    Just (HtmlE.onInput (OnInput effect))
 
                 _ ->
                     Nothing
@@ -1829,7 +1829,7 @@ attributeFromEffectGroup cell effectGroup =
         FocusEffectGroup effects ->
             case effects of
                 effect :: [] ->
-                    Just (effectAttributeFromFocus (UpdateScope effect))
+                    Just (HtmlE.onFocus (UpdateScope effect))
 
                 _ ->
                     Nothing
@@ -1850,15 +1850,6 @@ keyFromDir dir =
         R ->
             "ArrowRight"
 
-
-effectAttributeFromInput : (String -> Msg a) -> Attribute (Msg a)
-effectAttributeFromInput handler =
-    HtmlE.onInput handler
-
-
-effectAttributeFromFocus : Msg a -> Attribute (Msg a)
-effectAttributeFromFocus msg =
-    HtmlE.onFocus msg
 
 
 inputEffectMap : Node (Cell a) -> List (EffectCell a) -> Dict.Dict String (Msg a)

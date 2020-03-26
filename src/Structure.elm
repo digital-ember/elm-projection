@@ -586,14 +586,14 @@ addChildAtPath role nodeNew path root =
         (Path segmentsNoRoot) =
             dropRootSegment path
 
-        feature =
+        roleToAdd =
             if role == roleEmpty then
                 roleDefault
 
             else
                 role
     in
-    addChildAtPathRec role nodeNew segmentsNoRoot root
+    addChildAtPathRec roleToAdd nodeNew segmentsNoRoot root
 
 
 addChildAtPathRec : Role -> Node a -> List PathSegment -> Node a -> Node a

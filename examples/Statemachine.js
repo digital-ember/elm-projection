@@ -9215,10 +9215,10 @@ var $author$project$Structure$addChildrenAtPathRec = F5(
 	});
 var $author$project$Structure$addChildAtPath = F4(
 	function (role, nodeNew, path, root) {
-		var feature = _Utils_eq(role, $author$project$Structure$roleEmpty) ? $author$project$Structure$roleDefault : role;
+		var roleToAdd = _Utils_eq(role, $author$project$Structure$roleEmpty) ? $author$project$Structure$roleDefault : role;
 		var _v0 = $author$project$Structure$dropRootSegment(path);
 		var segmentsNoRoot = _v0.a;
-		return A4($author$project$Structure$addChildAtPathRec, role, nodeNew, segmentsNoRoot, root);
+		return A4($author$project$Structure$addChildAtPathRec, roleToAdd, nodeNew, segmentsNoRoot, root);
 	});
 var $author$project$Structure$insertAfter = F4(
 	function (pathAfter, child, candidate, result) {
@@ -10647,50 +10647,6 @@ var $author$project$Editor$OnInput = F2(
 var $author$project$Editor$UpdateScope = function (a) {
 	return {$: 'UpdateScope', a: a};
 };
-var $elm$html$Html$Events$onFocus = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'focus',
-		$elm$json$Json$Decode$succeed(msg));
-};
-var $author$project$Editor$effectAttributeFromFocus = function (msg) {
-	return $elm$html$Html$Events$onFocus(msg);
-};
-var $elm$html$Html$Events$alwaysStop = function (x) {
-	return _Utils_Tuple2(x, true);
-};
-var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
-	return {$: 'MayStopPropagation', a: a};
-};
-var $elm$html$Html$Events$stopPropagationOn = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
-	});
-var $elm$json$Json$Decode$at = F2(
-	function (fields, decoder) {
-		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
-	});
-var $elm$json$Json$Decode$string = _Json_decodeString;
-var $elm$html$Html$Events$targetValue = A2(
-	$elm$json$Json$Decode$at,
-	_List_fromArray(
-		['target', 'value']),
-	$elm$json$Json$Decode$string);
-var $elm$html$Html$Events$onInput = function (tagger) {
-	return A2(
-		$elm$html$Html$Events$stopPropagationOn,
-		'input',
-		A2(
-			$elm$json$Json$Decode$map,
-			$elm$html$Html$Events$alwaysStop,
-			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
-};
-var $author$project$Editor$effectAttributeFromInput = function (handler) {
-	return $elm$html$Html$Events$onInput(handler);
-};
 var $author$project$Editor$OnBackspace = F2(
 	function (a, b) {
 		return {$: 'OnBackspace', a: a, b: b};
@@ -10702,6 +10658,7 @@ var $author$project$Editor$OnDelete = F2(
 var $elm$json$Json$Decode$andThen = _Json_andThen;
 var $elm$json$Json$Decode$int = _Json_decodeInt;
 var $elm$json$Json$Decode$map3 = _Json_map3;
+var $elm$json$Json$Decode$string = _Json_decodeString;
 var $author$project$Editor$decodeSelection = A4(
 	$elm$json$Json$Decode$map3,
 	F3(
@@ -10845,6 +10802,43 @@ var $author$project$Editor$inputEffectMap = F2(
 			$elm$core$Dict$empty,
 			effects);
 	});
+var $elm$html$Html$Events$onFocus = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'focus',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $elm$html$Html$Events$alwaysStop = function (x) {
+	return _Utils_Tuple2(x, true);
+};
+var $elm$virtual_dom$VirtualDom$MayStopPropagation = function (a) {
+	return {$: 'MayStopPropagation', a: a};
+};
+var $elm$html$Html$Events$stopPropagationOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayStopPropagation(decoder));
+	});
+var $elm$json$Json$Decode$at = F2(
+	function (fields, decoder) {
+		return A3($elm$core$List$foldr, $elm$json$Json$Decode$field, decoder, fields);
+	});
+var $elm$html$Html$Events$targetValue = A2(
+	$elm$json$Json$Decode$at,
+	_List_fromArray(
+		['target', 'value']),
+	$elm$json$Json$Decode$string);
+var $elm$html$Html$Events$onInput = function (tagger) {
+	return A2(
+		$elm$html$Html$Events$stopPropagationOn,
+		'input',
+		A2(
+			$elm$json$Json$Decode$map,
+			$elm$html$Html$Events$alwaysStop,
+			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
+};
 var $author$project$Editor$attributeFromEffectGroup = F2(
 	function (cell, effectGroup) {
 		switch (effectGroup.$) {
@@ -10853,7 +10847,7 @@ var $author$project$Editor$attributeFromEffectGroup = F2(
 				if (effects.b && (!effects.b.b)) {
 					var effect = effects.a;
 					return $elm$core$Maybe$Just(
-						$author$project$Editor$effectAttributeFromInput(
+						$elm$html$Html$Events$onInput(
 							$author$project$Editor$OnInput(effect)));
 				} else {
 					return $elm$core$Maybe$Nothing;
@@ -10868,7 +10862,7 @@ var $author$project$Editor$attributeFromEffectGroup = F2(
 				if (effects.b && (!effects.b.b)) {
 					var effect = effects.a;
 					return $elm$core$Maybe$Just(
-						$author$project$Editor$effectAttributeFromFocus(
+						$elm$html$Html$Events$onFocus(
 							$author$project$Editor$UpdateScope(effect)));
 				} else {
 					return $elm$core$Maybe$Nothing;
