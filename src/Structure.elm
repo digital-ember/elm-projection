@@ -128,6 +128,7 @@ isasUnderCustom role parent =
     in
     List.map isaOf children
 
+
 pathOf : Node a -> Path
 pathOf (Node { path }) =
     path
@@ -190,10 +191,10 @@ flatNodeListComparer mbRoles lNodes rNodes =
 
 
 flatNodeComparer mbRoles l r =
-    isaOf l -- |> Debug.log "left ")
-        == isaOf r --|> Debug.log "right ")
-        && pathAsIdFromNode l --|> Debug.log "pathL")
-        == pathAsIdFromNode r --|> Debug.log "pathR")
+    isaOf l
+        == isaOf r
+        && pathAsIdFromNode l
+        == pathAsIdFromNode r
         && compareProperties mbRoles l r
 
 
@@ -613,16 +614,28 @@ addChildAtPathRec role nodeNew segments parent =
 addChildrenAtPathRec : Role -> Node a -> PathSegment -> List PathSegment -> Node a -> Node a
 addChildrenAtPathRec role nodeNew segment tailSegments parent =
     let
-        insertAt i child =
-            if i == segment.index then
-                addChildAtPathRec role nodeNew tailSegments child
+        insertAt child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                child
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        addChildAtPathRec role nodeNew tailSegments child
+
+                    else
+                        child
 
         childrenNew =
             getUnder segment.role parent
-                |> List.indexedMap insertAt
+                |> List.map insertAt
     in
     replaceUnderFeature segment.role childrenNew parent
 
@@ -656,16 +669,28 @@ insertChildAfterPathRec nodeNew pathAfter segments parent =
 insertChildren : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
 insertChildren nodeNew pathAfter segment tailSegments parent =
     let
-        insertAt i child =
-            if i == segment.index then
-                insertChildAfterPathRec nodeNew pathAfter tailSegments child
+        insertAt child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                child
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        insertChildAfterPathRec nodeNew pathAfter tailSegments child
+
+                    else
+                        child
 
         childrenNew =
             getUnder segment.role parent
-                |> List.indexedMap insertAt
+                |> List.map insertAt
     in
     replaceUnderFeature segment.role childrenNew parent
 
@@ -692,16 +717,28 @@ replaceRangeAtPathRec role rangeNew pathAt segments parent =
 replaceChildrenForRangeReplace : Role -> List (Node a) -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
 replaceChildrenForRangeReplace role rangeNew pathAt segment tailSegments parent =
     let
-        replaceRangeAt i child =
-            if i == segment.index then
-                replaceRangeAtPathRec role rangeNew pathAt tailSegments child
+        replaceRangeAt child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                child
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        replaceRangeAtPathRec role rangeNew pathAt tailSegments child
+
+                    else
+                        child
 
         childrenNew =
             getUnder segment.role parent
-                |> List.indexedMap replaceRangeAt
+                |> List.map replaceRangeAt
     in
     replaceUnderFeature segment.role childrenNew parent
 
@@ -735,16 +772,28 @@ replaceChildAtPathRec nodeNew pathAt segments parent =
 replaceChildrenForChildReplace : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
 replaceChildrenForChildReplace nodeNew pathAt segment tailSegments parent =
     let
-        replaceChildAt i child =
-            if i == segment.index then
-                replaceChildAtPathRec nodeNew pathAt tailSegments child
+        replaceChildAt child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                child
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        replaceChildAtPathRec nodeNew pathAt tailSegments child
+
+                    else
+                        child
 
         childrenNew =
             getUnder segment.role parent
-                |> List.indexedMap replaceChildAt
+                |> List.map replaceChildAt
     in
     replaceUnderFeature segment.role childrenNew parent
 
@@ -774,16 +823,28 @@ deleteNodeRec segments parent =
 deleteNodeNested : PathSegment -> List PathSegment -> Node a -> Node a
 deleteNodeNested segment tailSegments parent =
     let
-        deleteRec i child =
-            if i == segment.index then
-                deleteNodeRec tailSegments child
+        deleteRec child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                child
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        deleteNodeRec tailSegments child
+
+                    else
+                        child
 
         childrenNew =
             getUnder segment.role parent
-                |> List.indexedMap deleteRec
+                |> List.map deleteRec
     in
     replaceUnderFeature segment.role childrenNew parent
 
@@ -791,15 +852,27 @@ deleteNodeNested segment tailSegments parent =
 deleteNodeAt : PathSegment -> Node a -> Node a
 deleteNodeAt segment parent =
     let
-        mbChildAt i c =
-            if i == segment.index then
-                Nothing
+        mbChildAt child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                Just c
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    Just child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        Nothing
+
+                    else
+                        Just child
 
         delete children =
-            List.indexedMap mbChildAt children
+            List.map mbChildAt children
                 |> List.filterMap identity
 
         childrenNew =
@@ -831,16 +904,28 @@ updatePropertyRec segments kvp parent =
 updateChildrenUnder : PathSegment -> List PathSegment -> ( Role, Primitive ) -> Node a -> Node a
 updateChildrenUnder segment tailSegments kvp parent =
     let
-        updateAt i child =
-            if i == segment.index then
-                updatePropertyRec tailSegments kvp child
+        updateAt child =
+            let
+                (Path pathSegmentsChild) =
+                    pathOf child
 
-            else
-                child
+                mbLastSegment =
+                    pathSegmentsChild |> List.reverse |> List.head
+            in
+            case mbLastSegment of
+                Nothing ->
+                    child
+
+                Just lastSegment ->
+                    if lastSegment.index == segment.index then
+                        updatePropertyRec tailSegments kvp child
+
+                    else
+                        child
 
         childrenNew =
             getUnder segment.role parent
-                |> List.indexedMap updateAt
+                |> List.map updateAt
     in
     replaceUnderFeature segment.role childrenNew parent
 
@@ -995,15 +1080,23 @@ nodeAtI parent segments =
     case segments of
         segment :: tail ->
             let
-                mbChildAt i c =
-                    if i == segment.index then
-                        Just c
+                mbChildAt child =
+                    let
+                        (Path pathSegmentsChild) = pathOf child
+                        mbLastSegment = pathSegmentsChild |> List.reverse |> List.head
+                    in
+                    case mbLastSegment of
+                        Nothing -> Just child
 
-                    else
-                        Nothing
+                        Just lastSegment ->
+                            if lastSegment.index == segment.index then
+                                Just child
+
+                            else
+                                Nothing
 
                 getAtIndex children =
-                    List.indexedMap mbChildAt children
+                    List.map mbChildAt children
                         |> List.filterMap identity
 
                 nextChild =

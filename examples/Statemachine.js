@@ -4355,10 +4355,6 @@ function _Browser_load(url)
 		}
 	}));
 }
-var $elm$core$Basics$apR = F2(
-	function (x, f) {
-		return f(x);
-	});
 var $elm$core$List$cons = _List_cons;
 var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
 var $elm$core$Array$foldr = F3(
@@ -4439,16 +4435,76 @@ var $elm$core$Set$toList = function (_v0) {
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
-var $author$project$Editor$Bottom = {$: 'Bottom'};
-var $elm$core$Basics$True = {$: 'True'};
-var $author$project$Structure$PBool = function (a) {
-	return {$: 'PBool', a: a};
-};
+var $author$project$Statemachine$Statemachine = {$: 'Statemachine'};
 var $elm$core$Basics$identity = function (x) {
 	return x;
 };
 var $author$project$Structure$Node = function (a) {
 	return {$: 'Node', a: a};
+};
+var $elm$core$List$foldl = F3(
+	function (func, acc, list) {
+		foldl:
+		while (true) {
+			if (!list.b) {
+				return acc;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				var $temp$func = func,
+					$temp$acc = A2(func, x, acc),
+					$temp$list = xs;
+				func = $temp$func;
+				acc = $temp$acc;
+				list = $temp$list;
+				continue foldl;
+			}
+		}
+	});
+var $elm$core$List$reverse = function (list) {
+	return A3($elm$core$List$foldl, $elm$core$List$cons, _List_Nil, list);
+};
+var $author$project$Structure$appendTo = F2(
+	function (child, list) {
+		return $elm$core$List$reverse(
+			A2(
+				$elm$core$List$cons,
+				child,
+				$elm$core$List$reverse(list)));
+	});
+var $author$project$Structure$addToDefault = F2(
+	function (child, _v0) {
+		var data = _v0.a;
+		var features = data.features;
+		var featuresNew = function () {
+			var _v1 = features._default;
+			if (!_v1.b) {
+				return _Utils_update(
+					features,
+					{
+						_default: _List_fromArray(
+							[child])
+					});
+			} else {
+				var children = _v1;
+				return _Utils_update(
+					features,
+					{
+						_default: A2($author$project$Structure$appendTo, child, children)
+					});
+			}
+		}();
+		return $author$project$Structure$Node(
+			_Utils_update(
+				data,
+				{features: featuresNew}));
+	});
+var $author$project$Structure$addRangeToDefault = F2(
+	function (children, parent) {
+		return A3($elm$core$List$foldl, $author$project$Structure$addToDefault, parent, children);
+	});
+var $author$project$Structure$PString = function (a) {
+	return {$: 'PString', a: a};
 };
 var $elm$core$Dict$Black = {$: 'Black'};
 var $elm$core$Dict$RBNode_elm_builtin = F5(
@@ -4572,6 +4628,279 @@ var $author$project$Structure$addProperty = F2(
 					properties: A3($elm$core$Dict$insert, role, value, data.properties)
 				}));
 	});
+var $author$project$Structure$addText = F3(
+	function (role, text, node) {
+		return A2(
+			$author$project$Structure$addProperty,
+			_Utils_Tuple2(
+				role,
+				$author$project$Structure$PString(text)),
+			node);
+	});
+var $elm$core$Basics$apR = F2(
+	function (x, f) {
+		return f(x);
+	});
+var $author$project$Structure$Path = function (a) {
+	return {$: 'Path', a: a};
+};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
+var $author$project$Structure$emptyFeatures = {custom: $elm$core$Dict$empty, _default: _List_Nil};
+var $author$project$Structure$createNodeInternal = F2(
+	function (role, isa) {
+		return $author$project$Structure$Node(
+			{
+				features: $author$project$Structure$emptyFeatures,
+				isa: isa,
+				path: $author$project$Structure$Path(
+					_List_fromArray(
+						[
+							{index: 0, role: role}
+						])),
+				properties: $elm$core$Dict$empty
+			});
+	});
+var $author$project$Structure$Role = function (a) {
+	return {$: 'Role', a: a};
+};
+var $author$project$Structure$roleFromString = function (key) {
+	return $author$project$Structure$Role(key);
+};
+var $author$project$Structure$roleRoot = $author$project$Structure$roleFromString('root');
+var $author$project$Structure$createRoot = function (isa) {
+	return A2($author$project$Structure$createNodeInternal, $author$project$Structure$roleRoot, isa);
+};
+var $author$project$Statemachine$State = {$: 'State'};
+var $author$project$Structure$roleEmpty = $author$project$Structure$roleFromString('');
+var $author$project$Structure$createNode = function (isa) {
+	return A2($author$project$Structure$createNodeInternal, $author$project$Structure$roleEmpty, isa);
+};
+var $author$project$Statemachine$Transition = {$: 'Transition'};
+var $elm$core$Basics$append = _Utils_append;
+var $author$project$Statemachine$roleEventRef = $author$project$Structure$roleFromString('eventRef');
+var $author$project$Statemachine$roleStateRef = $author$project$Structure$roleFromString('stateRef');
+var $author$project$Statemachine$createTransition = function (name) {
+	return A3(
+		$author$project$Structure$addText,
+		$author$project$Statemachine$roleStateRef,
+		name,
+		A3(
+			$author$project$Structure$addText,
+			$author$project$Statemachine$roleEventRef,
+			name + '-event',
+			$author$project$Structure$createNode($author$project$Statemachine$Transition)));
+};
+var $elm$core$Basics$add = _Basics_add;
+var $elm$core$Basics$gt = _Utils_gt;
+var $elm$core$List$foldrHelper = F4(
+	function (fn, acc, ctr, ls) {
+		if (!ls.b) {
+			return acc;
+		} else {
+			var a = ls.a;
+			var r1 = ls.b;
+			if (!r1.b) {
+				return A2(fn, a, acc);
+			} else {
+				var b = r1.a;
+				var r2 = r1.b;
+				if (!r2.b) {
+					return A2(
+						fn,
+						a,
+						A2(fn, b, acc));
+				} else {
+					var c = r2.a;
+					var r3 = r2.b;
+					if (!r3.b) {
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(fn, c, acc)));
+					} else {
+						var d = r3.a;
+						var r4 = r3.b;
+						var res = (ctr > 500) ? A3(
+							$elm$core$List$foldl,
+							fn,
+							acc,
+							$elm$core$List$reverse(r4)) : A4($elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(
+									fn,
+									c,
+									A2(fn, d, res))));
+					}
+				}
+			}
+		}
+	});
+var $elm$core$List$foldr = F3(
+	function (fn, acc, ls) {
+		return A4($elm$core$List$foldrHelper, fn, acc, 0, ls);
+	});
+var $elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						$elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var $author$project$Structure$roleName = $author$project$Structure$roleFromString('name');
+var $author$project$Statemachine$createState = F2(
+	function (name, targets) {
+		return A2(
+			$author$project$Structure$addRangeToDefault,
+			A2($elm$core$List$map, $author$project$Statemachine$createTransition, targets),
+			A3(
+				$author$project$Structure$addText,
+				$author$project$Structure$roleName,
+				name,
+				$author$project$Structure$createNode($author$project$Statemachine$State)));
+	});
+var $author$project$Statemachine$bigDemo = A2(
+	$author$project$Structure$addRangeToDefault,
+	_List_fromArray(
+		[
+			A2(
+			$author$project$Statemachine$createState,
+			'0',
+			_List_fromArray(
+				['1', '2', '3'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'1',
+			_List_fromArray(
+				['3', '4'])),
+			A2($author$project$Statemachine$createState, '2', _List_Nil),
+			A2(
+			$author$project$Statemachine$createState,
+			'3',
+			_List_fromArray(
+				['8', '5', '6'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'4',
+			_List_fromArray(
+				['3'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'5',
+			_List_fromArray(
+				['13', '24'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'6',
+			_List_fromArray(
+				['12'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'7',
+			_List_fromArray(
+				['7', '8', '9', '19'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'8',
+			_List_fromArray(
+				['14'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'9',
+			_List_fromArray(
+				['20', '10'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'10',
+			_List_fromArray(
+				['2'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'11',
+			_List_fromArray(
+				['6', '8'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'12',
+			_List_fromArray(
+				['3', '9', '11'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'13',
+			_List_fromArray(
+				['15'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'14',
+			_List_fromArray(
+				['16'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'15',
+			_List_fromArray(
+				['17', '22'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'16',
+			_List_fromArray(
+				['23'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'17',
+			_List_fromArray(
+				['21', '5'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'18',
+			_List_fromArray(
+				['19', '8'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'19',
+			_List_fromArray(
+				['18', '24'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'20',
+			_List_fromArray(
+				['4'])),
+			A2($author$project$Statemachine$createState, '21', _List_Nil),
+			A2($author$project$Statemachine$createState, '22', _List_Nil),
+			A2(
+			$author$project$Statemachine$createState,
+			'23',
+			_List_fromArray(
+				['7', '1'])),
+			A2(
+			$author$project$Statemachine$createState,
+			'24',
+			_List_fromArray(
+				['3']))
+		]),
+	A3(
+		$author$project$Structure$addText,
+		$author$project$Structure$roleName,
+		'Many states',
+		$author$project$Structure$createRoot($author$project$Statemachine$Statemachine)));
+var $author$project$Editor$Bottom = {$: 'Bottom'};
+var $elm$core$Basics$True = {$: 'True'};
+var $author$project$Structure$PBool = function (a) {
+	return {$: 'PBool', a: a};
+};
 var $author$project$Structure$addBool = F3(
 	function (role, value, node) {
 		return A2(
@@ -4581,12 +4910,6 @@ var $author$project$Structure$addBool = F3(
 				$author$project$Structure$PBool(value)),
 			node);
 	});
-var $author$project$Structure$Role = function (a) {
-	return {$: 'Role', a: a};
-};
-var $author$project$Structure$roleFromString = function (key) {
-	return $author$project$Structure$Role(key);
-};
 var $author$project$Editor$roleIndent = $author$project$Structure$roleFromString('indent');
 var $author$project$Editor$addIndent = function (node) {
 	return A3($author$project$Structure$addBool, $author$project$Editor$roleIndent, true, node);
@@ -4627,41 +4950,6 @@ var $author$project$Editor$ConstantCell = {$: 'ConstantCell'};
 var $author$project$Editor$ContentCell = function (a) {
 	return {$: 'ContentCell', a: a};
 };
-var $author$project$Structure$PString = function (a) {
-	return {$: 'PString', a: a};
-};
-var $author$project$Structure$addText = F3(
-	function (role, text, node) {
-		return A2(
-			$author$project$Structure$addProperty,
-			_Utils_Tuple2(
-				role,
-				$author$project$Structure$PString(text)),
-			node);
-	});
-var $author$project$Structure$Path = function (a) {
-	return {$: 'Path', a: a};
-};
-var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
-var $author$project$Structure$emptyFeatures = {custom: $elm$core$Dict$empty, _default: _List_Nil};
-var $author$project$Structure$createNodeInternal = F2(
-	function (role, isa) {
-		return $author$project$Structure$Node(
-			{
-				features: $author$project$Structure$emptyFeatures,
-				isa: isa,
-				path: $author$project$Structure$Path(
-					_List_fromArray(
-						[
-							{index: 0, role: role}
-						])),
-				properties: $elm$core$Dict$empty
-			});
-	});
-var $author$project$Structure$roleEmpty = $author$project$Structure$roleFromString('');
-var $author$project$Structure$createNode = function (isa) {
-	return A2($author$project$Structure$createNodeInternal, $author$project$Structure$roleEmpty, isa);
-};
 var $author$project$Editor$roleConstant = $author$project$Structure$roleFromString('constant');
 var $author$project$Editor$constantCell = function (constantValue) {
 	return A3(
@@ -4672,7 +4960,6 @@ var $author$project$Editor$constantCell = function (constantValue) {
 			$author$project$Editor$ContentCell($author$project$Editor$ConstantCell)));
 };
 var $author$project$Statemachine$Event = {$: 'Event'};
-var $author$project$Structure$roleName = $author$project$Structure$roleFromString('name');
 var $author$project$Statemachine$ctorEvent = A3(
 	$author$project$Structure$addText,
 	$author$project$Structure$roleName,
@@ -4801,36 +5088,6 @@ var $author$project$Structure$textOf = F2(
 var $author$project$Editor$EffectCell = function (a) {
 	return {$: 'EffectCell', a: a};
 };
-var $elm$core$List$foldl = F3(
-	function (func, acc, list) {
-		foldl:
-		while (true) {
-			if (!list.b) {
-				return acc;
-			} else {
-				var x = list.a;
-				var xs = list.b;
-				var $temp$func = func,
-					$temp$acc = A2(func, x, acc),
-					$temp$list = xs;
-				func = $temp$func;
-				acc = $temp$acc;
-				list = $temp$list;
-				continue foldl;
-			}
-		}
-	});
-var $elm$core$List$reverse = function (list) {
-	return A3($elm$core$List$foldl, $elm$core$List$cons, _List_Nil, list);
-};
-var $author$project$Structure$appendTo = F2(
-	function (child, list) {
-		return $elm$core$List$reverse(
-			A2(
-				$elm$core$List$cons,
-				child,
-				$elm$core$List$reverse(list)));
-	});
 var $elm$core$Basics$eq = _Utils_equal;
 var $elm$core$Dict$getMin = function (dict) {
 	getMin:
@@ -5323,77 +5580,6 @@ var $author$project$Structure$getUnderCustom = F2(
 			_List_Nil,
 			A2($elm$core$Dict$get, key, features.custom));
 	});
-var $elm$core$Basics$add = _Basics_add;
-var $elm$core$Basics$gt = _Utils_gt;
-var $elm$core$List$foldrHelper = F4(
-	function (fn, acc, ctr, ls) {
-		if (!ls.b) {
-			return acc;
-		} else {
-			var a = ls.a;
-			var r1 = ls.b;
-			if (!r1.b) {
-				return A2(fn, a, acc);
-			} else {
-				var b = r1.a;
-				var r2 = r1.b;
-				if (!r2.b) {
-					return A2(
-						fn,
-						a,
-						A2(fn, b, acc));
-				} else {
-					var c = r2.a;
-					var r3 = r2.b;
-					if (!r3.b) {
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(fn, c, acc)));
-					} else {
-						var d = r3.a;
-						var r4 = r3.b;
-						var res = (ctr > 500) ? A3(
-							$elm$core$List$foldl,
-							fn,
-							acc,
-							$elm$core$List$reverse(r4)) : A4($elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(
-									fn,
-									c,
-									A2(fn, d, res))));
-					}
-				}
-			}
-		}
-	});
-var $elm$core$List$foldr = F3(
-	function (fn, acc, ls) {
-		return A4($elm$core$List$foldrHelper, fn, acc, 0, ls);
-	});
-var $elm$core$List$map = F2(
-	function (f, xs) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						$elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
-	});
 var $author$project$Editor$StackCell = {$: 'StackCell'};
 var $author$project$Editor$roleIsHoriz = $author$project$Structure$roleFromString('isHoriz');
 var $author$project$Editor$vertStackCell = A3(
@@ -5402,40 +5588,9 @@ var $author$project$Editor$vertStackCell = A3(
 	false,
 	$author$project$Structure$createNode(
 		$author$project$Editor$ContentCell($author$project$Editor$StackCell)));
-var $author$project$Structure$addToDefault = F2(
-	function (child, _v0) {
-		var data = _v0.a;
-		var features = data.features;
-		var featuresNew = function () {
-			var _v1 = features._default;
-			if (!_v1.b) {
-				return _Utils_update(
-					features,
-					{
-						_default: _List_fromArray(
-							[child])
-					});
-			} else {
-				var children = _v1;
-				return _Utils_update(
-					features,
-					{
-						_default: A2($author$project$Structure$appendTo, child, children)
-					});
-			}
-		}();
-		return $author$project$Structure$Node(
-			_Utils_update(
-				data,
-				{features: featuresNew}));
-	});
 var $author$project$Editor$with = function (node) {
 	return $author$project$Structure$addToDefault(node);
 };
-var $author$project$Structure$addRangeToDefault = F2(
-	function (children, parent) {
-		return A3($elm$core$List$foldl, $author$project$Structure$addToDefault, parent, children);
-	});
 var $author$project$Editor$withRange = function (children) {
 	return $author$project$Structure$addRangeToDefault(children);
 };
@@ -5499,7 +5654,6 @@ var $author$project$Editor$buttonCell = function (text) {
 		$author$project$Structure$createNode(
 			$author$project$Editor$ContentCell($author$project$Editor$ButtonCell)));
 };
-var $author$project$Statemachine$State = {$: 'State'};
 var $author$project$Statemachine$ctorState = A3(
 	$author$project$Structure$addText,
 	$author$project$Structure$roleName,
@@ -5520,9 +5674,6 @@ var $author$project$Statemachine$editorStateHead = function (state) {
 			$author$project$Editor$constantCell('state'),
 			$author$project$Editor$horizStackCell));
 };
-var $author$project$Statemachine$Transition = {$: 'Transition'};
-var $author$project$Statemachine$roleEventRef = $author$project$Structure$roleFromString('eventRef');
-var $author$project$Statemachine$roleStateRef = $author$project$Structure$roleFromString('stateRef');
 var $author$project$Statemachine$ctorTransition = A3(
 	$author$project$Structure$addText,
 	$author$project$Statemachine$roleStateRef,
@@ -5701,7 +5852,7 @@ var $author$project$Editor$vertexCell = F2(
 var $author$project$Statemachine$editorStateVertex = function (state) {
 	return A2($author$project$Editor$vertexCell, $author$project$Structure$roleName, state);
 };
-var $author$project$Statemachine$editorStatesVerticies = function (sm) {
+var $author$project$Statemachine$editorStatesvertices = function (sm) {
 	return A2(
 		$elm$core$List$map,
 		$author$project$Statemachine$editorStateVertex,
@@ -5776,7 +5927,7 @@ var $author$project$Statemachine$editorStatemachine = function (sm) {
 			$author$project$Statemachine$editorTransitionsEdges(sm),
 			A2(
 				$author$project$Editor$withRange,
-				$author$project$Statemachine$editorStatesVerticies(sm),
+				$author$project$Statemachine$editorStatesvertices(sm),
 				$author$project$Editor$graphCell)),
 		A2(
 			$author$project$Editor$with,
@@ -5793,10 +5944,6 @@ var $author$project$Statemachine$editorStatemachine = function (sm) {
 			$author$project$Editor$vertSplitCell));
 };
 var $author$project$Editor$RootCell = {$: 'RootCell'};
-var $author$project$Structure$roleRoot = $author$project$Structure$roleFromString('root');
-var $author$project$Structure$createRoot = function (isa) {
-	return A2($author$project$Structure$createNodeInternal, $author$project$Structure$roleRoot, isa);
-};
 var $author$project$Editor$rootCell = $author$project$Structure$createRoot(
 	$author$project$Editor$ContentCell($author$project$Editor$RootCell));
 var $author$project$Statemachine$editor = function (sm) {
@@ -5805,128 +5952,6 @@ var $author$project$Statemachine$editor = function (sm) {
 		$author$project$Statemachine$editorStatemachine(sm),
 		$author$project$Editor$rootCell);
 };
-var $author$project$Statemachine$Statemachine = {$: 'Statemachine'};
-var $author$project$Statemachine$mrsHsSecretCompartment = A2(
-	$author$project$Structure$addRangeToDefault,
-	_List_fromArray(
-		[
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Statemachine$roleStateRef,
-				'active',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Statemachine$roleEventRef,
-					'doorClosed',
-					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'idle',
-				$author$project$Structure$createNode($author$project$Statemachine$State))),
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Statemachine$roleStateRef,
-				'waitingForDraw',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Statemachine$roleEventRef,
-					'lightOn',
-					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
-			A2(
-				$author$project$Structure$addToDefault,
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Statemachine$roleStateRef,
-					'waitingForLight',
-					A3(
-						$author$project$Structure$addText,
-						$author$project$Statemachine$roleEventRef,
-						'drawOpened',
-						$author$project$Structure$createNode($author$project$Statemachine$Transition))),
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Structure$roleName,
-					'active',
-					$author$project$Structure$createNode($author$project$Statemachine$State)))),
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Statemachine$roleStateRef,
-				'unlockedPanel',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Statemachine$roleEventRef,
-					'lightOn',
-					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'waitingForLight',
-				$author$project$Structure$createNode($author$project$Statemachine$State))),
-			A2(
-			$author$project$Structure$addToDefault,
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Statemachine$roleStateRef,
-				'unlockedPanel',
-				A3(
-					$author$project$Structure$addText,
-					$author$project$Statemachine$roleEventRef,
-					'drawOpened',
-					$author$project$Structure$createNode($author$project$Statemachine$Transition))),
-			A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'waitingForDraw',
-				$author$project$Structure$createNode($author$project$Statemachine$State))),
-			A3(
-			$author$project$Structure$addText,
-			$author$project$Structure$roleName,
-			'unlockedPanel',
-			$author$project$Structure$createNode($author$project$Statemachine$State))
-		]),
-	A3(
-		$author$project$Structure$addRangeToCustom,
-		$author$project$Statemachine$roleEvents,
-		_List_fromArray(
-			[
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'doorClosed',
-				$author$project$Structure$createNode($author$project$Statemachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'drawOpened',
-				$author$project$Structure$createNode($author$project$Statemachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'lightOn',
-				$author$project$Structure$createNode($author$project$Statemachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'doorOpened',
-				$author$project$Structure$createNode($author$project$Statemachine$Event)),
-				A3(
-				$author$project$Structure$addText,
-				$author$project$Structure$roleName,
-				'panelClosed',
-				$author$project$Structure$createNode($author$project$Statemachine$Event))
-			]),
-		A3(
-			$author$project$Structure$addText,
-			$author$project$Structure$roleName,
-			'Mrs H\'s secret compartment system',
-			$author$project$Structure$createRoot($author$project$Statemachine$Statemachine))));
 var $author$project$Runtime$Domain = F2(
 	function (root, xform) {
 		return {root: root, xform: xform};
@@ -5954,7 +5979,6 @@ var $elm$json$Json$Decode$OneOf = function (a) {
 };
 var $elm$core$String$all = _String_all;
 var $elm$core$Basics$and = _Basics_and;
-var $elm$core$Basics$append = _Utils_append;
 var $elm$json$Json$Encode$encode = _Json_encode;
 var $elm$core$String$fromInt = _String_fromNumber;
 var $elm$core$String$join = F2(
@@ -7398,7 +7422,7 @@ var $author$project$Editor$graphComparer = F2(
 			} else {
 				var lGraph = _v0.a.a;
 				var rGraph = _v0.b.a;
-				var rVerticies = A2(
+				var rVertices = A2(
 					$elm$core$List$sortBy,
 					function (v) {
 						return $author$project$Structure$pathAsIdFromNode(v);
@@ -7443,14 +7467,14 @@ var $author$project$Editor$graphComparer = F2(
 					$author$project$Structure$flatNodeListComparer,
 					$elm$core$Maybe$Just(_List_Nil),
 					lVertices,
-					rVerticies) && A3(
+					rVertices) && A3(
 					$author$project$Structure$flatNodeListComparer,
 					$elm$core$Maybe$Just(_List_Nil),
 					lEdges,
 					rEdges);
 				return ((!_Utils_eq(
 					$elm$core$List$length(lVertices),
-					$elm$core$List$length(rVerticies))) || (!_Utils_eq(
+					$elm$core$List$length(rVertices))) || (!_Utils_eq(
 					$elm$core$List$length(lEdges),
 					$elm$core$List$length(rEdges)))) ? false : ((!flatIsEqual) ? false : ((!numOfRealEdgesIsEqual) ? false : true));
 			}
@@ -7507,12 +7531,20 @@ var $author$project$Structure$updateProperty = F2(
 	});
 var $author$project$Structure$updateChildrenUnder = F4(
 	function (segment, tailSegments, kvp, parent) {
-		var updateAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A3($author$project$Structure$updatePropertyRec, tailSegments, kvp, child) : child;
-			});
+		var updateAt = function (child) {
+			var _v1 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v1.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return child;
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? A3($author$project$Structure$updatePropertyRec, tailSegments, kvp, child) : child;
+			}
+		};
 		var childrenNew = A2(
-			$elm$core$List$indexedMap,
+			$elm$core$List$map,
 			updateAt,
 			A2($author$project$Structure$getUnder, segment.role, parent));
 		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
@@ -7535,7 +7567,7 @@ var $author$project$Structure$updatePropertyByPath = F3(
 	});
 var $author$project$Editor$persistVertexPositions = F2(
 	function (eRootOld, eRootNew) {
-		var verticiesOld = A2(
+		var verticesOld = A2(
 			$author$project$Structure$nodesOf,
 			$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
 			eRootOld);
@@ -7572,7 +7604,7 @@ var $author$project$Editor$persistVertexPositions = F2(
 					}
 				}
 			});
-		return A3($elm$core$List$foldl, persistVertexPos, eRootNew, verticiesOld);
+		return A3($elm$core$List$foldl, persistVertexPos, eRootNew, verticesOld);
 	});
 var $elm$core$Dict$map = F2(
 	function (func, dict) {
@@ -7660,15 +7692,23 @@ var $author$project$Structure$nodeAtI = F2(
 			if (segments.b) {
 				var segment = segments.a;
 				var tail = segments.b;
-				var mbChildAt = F2(
-					function (i, c) {
-						return _Utils_eq(i, segment.index) ? $elm$core$Maybe$Just(c) : $elm$core$Maybe$Nothing;
-					});
+				var mbChildAt = function (child) {
+					var _v2 = $author$project$Structure$pathOf(child);
+					var pathSegmentsChild = _v2.a;
+					var mbLastSegment = $elm$core$List$head(
+						$elm$core$List$reverse(pathSegmentsChild));
+					if (mbLastSegment.$ === 'Nothing') {
+						return $elm$core$Maybe$Just(child);
+					} else {
+						var lastSegment = mbLastSegment.a;
+						return _Utils_eq(lastSegment.index, segment.index) ? $elm$core$Maybe$Just(child) : $elm$core$Maybe$Nothing;
+					}
+				};
 				var getAtIndex = function (children) {
 					return A2(
 						$elm$core$List$filterMap,
 						$elm$core$Basics$identity,
-						A2($elm$core$List$indexedMap, mbChildAt, children));
+						A2($elm$core$List$map, mbChildAt, children));
 				};
 				var nextChild = getAtIndex(
 					A2($author$project$Structure$getUnder, segment.role, parent));
@@ -7798,12 +7838,20 @@ var $author$project$Structure$replaceChildAtPathRec = F4(
 	});
 var $author$project$Structure$replaceChildrenForChildReplace = F5(
 	function (nodeNew, pathAt, segment, tailSegments, parent) {
-		var replaceChildAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A4($author$project$Structure$replaceChildAtPathRec, nodeNew, pathAt, tailSegments, child) : child;
-			});
+		var replaceChildAt = function (child) {
+			var _v0 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v0.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return child;
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? A4($author$project$Structure$replaceChildAtPathRec, nodeNew, pathAt, tailSegments, child) : child;
+			}
+		};
 		var childrenNew = A2(
-			$elm$core$List$indexedMap,
+			$elm$core$List$map,
 			replaceChildAt,
 			A2($author$project$Structure$getUnder, segment.role, parent));
 		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
@@ -8845,7 +8893,7 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 		var cellGraph = mbCellGraph.a;
 		var _v1 = editorModel.mbSimulation;
 		if (_v1.$ === 'Nothing') {
-			var verticies = A2(
+			var vertices = A2(
 				$author$project$Structure$nodesOf,
 				$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
 				cellGraph);
@@ -8863,7 +8911,7 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 						function (v) {
 							return $author$project$Structure$pathAsIdFromNode(v);
 						},
-						verticies)),
+						vertices)),
 					A2($gampleman$elm_visualization$Force$center, 400, 300)
 				]);
 			return _Utils_Tuple2(
@@ -8877,7 +8925,7 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 				$elm$core$Platform$Cmd$none);
 		} else {
 			var simulation = _v1.a;
-			var verticies = A2(
+			var vertices = A2(
 				$author$project$Structure$nodesOf,
 				$author$project$Editor$ContentCell($author$project$Editor$VertexCell),
 				cellGraph);
@@ -8888,7 +8936,7 @@ var $author$project$Editor$tickGraphSimulations = function (editorModel) {
 					function (i, v) {
 						return A2($author$project$Editor$forceEntityFromVertex, i, v);
 					}),
-				verticies);
+				vertices);
 			var edges = A2(
 				$author$project$Structure$nodesOf,
 				$author$project$Editor$ContentCell($author$project$Editor$EdgeCell),
@@ -8990,15 +9038,23 @@ var $author$project$Structure$previousSibling = F2(
 	});
 var $author$project$Structure$deleteNodeAt = F2(
 	function (segment, parent) {
-		var mbChildAt = F2(
-			function (i, c) {
-				return _Utils_eq(i, segment.index) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(c);
-			});
+		var mbChildAt = function (child) {
+			var _v0 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v0.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return $elm$core$Maybe$Just(child);
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(child);
+			}
+		};
 		var _delete = function (children) {
 			return A2(
 				$elm$core$List$filterMap,
 				$elm$core$Basics$identity,
-				A2($elm$core$List$indexedMap, mbChildAt, children));
+				A2($elm$core$List$map, mbChildAt, children));
 		};
 		var childrenNew = _delete(
 			A2($author$project$Structure$getUnder, segment.role, parent));
@@ -9006,12 +9062,20 @@ var $author$project$Structure$deleteNodeAt = F2(
 	});
 var $author$project$Structure$deleteNodeNested = F3(
 	function (segment, tailSegments, parent) {
-		var deleteRec = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A2($author$project$Structure$deleteNodeRec, tailSegments, child) : child;
-			});
+		var deleteRec = function (child) {
+			var _v1 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v1.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return child;
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? A2($author$project$Structure$deleteNodeRec, tailSegments, child) : child;
+			}
+		};
 		var childrenNew = A2(
-			$elm$core$List$indexedMap,
+			$elm$core$List$map,
 			deleteRec,
 			A2($author$project$Structure$getUnder, segment.role, parent));
 		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
@@ -9090,12 +9154,20 @@ var $author$project$Editor$updateOnBackspaceEffect = F3(
 	});
 var $author$project$Structure$replaceChildrenForRangeReplace = F6(
 	function (role, rangeNew, pathAt, segment, tailSegments, parent) {
-		var replaceRangeAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A5($author$project$Structure$replaceRangeAtPathRec, role, rangeNew, pathAt, tailSegments, child) : child;
-			});
+		var replaceRangeAt = function (child) {
+			var _v1 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v1.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return child;
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? A5($author$project$Structure$replaceRangeAtPathRec, role, rangeNew, pathAt, tailSegments, child) : child;
+			}
+		};
 		var childrenNew = A2(
-			$elm$core$List$indexedMap,
+			$elm$core$List$map,
 			replaceRangeAt,
 			A2($author$project$Structure$getUnder, segment.role, parent));
 		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
@@ -9203,12 +9275,20 @@ var $author$project$Structure$addChildAtPathRec = F4(
 	});
 var $author$project$Structure$addChildrenAtPathRec = F5(
 	function (role, nodeNew, segment, tailSegments, parent) {
-		var insertAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A4($author$project$Structure$addChildAtPathRec, role, nodeNew, tailSegments, child) : child;
-			});
+		var insertAt = function (child) {
+			var _v0 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v0.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return child;
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? A4($author$project$Structure$addChildAtPathRec, role, nodeNew, tailSegments, child) : child;
+			}
+		};
 		var childrenNew = A2(
-			$elm$core$List$indexedMap,
+			$elm$core$List$map,
 			insertAt,
 			A2($author$project$Structure$getUnder, segment.role, parent));
 		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
@@ -9302,12 +9382,20 @@ var $author$project$Structure$insertChildAfterPathRec = F4(
 	});
 var $author$project$Structure$insertChildren = F5(
 	function (nodeNew, pathAfter, segment, tailSegments, parent) {
-		var insertAt = F2(
-			function (i, child) {
-				return _Utils_eq(i, segment.index) ? A4($author$project$Structure$insertChildAfterPathRec, nodeNew, pathAfter, tailSegments, child) : child;
-			});
+		var insertAt = function (child) {
+			var _v0 = $author$project$Structure$pathOf(child);
+			var pathSegmentsChild = _v0.a;
+			var mbLastSegment = $elm$core$List$head(
+				$elm$core$List$reverse(pathSegmentsChild));
+			if (mbLastSegment.$ === 'Nothing') {
+				return child;
+			} else {
+				var lastSegment = mbLastSegment.a;
+				return _Utils_eq(lastSegment.index, segment.index) ? A4($author$project$Structure$insertChildAfterPathRec, nodeNew, pathAfter, tailSegments, child) : child;
+			}
+		};
 		var childrenNew = A2(
-			$elm$core$List$indexedMap,
+			$elm$core$List$map,
 			insertAt,
 			A2($author$project$Structure$getUnder, segment.role, parent));
 		return A3($author$project$Structure$replaceUnderFeature, segment.role, childrenNew, parent);
@@ -9841,7 +9929,7 @@ var $author$project$Runtime$update = F2(
 		var domain = model.domain;
 		var editorModel = model.editorModel;
 		var updateEditorOnly = function (eMsg) {
-			var _v2 = A2($author$project$Editor$updateEditor, eMsg, model.editorModel);
+			var _v2 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
 			var editorModelUpdated = _v2.a;
 			var editorCmd = _v2.b;
 			return _Utils_Tuple2(
@@ -9890,18 +9978,9 @@ var $author$project$Runtime$update = F2(
 							model,
 							{domain: domainNew, editorModel: editorModelNew});
 					} else {
-						var rootENew = A2($author$project$Editor$persistVertexPositions, editorModelUpdated.eRoot, editorModelUpdated.eRoot);
-						var graphsDiffer = !A2($author$project$Editor$graphComparer, editorModel.eRoot, rootENew);
-						var mbSimulNew = A2(
-							$elm$core$Maybe$andThen,
-							updateSimul(graphsDiffer),
-							editorModelUpdated.mbSimulation);
-						var editorModelNew = _Utils_update(
-							editorModelUpdated,
-							{eRoot: rootENew, mbSimulation: mbSimulNew});
 						return _Utils_update(
 							model,
-							{editorModel: editorModelNew});
+							{editorModel: editorModelUpdated});
 					}
 				}();
 				return _Utils_Tuple2(
@@ -11650,6 +11729,6 @@ var $author$project$Runtime$projection = F2(
 		return $elm$browser$Browser$element(
 			{init: init, subscriptions: $author$project$Runtime$subscriptions, update: $author$project$Runtime$update, view: $author$project$Runtime$view});
 	});
-var $author$project$Statemachine$main = A2($author$project$Runtime$projection, $author$project$Statemachine$mrsHsSecretCompartment, $author$project$Statemachine$editor);
+var $author$project$Statemachine$main = A2($author$project$Runtime$projection, $author$project$Statemachine$bigDemo, $author$project$Statemachine$editor);
 _Platform_export({'Statemachine':{'init':$author$project$Statemachine$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));

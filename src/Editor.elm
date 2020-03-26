@@ -630,12 +630,12 @@ tickGraphSimulations editorModel =
             case editorModel.mbSimulation of
                 Nothing ->
                     let
-                        verticies =
+                        vertices =
                             nodesOf (ContentCell VertexCell) cellGraph
 
                         forces =
                             [ Force.customLinks 1 <| customEdgeForcesFromGraph cellGraph
-                            , Force.manyBodyStrength -500 <| List.map (\v -> pathAsIdFromNode v) <| verticies
+                            , Force.manyBodyStrength -500 <| List.map (\v -> pathAsIdFromNode v) <| vertices
                             , Force.center 400 300
                             ]
                     in
@@ -646,7 +646,7 @@ tickGraphSimulations editorModel =
                         pathToGraph =
                             pathOf cellGraph
 
-                        verticies =
+                        vertices =
                             nodesOf (ContentCell VertexCell) cellGraph
 
                         edges =
@@ -658,7 +658,7 @@ tickGraphSimulations editorModel =
                                 |> addFloat roleY e.y
 
                         entities =
-                            List.indexedMap (\i v -> forceEntityFromVertex i v) verticies
+                            List.indexedMap (\i v -> forceEntityFromVertex i v) vertices
 
                         --d2 = Debug.log "Input Force.tick" "(x, y) (vx, vy)"
                         --d = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
@@ -1851,7 +1851,6 @@ keyFromDir dir =
             "ArrowRight"
 
 
-
 inputEffectMap : Node (Cell a) -> List (EffectCell a) -> Dict.Dict String (Msg a)
 inputEffectMap cell effects =
     List.foldl
@@ -2158,7 +2157,7 @@ fromToPairs cellGraph =
 persistVertexPositions : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
 persistVertexPositions eRootOld eRootNew =
     let
-        verticiesOld =
+        verticesOld =
             nodesOf (ContentCell VertexCell) eRootOld
 
         persistVertexPos vOld rootNew =
@@ -2183,10 +2182,11 @@ persistVertexPositions eRootOld eRootNew =
 
                         rootNew2 =
                             updatePropertyByPath rootNew1 (pathOf vOld) ( roleY, asPFloat y )
+
                     in
                     rootNew2
     in
-    List.foldl persistVertexPos eRootNew verticiesOld
+    List.foldl persistVertexPos eRootNew verticesOld
 
 
 graphComparer : Node (Cell a) -> Node (Cell a) -> Bool
@@ -2214,7 +2214,7 @@ graphComparer lRoot rRoot =
                     nodesOf (ContentCell VertexCell) lGraph
                         |> List.sortBy (\v -> pathAsIdFromNode v)
 
-                rVerticies =
+                rVertices =
                     nodesOf (ContentCell VertexCell) rGraph
                         |> List.sortBy (\v -> pathAsIdFromNode v)
 
@@ -2227,7 +2227,7 @@ graphComparer lRoot rRoot =
                         |> List.sortBy (\e -> pathAsIdFromNode e)
 
                 flatIsEqual =
-                    flatNodeListComparer (Just []) lVertices rVerticies
+                    flatNodeListComparer (Just []) lVertices rVertices
                         && flatNodeListComparer (Just []) lEdges rEdges
 
                 lFromTo =
@@ -2239,7 +2239,7 @@ graphComparer lRoot rRoot =
                 numOfRealEdgesIsEqual =
                     List.length lFromTo == List.length rFromTo
             in
-            if List.length lVertices /= List.length rVerticies || List.length lEdges /= List.length rEdges then
+            if List.length lVertices /= List.length rVertices || List.length lEdges /= List.length rEdges then
                 False
 
             else if flatIsEqual == False then

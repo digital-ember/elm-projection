@@ -92,10 +92,11 @@ subscriptions model =
 update : Msg a -> Model a -> ( Model a, Cmd (Msg a) )
 update msg ({ domain, editorModel } as model) =
     let
+
         updateEditorOnly eMsg =
             let
                 ( editorModelUpdated, editorCmd ) =
-                    updateEditor eMsg model.editorModel
+                    updateEditor eMsg editorModel
             in
             ( { model | editorModel = editorModelUpdated }, Cmd.map EditorMsg editorCmd )
     in
@@ -147,21 +148,7 @@ update msg ({ domain, editorModel } as model) =
                         { model | domain = domainNew, editorModel = editorModelNew }
 
                     else
-                        let
-                            rootENew =
-                                persistVertexPositions editorModelUpdated.eRoot editorModelUpdated.eRoot
-
-                            graphsDiffer =
-                                graphComparer editorModel.eRoot rootENew == False
-
-                            mbSimulNew =
-                                editorModelUpdated.mbSimulation
-                                    |> Maybe.andThen (updateSimul graphsDiffer)
-
-                            editorModelNew =
-                                { editorModelUpdated | eRoot = rootENew, mbSimulation = mbSimulNew }
-                        in
-                        { model | editorModel = editorModelNew }
+                        { model | editorModel = editorModelUpdated }
             in
             ( modelNew, Cmd.map EditorMsg editorCmd )
 

@@ -18,7 +18,7 @@ type Domain
 
 main : Program () (R.Model Domain) (R.Msg Domain)
 main =
-    R.projection mrsHsSecretCompartment editor
+    R.projection bigDemo editor
 
 
 emptyStatemachine : S.Node Domain
@@ -47,7 +47,7 @@ editorStatemachine sm =
             )
         |> E.with
             (E.graphCell
-                |> E.withRange (editorStatesVerticies sm)
+                |> E.withRange (editorStatesvertices sm)
                 |> E.withRange (editorTransitionsEdges sm)
             )
 
@@ -175,8 +175,8 @@ editorTransition transition =
             )
 
 
-editorStatesVerticies : S.Node Domain -> List (S.Node (E.Cell Domain))
-editorStatesVerticies sm =
+editorStatesvertices : S.Node Domain -> List (S.Node (E.Cell Domain))
+editorStatesvertices sm =
     List.map editorStateVertex <| S.getUnderDefault sm
 
 
@@ -311,3 +311,53 @@ mrsHsSecretCompartment =
             , S.createNode State
                 |> S.addText S.roleName "unlockedPanel"
             ]
+
+
+bigDemo : S.Node Domain
+bigDemo =
+    S.createRoot Statemachine
+        |> S.addText S.roleName "Many states"
+        |> S.addRangeToDefault
+            [ createState "0" [ "1", "2", "3" ]
+            , createState "1" [ "3", "4" ]
+            , createState "2" [ ]
+            , createState "3" [ "8", "5", "6" ]
+            , createState "4" [ "3" ]
+            , createState "5" [ "13", "24" ]
+            , createState "6" [ "12"]
+            , createState "7" [ "7", "8", "9", "19" ]
+            , createState "8" [ "14" ]
+            , createState "9" [ "20", "10" ]
+            , createState "10" [ "2" ]
+
+            , createState "11" [ "6", "8" ]
+            , createState "12" [ "3", "9", "11" ]
+            , createState "13" [ "15" ]
+            , createState "14" [ "16" ]
+            , createState "15" [ "17", "22" ]
+            , createState "16" [ "23" ]
+            , createState "17" [ "21", "5" ]
+            , createState "18" [ "19", "8" ]
+            , createState "19" [ "18", "24" ]
+            , createState "20" [ "4" ]
+            , createState "21" [ ]
+            , createState "22" [ ]
+            , createState "23" [ "7", "1" ]
+            , createState "24" [ "3" ]
+            ]
+
+
+createState : String -> List String -> S.Node Domain
+createState name targets =
+
+    S.createNode State
+        |> S.addText S.roleName name
+        |> S.addRangeToDefault (List.map createTransition targets)
+
+
+createTransition : String -> S.Node Domain
+createTransition name =
+    (S.createNode Transition
+        |> S.addText roleEventRef (name ++ "-event")
+        |> S.addText roleStateRef name
+    )
