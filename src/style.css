@@ -3,7 +3,7 @@
   z-index: 1;
   top: 0;
   overflow-x: hidden;
-  padding: 2%;
+  padding: 1%;
 }
 
 .top {
@@ -20,16 +20,16 @@
 /* Control the left side */
 .left {
   left: 0;
+  border-right: solid;
   position: fixed;
   height: 100%;
-  width: 38%;
+  width: 48%;
 }
 
 /* Control the right side */
 .right {
   right: 0;
-  border-left: solid;
   position: fixed;
     height: 100%;
-    width: 58%;
+    width: 48%;
 }

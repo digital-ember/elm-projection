@@ -34,17 +34,24 @@ type Msg a
 
 
 projection : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
-projection rootD xform =
+projection dRoot xform =
     let
-        rootDWithPaths =
-            rootD |> updatePaths
+        dRootWithPaths =
+            dRoot |> updatePaths
+
+        domain =
+            Domain dRootWithPaths xform
+
+        eRoot =
+            runDomainXform domain
+
+        initialModel =
+            { domain = domain
+            , editorModel = initEditorModel dRootWithPaths eRoot
+            }
 
         init () =
-            ( { domain = Domain rootDWithPaths xform
-              , editorModel = initEditorModel rootDWithPaths (xform rootDWithPaths |> griddify |> updatePaths)
-              }
-            , Cmd.none
-            )
+            ( initialModel, Cmd.none )
     in
     Browser.element
         { init = init
@@ -57,9 +64,13 @@ projection rootD xform =
 subscriptions : Model a -> Sub (Msg a)
 subscriptions model =
     let
+        tickSub =
+            Tick Editor.Tick |> Browser.Events.onAnimationFrame
+
         mouseMoveSub =
-            Browser.Events.onMouseMove
-                (JsonD.map (\mpos -> MouseMove (Editor.MouseMove mpos)) mousePosition)
+            JsonD.map Editor.MouseMove mousePosition
+                |> JsonD.map EditorMsg
+                |> Browser.Events.onMouseMove
 
         graphSubs =
             case model.editorModel.drag of
@@ -70,19 +81,20 @@ subscriptions model =
                                 []
 
                             else
-                                [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
+                                [ tickSub ]
 
                         Nothing ->
                             if model.editorModel.runSimulation then
-                                [ Browser.Events.onAnimationFrame (Tick Editor.Tick) ]
+                                [ tickSub ]
 
                             else
                                 []
 
                 Just _ ->
-                    [ Browser.Events.onMouseUp
-                        (JsonD.map (\mpos -> MouseUp (Editor.MouseUp mpos)) mousePosition)
-                    , Browser.Events.onAnimationFrame (Tick Editor.Tick)
+                    [ JsonD.map Editor.MouseUp mousePosition
+                        |> JsonD.map EditorMsg
+                        |> Browser.Events.onMouseUp
+                    , tickSub
                     ]
     in
     Sub.batch
@@ -92,7 +104,6 @@ subscriptions model =
 update : Msg a -> Model a -> ( Model a, Cmd (Msg a) )
 update msg ({ domain, editorModel } as model) =
     let
-
         updateEditorOnly eMsg =
             let
                 ( editorModelUpdated, editorCmd ) =
@@ -116,10 +127,7 @@ update msg ({ domain, editorModel } as model) =
                     updateEditor eMsg editorModel
 
                 updateSimul graphsDiffer simul =
-                    if Force.isCompleted simul then
-                        Nothing
-
-                    else if graphsDiffer then
+                    if Force.isCompleted simul || graphsDiffer then
                         Nothing
 
                     else
@@ -143,9 +151,16 @@ update msg ({ domain, editorModel } as model) =
                                     |> Maybe.andThen (updateSimul graphsDiffer)
 
                             editorModelNew =
-                                { editorModelUpdated | eRoot = rootENew, mbSimulation = mbSimulNew, runSimulation = graphsDiffer }
+                                { editorModelUpdated
+                                    | eRoot = rootENew
+                                    , mbSimulation = mbSimulNew
+                                    , runSimulation = graphsDiffer
+                                }
                         in
-                        { model | domain = domainNew, editorModel = editorModelNew }
+                        { model
+                            | domain = domainNew
+                            , editorModel = editorModelNew
+                        }
 
                     else
                         { model | editorModel = editorModelUpdated }
@@ -155,10 +170,9 @@ update msg ({ domain, editorModel } as model) =
 
 view : Model a -> Html (Msg a)
 view model =
-    Html.map (\eMsg -> EditorMsg eMsg) (viewEditor model.editorModel.eRoot)
+    viewEditor model.editorModel.eRoot
+        |> Html.map EditorMsg
 
 
 runDomainXform domain =
     domain.xform domain.root |> griddify |> updatePaths
-
-

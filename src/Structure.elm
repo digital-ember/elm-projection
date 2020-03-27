@@ -62,12 +62,12 @@ import Dict as Dict exposing (Dict)
 import Maybe as Maybe
 
 
-type Node a
+type Node isa
     = Node
         { path : Path
-        , isa : a
+        , isa : isa
         , properties : Dict String Primitive
-        , features : Features a
+        , features : Features isa
         }
 
 
@@ -81,9 +81,9 @@ type alias PathSegment =
     }
 
 
-type alias Features a =
-    { default : List (Node a)
-    , custom : Dict String (List (Node a))
+type alias Features isa =
+    { default : List (Node isa)
+    , custom : Dict String (List (Node isa))
     }
 
 
@@ -111,12 +111,12 @@ roleDefault =
     Role "default"
 
 
-isaOf : Node a -> a
+isaOf : Node isa -> isa
 isaOf (Node { isa }) =
     isa
 
 
-isasUnderCustom : Role -> Node a -> List a
+isasUnderCustom : Role -> Node isa -> List isa
 isasUnderCustom role parent =
     let
         children =
@@ -129,12 +129,12 @@ isasUnderCustom role parent =
     List.map isaOf children
 
 
-pathOf : Node a -> Path
+pathOf : Node isa -> Path
 pathOf (Node { path }) =
     path
 
 
-pathIndiciesAsIdFromNode : Node a -> Int
+pathIndiciesAsIdFromNode : Node isa -> Int
 pathIndiciesAsIdFromNode (Node { path }) =
     pathIndiciesAsId path
 
@@ -150,7 +150,7 @@ pathIndexAsId segment idPart =
         ++ String.fromInt segment.index
 
 
-pathAsIdFromNode : Node a -> String
+pathAsIdFromNode : Node isa -> String
 pathAsIdFromNode (Node { path }) =
     pathAsId path
 
@@ -198,7 +198,7 @@ flatNodeComparer mbRoles l r =
         && compareProperties mbRoles l r
 
 
-compareProperties : Maybe (List Role) -> Node a -> Node a -> Bool
+compareProperties : Maybe (List Role) -> Node isa -> Node isa -> Bool
 compareProperties mbRoles l r =
     let
         filterRoles dict =
@@ -267,12 +267,12 @@ primitiveToString p =
             String.fromFloat f
 
 
-valueOf : Role -> Node a -> Maybe Primitive
+valueOf : Role -> Node isa -> Maybe Primitive
 valueOf (Role key) (Node { properties }) =
     Dict.get key properties
 
 
-tryTextOf : Role -> Node a -> Maybe String
+tryTextOf : Role -> Node isa -> Maybe String
 tryTextOf role node =
     valueOf role node
         |> Maybe.andThen
@@ -286,13 +286,13 @@ tryTextOf role node =
             )
 
 
-textOf : Role -> Node a -> String
+textOf : Role -> Node isa -> String
 textOf role node =
     tryTextOf role node
         |> Maybe.withDefault ""
 
 
-tryIntOf : Role -> Node a -> Maybe Int
+tryIntOf : Role -> Node isa -> Maybe Int
 tryIntOf role node =
     valueOf role node
         |> Maybe.andThen
@@ -306,13 +306,13 @@ tryIntOf role node =
             )
 
 
-intOf : Role -> Node a -> Int
+intOf : Role -> Node isa -> Int
 intOf role node =
     tryIntOf role node
         |> Maybe.withDefault 0
 
 
-tryFloatOf : Role -> Node a -> Maybe Float
+tryFloatOf : Role -> Node isa -> Maybe Float
 tryFloatOf role node =
     valueOf role node
         |> Maybe.andThen
@@ -326,13 +326,13 @@ tryFloatOf role node =
             )
 
 
-floatOf : Role -> Node a -> Float
+floatOf : Role -> Node isa -> Float
 floatOf role node =
     tryFloatOf role node
         |> Maybe.withDefault 0
 
 
-tryBoolOf : Role -> Node a -> Maybe Bool
+tryBoolOf : Role -> Node isa -> Maybe Bool
 tryBoolOf role node =
     valueOf role node
         |> Maybe.andThen
@@ -346,7 +346,7 @@ tryBoolOf role node =
             )
 
 
-boolOf : Role -> Node a -> Bool
+boolOf : Role -> Node isa -> Bool
 boolOf role node =
     tryBoolOf role node
         |> Maybe.withDefault False
@@ -361,24 +361,24 @@ roleFromString key =
     Role key
 
 
-emptyFeatures : Features a
+emptyFeatures : Features isa
 emptyFeatures =
     { default = []
     , custom = Dict.empty
     }
 
 
-createRoot : a -> Node a
+createRoot : isa -> Node isa
 createRoot isa =
     createNodeInternal roleRoot isa
 
 
-createNode : a -> Node a
+createNode : isa -> Node isa
 createNode isa =
     createNodeInternal roleEmpty isa
 
 
-createNodeInternal : Role -> a -> Node a
+createNodeInternal : Role -> isa -> Node isa
 createNodeInternal role isa =
     Node
         { isa = isa
@@ -408,37 +408,37 @@ asPFloat f =
     PFloat f
 
 
-addText : Role -> String -> Node a -> Node a
+addText : Role -> String -> Node isa -> Node isa
 addText role text node =
     addProperty ( role, PString text ) node
 
 
-addInt : Role -> Int -> Node a -> Node a
+addInt : Role -> Int -> Node isa -> Node isa
 addInt role value node =
     addProperty ( role, PInt value ) node
 
 
-addFloat : Role -> Float -> Node a -> Node a
+addFloat : Role -> Float -> Node isa -> Node isa
 addFloat role value node =
     addProperty ( role, PFloat value ) node
 
 
-addBool : Role -> Bool -> Node a -> Node a
+addBool : Role -> Bool -> Node isa -> Node isa
 addBool role value node =
     addProperty ( role, PBool value ) node
 
 
-addProperty : Property -> Node a -> Node a
+addProperty : Property -> Node isa -> Node isa
 addProperty ( Role role, value ) (Node data) =
     Node { data | properties = Dict.insert role value data.properties }
 
 
-addRangeToDefault : List (Node a) -> Node a -> Node a
+addRangeToDefault : List (Node isa) -> Node isa -> Node isa
 addRangeToDefault children parent =
     List.foldl addToDefault parent children
 
 
-addToDefault : Node a -> Node a -> Node a
+addToDefault : Node isa -> Node isa -> Node isa
 addToDefault child (Node ({ features } as data)) =
     let
         featuresNew =
@@ -452,12 +452,12 @@ addToDefault child (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-addRangeToCustom : Role -> List (Node a) -> Node a -> Node a
+addRangeToCustom : Role -> List (Node isa) -> Node isa -> Node isa
 addRangeToCustom role children parent =
     List.foldl (addToCustom role) parent children
 
 
-addToCustom : Role -> Node a -> Node a -> Node a
+addToCustom : Role -> Node isa -> Node isa -> Node isa
 addToCustom role child (Node ({ features } as data)) =
     let
         featuresNew =
@@ -466,7 +466,7 @@ addToCustom role child (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-insertAfterUnderDefault : Node a -> Path -> Node a -> Node a
+insertAfterUnderDefault : Node isa -> Path -> Node isa -> Node isa
 insertAfterUnderDefault child pathAfter (Node ({ features } as data)) =
     let
         featuresNew =
@@ -480,7 +480,7 @@ insertAfterUnderDefault child pathAfter (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-insertAfterUnderCustom : Role -> Node a -> Path -> Node a -> Node a
+insertAfterUnderCustom : Role -> Node isa -> Path -> Node isa -> Node isa
 insertAfterUnderCustom role child pathAfter (Node ({ features } as data)) =
     let
         appender child2 children =
@@ -492,7 +492,7 @@ insertAfterUnderCustom role child pathAfter (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-replaceNodeUnderDefault : Node a -> Path -> Node a -> Node a
+replaceNodeUnderDefault : Node isa -> Path -> Node isa -> Node isa
 replaceNodeUnderDefault child pathAfter (Node ({ features } as data)) =
     let
         featuresNew =
@@ -506,7 +506,7 @@ replaceNodeUnderDefault child pathAfter (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-replaceNodeUnderCustom : Role -> Node a -> Path -> Node a -> Node a
+replaceNodeUnderCustom : Role -> Node isa -> Path -> Node isa -> Node isa
 replaceNodeUnderCustom role child pathAfter (Node ({ features } as data)) =
     let
         appender child2 children =
@@ -518,7 +518,7 @@ replaceNodeUnderCustom role child pathAfter (Node ({ features } as data)) =
     Node { data | features = featuresNew }
 
 
-insertAfter : Path -> Node a -> Node a -> List (Node a) -> List (Node a)
+insertAfter : Path -> Node isa -> Node isa -> List (Node isa) -> List (Node isa)
 insertAfter pathAfter child candidate result =
     if pathAfter == pathOf candidate then
         result ++ [ candidate, child ]
@@ -527,7 +527,7 @@ insertAfter pathAfter child candidate result =
         result ++ [ candidate ]
 
 
-replaceAt : Path -> Node a -> Node a -> List (Node a) -> List (Node a)
+replaceAt : Path -> Node isa -> Node isa -> List (Node isa) -> List (Node isa)
 replaceAt pathAfter child candidate result =
     if pathAfter == pathOf candidate then
         result ++ [ child ]
@@ -536,7 +536,7 @@ replaceAt pathAfter child candidate result =
         result ++ [ candidate ]
 
 
-getUnder : Role -> Node a -> List (Node a)
+getUnder : Role -> Node isa -> List (Node isa)
 getUnder role node =
     if role == roleDefault then
         getUnderDefault node
@@ -545,23 +545,23 @@ getUnder role node =
         getUnderCustom role node
 
 
-getUnderDefault : Node a -> List (Node a)
+getUnderDefault : Node isa -> List (Node isa)
 getUnderDefault (Node { features }) =
     features.default
 
 
-getUnderCustom : Role -> Node a -> List (Node a)
+getUnderCustom : Role -> Node isa -> List (Node isa)
 getUnderCustom (Role key) (Node { features }) =
     Dict.get key features.custom
         |> Maybe.withDefault []
 
 
-getAllUnderCustoms : Node a -> List (Node a)
+getAllUnderCustoms : Node isa -> List (Node isa)
 getAllUnderCustoms (Node { features }) =
     Dict.values features.custom |> List.concat
 
 
-addRangeAtPath : Role -> List (Node a) -> Path -> Node a -> Node a
+addRangeAtPath : Role -> List (Node isa) -> Path -> Node isa -> Node isa
 addRangeAtPath role range ((Path segments) as path) root =
     let
         (Role feature) =
@@ -581,7 +581,7 @@ addRangeAtPath role range ((Path segments) as path) root =
     List.foldl add root range
 
 
-addChildAtPath : Role -> Node a -> Path -> Node a -> Node a
+addChildAtPath : Role -> Node isa -> Path -> Node isa -> Node isa
 addChildAtPath role nodeNew path root =
     let
         (Path segmentsNoRoot) =
@@ -597,7 +597,7 @@ addChildAtPath role nodeNew path root =
     addChildAtPathRec roleToAdd nodeNew segmentsNoRoot root
 
 
-addChildAtPathRec : Role -> Node a -> List PathSegment -> Node a -> Node a
+addChildAtPathRec : Role -> Node isa -> List PathSegment -> Node isa -> Node isa
 addChildAtPathRec role nodeNew segments parent =
     case segments of
         [] ->
@@ -611,7 +611,7 @@ addChildAtPathRec role nodeNew segments parent =
             addChildrenAtPathRec role nodeNew segment tail parent
 
 
-addChildrenAtPathRec : Role -> Node a -> PathSegment -> List PathSegment -> Node a -> Node a
+addChildrenAtPathRec : Role -> Node isa -> PathSegment -> List PathSegment -> Node isa -> Node isa
 addChildrenAtPathRec role nodeNew segment tailSegments parent =
     let
         insertAt child =
@@ -640,7 +640,7 @@ addChildrenAtPathRec role nodeNew segment tailSegments parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-insertChildAfterPath : Node a -> Path -> Node a -> Node a
+insertChildAfterPath : Node isa -> Path -> Node isa -> Node isa
 insertChildAfterPath nodeNew path root =
     let
         (Path segmentsNoRoot) =
@@ -649,7 +649,7 @@ insertChildAfterPath nodeNew path root =
     insertChildAfterPathRec nodeNew path segmentsNoRoot root
 
 
-insertChildAfterPathRec : Node a -> Path -> List PathSegment -> Node a -> Node a
+insertChildAfterPathRec : Node isa -> Path -> List PathSegment -> Node isa -> Node isa
 insertChildAfterPathRec nodeNew pathAfter segments parent =
     case segments of
         { role } :: [] ->
@@ -666,7 +666,7 @@ insertChildAfterPathRec nodeNew pathAfter segments parent =
             parent
 
 
-insertChildren : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
+insertChildren : Node isa -> Path -> PathSegment -> List PathSegment -> Node isa -> Node isa
 insertChildren nodeNew pathAfter segment tailSegments parent =
     let
         insertAt child =
@@ -695,7 +695,7 @@ insertChildren nodeNew pathAfter segment tailSegments parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-replaceRangeAtPath : Role -> List (Node a) -> Path -> Node a -> Node a
+replaceRangeAtPath : Role -> List (Node isa) -> Path -> Node isa -> Node isa
 replaceRangeAtPath role rangeNew path root =
     let
         (Path segmentsNoRoot) =
@@ -704,7 +704,7 @@ replaceRangeAtPath role rangeNew path root =
     replaceRangeAtPathRec role rangeNew path segmentsNoRoot root
 
 
-replaceRangeAtPathRec : Role -> List (Node a) -> Path -> List PathSegment -> Node a -> Node a
+replaceRangeAtPathRec : Role -> List (Node isa) -> Path -> List PathSegment -> Node isa -> Node isa
 replaceRangeAtPathRec role rangeNew pathAt segments parent =
     case segments of
         [] ->
@@ -714,7 +714,7 @@ replaceRangeAtPathRec role rangeNew pathAt segments parent =
             replaceChildrenForRangeReplace role rangeNew pathAt segment tail parent
 
 
-replaceChildrenForRangeReplace : Role -> List (Node a) -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
+replaceChildrenForRangeReplace : Role -> List (Node isa) -> Path -> PathSegment -> List PathSegment -> Node isa -> Node isa
 replaceChildrenForRangeReplace role rangeNew pathAt segment tailSegments parent =
     let
         replaceRangeAt child =
@@ -743,7 +743,7 @@ replaceChildrenForRangeReplace role rangeNew pathAt segment tailSegments parent 
     replaceUnderFeature segment.role childrenNew parent
 
 
-replaceChildAtPath : Node a -> Path -> Node a -> Node a
+replaceChildAtPath : Node isa -> Path -> Node isa -> Node isa
 replaceChildAtPath nodeNew path root =
     let
         (Path segmentsNoRoot) =
@@ -752,7 +752,7 @@ replaceChildAtPath nodeNew path root =
     replaceChildAtPathRec nodeNew path segmentsNoRoot root
 
 
-replaceChildAtPathRec : Node a -> Path -> List PathSegment -> Node a -> Node a
+replaceChildAtPathRec : Node isa -> Path -> List PathSegment -> Node isa -> Node isa
 replaceChildAtPathRec nodeNew pathAt segments parent =
     case segments of
         { role } :: [] ->
@@ -769,7 +769,7 @@ replaceChildAtPathRec nodeNew pathAt segments parent =
             parent
 
 
-replaceChildrenForChildReplace : Node a -> Path -> PathSegment -> List PathSegment -> Node a -> Node a
+replaceChildrenForChildReplace : Node isa -> Path -> PathSegment -> List PathSegment -> Node isa -> Node isa
 replaceChildrenForChildReplace nodeNew pathAt segment tailSegments parent =
     let
         replaceChildAt child =
@@ -798,7 +798,7 @@ replaceChildrenForChildReplace nodeNew pathAt segment tailSegments parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-deleteNodeUnder : Path -> Node a -> Node a
+deleteNodeUnder : Path -> Node isa -> Node isa
 deleteNodeUnder path root =
     let
         (Path segmentsNoRoot) =
@@ -807,7 +807,7 @@ deleteNodeUnder path root =
     deleteNodeRec segmentsNoRoot root
 
 
-deleteNodeRec : List PathSegment -> Node a -> Node a
+deleteNodeRec : List PathSegment -> Node isa -> Node isa
 deleteNodeRec segments parent =
     case segments of
         segment :: [] ->
@@ -820,7 +820,7 @@ deleteNodeRec segments parent =
             parent
 
 
-deleteNodeNested : PathSegment -> List PathSegment -> Node a -> Node a
+deleteNodeNested : PathSegment -> List PathSegment -> Node isa -> Node isa
 deleteNodeNested segment tailSegments parent =
     let
         deleteRec child =
@@ -849,7 +849,7 @@ deleteNodeNested segment tailSegments parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-deleteNodeAt : PathSegment -> Node a -> Node a
+deleteNodeAt : PathSegment -> Node isa -> Node isa
 deleteNodeAt segment parent =
     let
         mbChildAt child =
@@ -882,7 +882,7 @@ deleteNodeAt segment parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-updatePropertyByPath : Node a -> Path -> ( Role, Primitive ) -> Node a
+updatePropertyByPath : Node isa -> Path -> ( Role, Primitive ) -> Node isa
 updatePropertyByPath root path kvp =
     let
         (Path segmentsNoRoot) =
@@ -891,7 +891,7 @@ updatePropertyByPath root path kvp =
     updatePropertyRec segmentsNoRoot kvp root
 
 
-updatePropertyRec : List PathSegment -> ( Role, Primitive ) -> Node a -> Node a
+updatePropertyRec : List PathSegment -> ( Role, Primitive ) -> Node isa -> Node isa
 updatePropertyRec segments kvp parent =
     case segments of
         [] ->
@@ -901,7 +901,7 @@ updatePropertyRec segments kvp parent =
             updateChildrenUnder segment tail kvp parent
 
 
-updateChildrenUnder : PathSegment -> List PathSegment -> ( Role, Primitive ) -> Node a -> Node a
+updateChildrenUnder : PathSegment -> List PathSegment -> ( Role, Primitive ) -> Node isa -> Node isa
 updateChildrenUnder segment tailSegments kvp parent =
     let
         updateAt child =
@@ -930,17 +930,24 @@ updateChildrenUnder segment tailSegments kvp parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-updateProperty : ( Role, Primitive ) -> Node a -> Node a
-updateProperty ( Role key, primitiveNew ) (Node data) =
+updateProperty : ( Role, Primitive ) -> Node isa -> Node isa
+updateProperty ( Role key, primitiveNew ) n =
+    let
+        (Node data) =
+            n
+
+        t =
+            Debug.log "updating" (pathAsId data.path ++ ": " ++ textOf (Role "text") n)
+    in
     Node { data | properties = Dict.insert key primitiveNew data.properties }
 
 
-updatePaths : Node a -> Node a
+updatePaths : Node isa -> Node isa
 updatePaths (Node data) =
     Node { data | features = addFeaturePath data.path data.features }
 
 
-addFeaturePath : Path -> Features a -> Features a
+addFeaturePath : Path -> Features isa -> Features isa
 addFeaturePath parentPath { default, custom } =
     let
         addPath (Path parentSegments) feature index (Node data) =
@@ -1001,7 +1008,7 @@ appendToPath ( feature, index ) (Path segments) =
 -- TREE NAVIGATION
 
 
-ancestorOf : Node a -> Path -> a -> Maybe (Node a)
+ancestorOf : Node isa -> Path -> isa -> Maybe (Node isa)
 ancestorOf root path isa =
     let
         mbParent =
@@ -1019,7 +1026,7 @@ ancestorOf root path isa =
                 ancestorOf root (pathOf parent) isa
 
 
-parentOf : Node a -> Path -> Maybe (Node a)
+parentOf : Node isa -> Path -> Maybe (Node isa)
 parentOf root path =
     let
         ( _, mbPathToParent ) =
@@ -1030,17 +1037,17 @@ parentOf root path =
         |> Maybe.andThen (nodeAtI root)
 
 
-previousSibling : Node a -> Path -> Maybe (Node a)
+previousSibling : Node isa -> Path -> Maybe (Node isa)
 previousSibling root path =
     sibling root path (-)
 
 
-nextSibling : Node a -> Path -> Maybe (Node a)
+nextSibling : Node isa -> Path -> Maybe (Node isa)
 nextSibling root path =
     sibling root path (+)
 
 
-sibling : Node a -> Path -> (Int -> Int -> Int) -> Maybe (Node a)
+sibling : Node isa -> Path -> (Int -> Int -> Int) -> Maybe (Node isa)
 sibling root path op =
     let
         (Path segmentsNoRoot) =
@@ -1066,7 +1073,7 @@ sibling root path op =
             nodeAtI root (parentSegments ++ [ lastNew ])
 
 
-nodeAt : Node a -> Path -> Maybe (Node a)
+nodeAt : Node isa -> Path -> Maybe (Node isa)
 nodeAt parent path =
     let
         (Path segmentsNoRoot) =
@@ -1075,7 +1082,7 @@ nodeAt parent path =
     nodeAtI parent segmentsNoRoot
 
 
-nodeAtI : Node a -> List PathSegment -> Maybe (Node a)
+nodeAtI : Node isa -> List PathSegment -> Maybe (Node isa)
 nodeAtI parent segments =
     case segments of
         segment :: tail ->
@@ -1114,7 +1121,7 @@ nodeAtI parent segments =
             Just parent
 
 
-nodesOf : a -> Node a -> List (Node a)
+nodesOf : isa -> Node isa -> List (Node isa)
 nodesOf isa root =
     nodesOfRec isa root []
 
@@ -1137,12 +1144,12 @@ nodesOfRec isa node result =
 -- UTILITIES
 
 
-appendTo : a -> List a -> List a
+appendTo : isa -> List isa -> List isa
 appendTo child list =
     List.reverse (child :: List.reverse list)
 
 
-updateCustomFeature : Role -> Node a -> (Node a -> List (Node a) -> List (Node a)) -> Dict String (List (Node a)) -> Dict String (List (Node a))
+updateCustomFeature : Role -> Node isa -> (Node isa -> List (Node isa) -> List (Node isa)) -> Dict String (List (Node isa)) -> Dict String (List (Node isa))
 updateCustomFeature (Role key) child appender custom =
     let
         updater mbChildren =
@@ -1157,7 +1164,7 @@ updateCustomFeature (Role key) child appender custom =
     Dict.update key updater custom
 
 
-replaceUnderFeature : Role -> List (Node a) -> Node a -> Node a
+replaceUnderFeature : Role -> List (Node isa) -> Node isa -> Node isa
 replaceUnderFeature role childrenNew (Node ({ features } as data)) =
     let
         (Role key) =

@@ -6552,6 +6552,18 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
+var $ianmackenzie$elm_geometry$Geometry$Types$Point2d = function (a) {
+	return {$: 'Point2d', a: a};
+};
+var $ianmackenzie$elm_geometry$Point2d$fromCoordinates = $ianmackenzie$elm_geometry$Geometry$Types$Point2d;
+var $ianmackenzie$elm_geometry$Point2d$origin = $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
+	_Utils_Tuple2(0, 0));
+var $author$project$Editor$initEditorModel = F2(
+	function (dRoot, eRoot) {
+		return {dRoot: dRoot, drag: $elm$core$Maybe$Nothing, eRoot: eRoot, mbSimulation: $elm$core$Maybe$Nothing, mousePos: $ianmackenzie$elm_geometry$Point2d$origin, runSimulation: true, runXform: true};
+	});
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Structure$tryBoolOf = F2(
 	function (role, node) {
 		return A2(
@@ -6608,28 +6620,78 @@ var $author$project$Editor$griddifyI = F2(
 			nodeNew);
 	});
 var $author$project$Editor$griddify = $author$project$Editor$griddifyI(false);
-var $ianmackenzie$elm_geometry$Geometry$Types$Point2d = function (a) {
-	return {$: 'Point2d', a: a};
-};
-var $ianmackenzie$elm_geometry$Point2d$fromCoordinates = $ianmackenzie$elm_geometry$Geometry$Types$Point2d;
-var $ianmackenzie$elm_geometry$Point2d$origin = $ianmackenzie$elm_geometry$Point2d$fromCoordinates(
-	_Utils_Tuple2(0, 0));
-var $author$project$Editor$initEditorModel = F2(
-	function (dRoot, eRoot) {
-		return {dRoot: dRoot, drag: $elm$core$Maybe$Nothing, eRoot: eRoot, mbSimulation: $elm$core$Maybe$Nothing, mousePos: $ianmackenzie$elm_geometry$Point2d$origin, runSimulation: true, runXform: true};
+var $elm$core$Dict$map = F2(
+	function (func, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return $elm$core$Dict$RBEmpty_elm_builtin;
+		} else {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			return A5(
+				$elm$core$Dict$RBNode_elm_builtin,
+				color,
+				key,
+				A2(func, key, value),
+				A2($elm$core$Dict$map, func, left),
+				A2($elm$core$Dict$map, func, right));
+		}
 	});
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Structure$addFeaturePath = F2(
+	function (parentPath, _v0) {
+		var _default = _v0._default;
+		var custom = _v0.custom;
+		var addPath = F4(
+			function (_v2, feature, index, _v3) {
+				var parentSegments = _v2.a;
+				var data = _v3.a;
+				var segmentNew = {
+					index: index,
+					role: $author$project$Structure$Role(feature)
+				};
+				var pathNew = $author$project$Structure$Path(
+					A2($author$project$Structure$appendTo, segmentNew, parentSegments));
+				return $author$project$Structure$Node(
+					_Utils_update(
+						data,
+						{
+							features: A2($author$project$Structure$addFeaturePath, pathNew, data.features),
+							path: pathNew
+						}));
+			});
+		var indexUpdater = function (feature) {
+			return $elm$core$List$indexedMap(
+				A2(addPath, parentPath, feature));
+		};
+		var customNew = A2($elm$core$Dict$map, indexUpdater, custom);
+		var _v1 = $author$project$Structure$roleDefault;
+		var strDefault = _v1.a;
+		var defaultNew = A2(indexUpdater, strDefault, _default);
+		return {custom: customNew, _default: defaultNew};
+	});
+var $author$project$Structure$updatePaths = function (_v0) {
+	var data = _v0.a;
+	return $author$project$Structure$Node(
+		_Utils_update(
+			data,
+			{
+				features: A2($author$project$Structure$addFeaturePath, data.path, data.features)
+			}));
+};
+var $author$project$Runtime$runDomainXform = function (domain) {
+	return $author$project$Structure$updatePaths(
+		$author$project$Editor$griddify(
+			domain.xform(domain.root)));
+};
+var $author$project$Runtime$EditorMsg = function (a) {
+	return {$: 'EditorMsg', a: a};
+};
 var $author$project$Editor$MouseMove = function (a) {
 	return {$: 'MouseMove', a: a};
 };
-var $author$project$Runtime$MouseMove = function (a) {
-	return {$: 'MouseMove', a: a};
-};
 var $author$project$Editor$MouseUp = function (a) {
-	return {$: 'MouseUp', a: a};
-};
-var $author$project$Runtime$MouseUp = function (a) {
 	return {$: 'MouseUp', a: a};
 };
 var $author$project$Editor$Tick = {$: 'Tick'};
@@ -7078,14 +7140,13 @@ var $elm$browser$Browser$Events$on = F3(
 var $elm$browser$Browser$Events$onMouseMove = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'mousemove');
 var $elm$browser$Browser$Events$onMouseUp = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'mouseup');
 var $author$project$Runtime$subscriptions = function (model) {
+	var tickSub = $elm$browser$Browser$Events$onAnimationFrame(
+		$author$project$Runtime$Tick($author$project$Editor$Tick));
 	var mouseMoveSub = $elm$browser$Browser$Events$onMouseMove(
 		A2(
 			$elm$json$Json$Decode$map,
-			function (mpos) {
-				return $author$project$Runtime$MouseMove(
-					$author$project$Editor$MouseMove(mpos));
-			},
-			$author$project$Editor$mousePosition));
+			$author$project$Runtime$EditorMsg,
+			A2($elm$json$Json$Decode$map, $author$project$Editor$MouseMove, $author$project$Editor$mousePosition)));
 	var graphSubs = function () {
 		var _v0 = model.editorModel.drag;
 		if (_v0.$ === 'Nothing') {
@@ -7093,16 +7154,10 @@ var $author$project$Runtime$subscriptions = function (model) {
 			if (_v1.$ === 'Just') {
 				var simulation = _v1.a;
 				return $gampleman$elm_visualization$Force$isCompleted(simulation) ? _List_Nil : _List_fromArray(
-					[
-						$elm$browser$Browser$Events$onAnimationFrame(
-						$author$project$Runtime$Tick($author$project$Editor$Tick))
-					]);
+					[tickSub]);
 			} else {
 				return model.editorModel.runSimulation ? _List_fromArray(
-					[
-						$elm$browser$Browser$Events$onAnimationFrame(
-						$author$project$Runtime$Tick($author$project$Editor$Tick))
-					]) : _List_Nil;
+					[tickSub]) : _List_Nil;
 			}
 		} else {
 			return _List_fromArray(
@@ -7110,21 +7165,14 @@ var $author$project$Runtime$subscriptions = function (model) {
 					$elm$browser$Browser$Events$onMouseUp(
 					A2(
 						$elm$json$Json$Decode$map,
-						function (mpos) {
-							return $author$project$Runtime$MouseUp(
-								$author$project$Editor$MouseUp(mpos));
-						},
-						$author$project$Editor$mousePosition)),
-					$elm$browser$Browser$Events$onAnimationFrame(
-					$author$project$Runtime$Tick($author$project$Editor$Tick))
+						$author$project$Runtime$EditorMsg,
+						A2($elm$json$Json$Decode$map, $author$project$Editor$MouseUp, $author$project$Editor$mousePosition))),
+					tickSub
 				]);
 		}
 	}();
 	return $elm$core$Platform$Sub$batch(
 		A2($elm$core$List$cons, mouseMoveSub, graphSubs));
-};
-var $author$project$Runtime$EditorMsg = function (a) {
-	return {$: 'EditorMsg', a: a};
 };
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
@@ -7517,11 +7565,20 @@ var $author$project$Structure$getUnder = F2(
 	function (role, node) {
 		return _Utils_eq(role, $author$project$Structure$roleDefault) ? $author$project$Structure$getUnderDefault(node) : A2($author$project$Structure$getUnderCustom, role, node);
 	});
+var $elm$core$Debug$log = _Debug_log;
 var $author$project$Structure$updateProperty = F2(
-	function (_v0, _v1) {
+	function (_v0, n) {
 		var key = _v0.a.a;
 		var primitiveNew = _v0.b;
+		var _v1 = n;
 		var data = _v1.a;
+		var t = A2(
+			$elm$core$Debug$log,
+			'updating',
+			$author$project$Structure$pathAsId(data.path) + (': ' + A2(
+				$author$project$Structure$textOf,
+				$author$project$Structure$Role('text'),
+				n)));
 		return $author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -7606,71 +7663,6 @@ var $author$project$Editor$persistVertexPositions = F2(
 			});
 		return A3($elm$core$List$foldl, persistVertexPos, eRootNew, verticesOld);
 	});
-var $elm$core$Dict$map = F2(
-	function (func, dict) {
-		if (dict.$ === 'RBEmpty_elm_builtin') {
-			return $elm$core$Dict$RBEmpty_elm_builtin;
-		} else {
-			var color = dict.a;
-			var key = dict.b;
-			var value = dict.c;
-			var left = dict.d;
-			var right = dict.e;
-			return A5(
-				$elm$core$Dict$RBNode_elm_builtin,
-				color,
-				key,
-				A2(func, key, value),
-				A2($elm$core$Dict$map, func, left),
-				A2($elm$core$Dict$map, func, right));
-		}
-	});
-var $author$project$Structure$addFeaturePath = F2(
-	function (parentPath, _v0) {
-		var _default = _v0._default;
-		var custom = _v0.custom;
-		var addPath = F4(
-			function (_v2, feature, index, _v3) {
-				var parentSegments = _v2.a;
-				var data = _v3.a;
-				var segmentNew = {
-					index: index,
-					role: $author$project$Structure$Role(feature)
-				};
-				var pathNew = $author$project$Structure$Path(
-					A2($author$project$Structure$appendTo, segmentNew, parentSegments));
-				return $author$project$Structure$Node(
-					_Utils_update(
-						data,
-						{
-							features: A2($author$project$Structure$addFeaturePath, pathNew, data.features),
-							path: pathNew
-						}));
-			});
-		var indexUpdater = function (feature) {
-			return $elm$core$List$indexedMap(
-				A2(addPath, parentPath, feature));
-		};
-		var customNew = A2($elm$core$Dict$map, indexUpdater, custom);
-		var _v1 = $author$project$Structure$roleDefault;
-		var strDefault = _v1.a;
-		var defaultNew = A2(indexUpdater, strDefault, _default);
-		return {custom: customNew, _default: defaultNew};
-	});
-var $author$project$Structure$updatePaths = function (_v0) {
-	var data = _v0.a;
-	return $author$project$Structure$Node(
-		_Utils_update(
-			data,
-			{
-				features: A2($author$project$Structure$addFeaturePath, data.path, data.features)
-			}));
-};
-var $author$project$Runtime$runDomainXform = function (domain) {
-	return $author$project$Structure$updatePaths(
-		$author$project$Editor$griddify(
-			domain.xform(domain.root)));
-};
 var $author$project$Editor$Drag = F3(
 	function (mousePosStart, vertexPosStart, path) {
 		return {mousePosStart: mousePosStart, path: path, vertexPosStart: vertexPosStart};
@@ -9952,7 +9944,7 @@ var $author$project$Runtime$update = F2(
 				var eMsg = msg.a;
 				var updateSimul = F2(
 					function (graphsDiffer, simul) {
-						return $gampleman$elm_visualization$Force$isCompleted(simul) ? $elm$core$Maybe$Nothing : (graphsDiffer ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(simul));
+						return ($gampleman$elm_visualization$Force$isCompleted(simul) || graphsDiffer) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(simul);
 					});
 				var _v1 = A2($author$project$Editor$updateEditor, eMsg, editorModel);
 				var editorModelUpdated = _v1.a;
@@ -10608,7 +10600,7 @@ var $author$project$Editor$vertexAnchorsForEdge = function (_v0) {
 		$ianmackenzie$elm_geometry$Direction2d$positiveX,
 		A2($ianmackenzie$elm_geometry$Direction2d$from, fPos, tPos));
 	var angle = $ianmackenzie$elm_geometry$Direction2d$toAngle(dir);
-	var sectorFromAngle = function (a) {
+	var sectorFromAngle = function (isa) {
 		return A2(
 			$elm$core$Maybe$withDefault,
 			0,
@@ -10624,7 +10616,7 @@ var $author$project$Editor$vertexAnchorsForEdge = function (_v0) {
 								var highest = _v2.b;
 								return ((_Utils_cmp($elm$core$Basics$pi + angle, lowest) > -1) && (_Utils_cmp($elm$core$Basics$pi + angle, highest) < 0)) ? $elm$core$Maybe$Just(i) : $elm$core$Maybe$Nothing;
 							}),
-						a))));
+						isa))));
 	};
 	var fSector = sectorFromAngle(fProps.angleAreas);
 	var tSector = sectorFromAngle(tProps.angleAreas);
@@ -11705,26 +11697,20 @@ var $author$project$Editor$viewEditor = function (root) {
 var $author$project$Runtime$view = function (model) {
 	return A2(
 		$elm$html$Html$map,
-		function (eMsg) {
-			return $author$project$Runtime$EditorMsg(eMsg);
-		},
+		$author$project$Runtime$EditorMsg,
 		$author$project$Editor$viewEditor(model.editorModel.eRoot));
 };
 var $author$project$Runtime$projection = F2(
-	function (rootD, xform) {
-		var rootDWithPaths = $author$project$Structure$updatePaths(rootD);
+	function (dRoot, xform) {
+		var dRootWithPaths = $author$project$Structure$updatePaths(dRoot);
+		var domain = A2($author$project$Runtime$Domain, dRootWithPaths, xform);
+		var eRoot = $author$project$Runtime$runDomainXform(domain);
+		var initialModel = {
+			domain: domain,
+			editorModel: A2($author$project$Editor$initEditorModel, dRootWithPaths, eRoot)
+		};
 		var init = function (_v0) {
-			return _Utils_Tuple2(
-				{
-					domain: A2($author$project$Runtime$Domain, rootDWithPaths, xform),
-					editorModel: A2(
-						$author$project$Editor$initEditorModel,
-						rootDWithPaths,
-						$author$project$Structure$updatePaths(
-							$author$project$Editor$griddify(
-								xform(rootDWithPaths))))
-				},
-				$elm$core$Platform$Cmd$none);
+			return _Utils_Tuple2(initialModel, $elm$core$Platform$Cmd$none);
 		};
 		return $elm$browser$Browser$element(
 			{init: init, subscriptions: $author$project$Runtime$subscriptions, update: $author$project$Runtime$update, view: $author$project$Runtime$view});

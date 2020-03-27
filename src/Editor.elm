@@ -60,9 +60,9 @@ import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
 import Vector2d as V2d exposing (Vector2d)
 
 
-type Cell a
+type Cell isa
     = ContentCell ContentCell
-    | EffectCell (EffectCell a)
+    | EffectCell (EffectCell isa)
 
 
 type ContentCell
@@ -79,17 +79,17 @@ type ContentCell
     | EdgeCell
 
 
-type EffectCell a
-    = InsertionEffect (InsertionEffectData a)
+type EffectCell isa
+    = InsertionEffect (InsertionEffectData isa)
     | DeletionEffect DeletionEffectData
     | InputEffect InputEffectData
     | NavSelectionEffect NavSelectionEffectData
-    | CreateScopeEffect (CreateScopeEffectData a)
+    | CreateScopeEffect (CreateScopeEffectData isa)
 
 
-type alias EditorModel a =
-    { dRoot : Node a
-    , eRoot : Node (Cell a)
+type alias EditorModel isa =
+    { dRoot : Node isa
+    , eRoot : Node (Cell isa)
     , mbSimulation : Maybe (Force.State String)
     , drag : Maybe Drag
     , mousePos : Point2d
@@ -112,9 +112,9 @@ type alias Drag =
     }
 
 
-type alias InsertionEffectData a =
+type alias InsertionEffectData isa =
     { path : Path
-    , nodeToInsert : Node a
+    , nodeToInsert : Node isa
     , isReplace : Bool
     , role : Role
     }
@@ -139,8 +139,8 @@ type alias NavSelectionEffectData =
     }
 
 
-type alias CreateScopeEffectData a =
-    { isa : a
+type alias CreateScopeEffectData isa =
+    { isa : isa
     , pathContextNode : Path
     , scopeProvider : Maybe (List String)
     }
@@ -153,10 +153,10 @@ type alias Selection =
     }
 
 
-type EffectGroup a
-    = InputEffectGroup (List (EffectCell a))
-    | KeyboardEffectGroup (List (EffectCell a))
-    | FocusEffectGroup (List (EffectCell a))
+type EffectGroup isa
+    = InputEffectGroup (List (EffectCell isa))
+    | KeyboardEffectGroup (List (EffectCell isa))
+    | FocusEffectGroup (List (EffectCell isa))
 
 
 type Orientation
@@ -164,16 +164,16 @@ type Orientation
     | Horiz
 
 
-type Msg a
+type Msg isa
     = NoOp
     | Swallow String
-    | NavSelection (EffectCell a)
-    | OnEnter (EffectCell a) (Node (Cell a))
-    | OnClick (EffectCell a) (Node (Cell a))
-    | OnBackspace (EffectCell a) (Node (Cell a))
-    | OnDelete (EffectCell a) (Node (Cell a))
-    | OnInput (EffectCell a) String
-    | UpdateScope (EffectCell a)
+    | NavSelection (EffectCell isa)
+    | OnEnter (EffectCell isa) (Node (Cell isa))
+    | OnClick (EffectCell isa) (Node (Cell isa))
+    | OnBackspace (EffectCell isa) (Node (Cell isa))
+    | OnDelete (EffectCell isa) (Node (Cell isa))
+    | OnInput (EffectCell isa) String
+    | UpdateScope (EffectCell isa)
     | Tick
     | DragStart Path
     | MouseMove Point2d
@@ -200,8 +200,8 @@ type alias MousePosition =
     Point2d
 
 
-type alias Entity a =
-    Force.Entity Int { value : Node (Cell a) }
+type alias Entity isa =
+    Force.Entity Int { value : Node (Cell isa) }
 
 
 type alias VertexProperties =
@@ -220,7 +220,7 @@ type alias VertexProperties =
 -- CREATION
 
 
-initEditorModel : Node a -> Node (Cell a) -> EditorModel a
+initEditorModel : Node isa -> Node (Cell isa) -> EditorModel isa
 initEditorModel dRoot eRoot =
     { dRoot = dRoot
     , eRoot = eRoot
@@ -232,18 +232,18 @@ initEditorModel dRoot eRoot =
     }
 
 
-rootCell : Node (Cell a)
+rootCell : Node (Cell isa)
 rootCell =
     createRoot (ContentCell RootCell)
 
 
-constantCell : String -> Node (Cell a)
+constantCell : String -> Node (Cell isa)
 constantCell constantValue =
     createNode (ContentCell ConstantCell)
         |> addText roleConstant constantValue
 
 
-refCell : a -> Role -> Node a -> Maybe (List String) -> Node (Cell a)
+refCell : isa -> Role -> Node isa -> Maybe (List String) -> Node (Cell isa)
 refCell target role nodeContext scopeProvider =
     let
         pathContext =
@@ -265,67 +265,67 @@ createRefScope nodeContext =
         |> List.map scopeCell
 
 
-inputCell : Role -> Node a -> Node (Cell a)
+inputCell : Role -> Node isa -> Node (Cell isa)
 inputCell role nodeContext =
     createNode (ContentCell InputCell)
         |> addText roleInput (textOf role nodeContext)
         |> withEffect (inputEffect (pathOf nodeContext) role)
 
 
-horizStackCell : Node (Cell a)
+horizStackCell : Node (Cell isa)
 horizStackCell =
     createNode (ContentCell StackCell)
         |> addBool roleIsHoriz True
 
 
-vertStackCell : Node (Cell a)
+vertStackCell : Node (Cell isa)
 vertStackCell =
     createNode (ContentCell StackCell)
         |> addBool roleIsHoriz False
 
 
-vertSplitCell : Node (Cell a)
+vertSplitCell : Node (Cell isa)
 vertSplitCell =
     createNode (ContentCell SplitCell)
 
 
-horizSplitCell : Node (Cell a)
+horizSplitCell : Node (Cell isa)
 horizSplitCell =
     createNode (ContentCell SplitCell)
         |> addBool roleIsHoriz True
 
 
-vertGridCell : Node (Cell a)
+vertGridCell : Node (Cell isa)
 vertGridCell =
     vertStackCell
         |> addBool roleIsGrid True
 
 
-placeholderCell : String -> Node (Cell a)
+placeholderCell : String -> Node (Cell isa)
 placeholderCell text =
     createNode (ContentCell PlaceholderCell)
         |> addText rolePlaceholder text
 
 
-buttonCell : String -> Node (Cell a)
+buttonCell : String -> Node (Cell isa)
 buttonCell text =
     createNode (ContentCell ButtonCell)
         |> addText roleText text
 
 
-graphCell : Node (Cell a)
+graphCell : Node (Cell isa)
 graphCell =
     createNode (ContentCell GraphCell)
 
 
-vertexCell : Role -> Node a -> Node (Cell a)
+vertexCell : Role -> Node isa -> Node (Cell isa)
 vertexCell role nodeContext =
     createNode (ContentCell VertexCell)
         |> addText roleText (textOf role nodeContext)
         |> withEffect (inputEffect (pathOf nodeContext) role)
 
 
-edgeCell : Role -> ( String, String ) -> Node a -> Node (Cell a)
+edgeCell : Role -> ( String, String ) -> Node isa -> Node (Cell isa)
 edgeCell role ( from, to ) nodeContext =
     createNode (ContentCell EdgeCell)
         |> addText roleText (textOf role nodeContext)
@@ -333,22 +333,22 @@ edgeCell role ( from, to ) nodeContext =
         |> addText roleTo to
 
 
-with : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+with : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
 with node =
     addToDefault node
 
 
-withRange : List (Node (Cell a)) -> Node (Cell a) -> Node (Cell a)
+withRange : List (Node (Cell isa)) -> Node (Cell isa) -> Node (Cell isa)
 withRange children =
     addRangeToDefault children
 
 
-addIndent : Node (Cell a) -> Node (Cell a)
+addIndent : Node (Cell isa) -> Node (Cell isa)
 addIndent node =
     addBool roleIndent True node
 
 
-addMargin : MarginSide -> Int -> Node (Cell a) -> Node (Cell a)
+addMargin : MarginSide -> Int -> Node (Cell isa) -> Node (Cell isa)
 addMargin side space node =
     let
         key =
@@ -372,43 +372,43 @@ addMargin side space node =
 -- EFFECTS
 
 
-withEffect : EffectCell a -> Node (Cell a) -> Node (Cell a)
+withEffect : EffectCell isa -> Node (Cell isa) -> Node (Cell isa)
 withEffect effect =
     addToCustom roleEffects <|
         createNode <|
             EffectCell effect
 
 
-replacementEffect : Role -> Node a -> Node a -> EffectCell a
+replacementEffect : Role -> Node isa -> Node isa -> EffectCell isa
 replacementEffect role nodeContext nodeToInsert =
     InsertionEffect <|
         InsertionEffectData (pathOf nodeContext) nodeToInsert True role
 
 
-insertionEffect : Node a -> Node a -> EffectCell a
+insertionEffect : Node isa -> Node isa -> EffectCell isa
 insertionEffect nodeContext nodeToInsert =
     InsertionEffect <|
         InsertionEffectData (pathOf nodeContext) nodeToInsert False roleEmpty
 
 
-deletionEffect : Node a -> EffectCell a
+deletionEffect : Node isa -> EffectCell isa
 deletionEffect nodeContext =
     DeletionEffect <|
         DeletionEffectData (pathOf nodeContext) emptySelection
 
 
-inputEffect : Path -> Role -> EffectCell a
+inputEffect : Path -> Role -> EffectCell isa
 inputEffect path role =
     InputEffect <| InputEffectData path role
 
 
-createScopeEffect : a -> Path -> Maybe (List String) -> EffectCell a
+createScopeEffect : isa -> Path -> Maybe (List String) -> EffectCell isa
 createScopeEffect target path scopeProvider =
     CreateScopeEffect <|
         CreateScopeEffectData target path scopeProvider
 
 
-navEffects : Path -> List (Cell a)
+navEffects : Path -> List (Cell isa)
 navEffects path =
     [ navEffect U path
     , navEffect D path
@@ -417,7 +417,7 @@ navEffects path =
     ]
 
 
-navEffect : Dir -> Path -> Cell a
+navEffect : Dir -> Path -> Cell isa
 navEffect dir path =
     EffectCell <|
         NavSelectionEffect
@@ -435,7 +435,7 @@ emptySelection =
     }
 
 
-grouped : List (Cell a) -> List (EffectGroup a)
+grouped : List (Cell isa) -> List (EffectGroup isa)
 grouped effectCells =
     let
         updateGroup effect mbEffectList =
@@ -492,7 +492,7 @@ grouped effectCells =
 -- BEHAVIOR
 
 
-updateEditor : Msg a -> EditorModel a -> ( EditorModel a, Cmd (Msg a) )
+updateEditor : Msg isa -> EditorModel isa -> ( EditorModel isa, Cmd (Msg isa) )
 updateEditor msg editorModel =
     case msg of
         Tick ->
@@ -616,7 +616,7 @@ updateEditor msg editorModel =
             updateOnCreateScopeEffect editorModel effect
 
 
-tickGraphSimulations : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
+tickGraphSimulations : EditorModel isa -> ( EditorModel isa, Cmd (Msg isa) )
 tickGraphSimulations editorModel =
     let
         mbCellGraph =
@@ -690,7 +690,7 @@ tickGraphSimulations editorModel =
                     ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False }, Cmd.none )
 
 
-updateDrag : Node (Cell a) -> Drag -> Point2d -> Node (Cell a)
+updateDrag : Node (Cell isa) -> Drag -> Point2d -> Node (Cell isa)
 updateDrag eRoot drag mousePosCurrent =
     let
         delta =
@@ -705,7 +705,7 @@ updateDrag eRoot drag mousePosCurrent =
     updatePropertyByPath eRootTemp drag.path ( roleY, asPFloat yNew )
 
 
-updateOnInsertionEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( EditorModel a, Cmd (Msg a) )
+updateOnInsertionEffect : EditorModel isa -> EffectCell isa -> Node (Cell isa) -> ( EditorModel isa, Cmd (Msg isa) )
 updateOnInsertionEffect editorModel effect cellContext =
     case effect of
         InsertionEffect { path, nodeToInsert, isReplace, role } ->
@@ -727,7 +727,7 @@ updateOnInsertionEffect editorModel effect cellContext =
             noUpdate editorModel
 
 
-updateOnDeleteEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( EditorModel a, Cmd (Msg a) )
+updateOnDeleteEffect : EditorModel isa -> EffectCell isa -> Node (Cell isa) -> ( EditorModel isa, Cmd (Msg isa) )
 updateOnDeleteEffect editorModel effect cellContext =
     case effect of
         DeletionEffect ({ selection } as effectData) ->
@@ -749,7 +749,7 @@ updateOnDeleteEffect editorModel effect cellContext =
             noUpdate editorModel
 
 
-updateOnBackspaceEffect : EditorModel a -> EffectCell a -> Node (Cell a) -> ( EditorModel a, Cmd (Msg a) )
+updateOnBackspaceEffect : EditorModel isa -> EffectCell isa -> Node (Cell isa) -> ( EditorModel isa, Cmd (Msg isa) )
 updateOnBackspaceEffect editorModel effect cellContext =
     case effect of
         DeletionEffect ({ selection } as effectData) ->
@@ -771,7 +771,7 @@ updateOnBackspaceEffect editorModel effect cellContext =
             noUpdate editorModel
 
 
-updateOnInputEffect : EditorModel a -> EffectCell a -> String -> ( EditorModel a, Cmd (Msg a) )
+updateOnInputEffect : EditorModel isa -> EffectCell isa -> String -> ( EditorModel isa, Cmd (Msg isa) )
 updateOnInputEffect editorModel effect value =
     case effect of
         InputEffect { path, role } ->
@@ -786,7 +786,7 @@ updateOnInputEffect editorModel effect value =
             noUpdate editorModel
 
 
-updateOnNavEffect : EffectCell a -> Node (Cell a) -> Cmd (Msg a)
+updateOnNavEffect : EffectCell isa -> Node (Cell isa) -> Cmd (Msg isa)
 updateOnNavEffect effect editorModel =
     case effect of
         NavSelectionEffect navData ->
@@ -796,7 +796,7 @@ updateOnNavEffect effect editorModel =
             Cmd.none
 
 
-updateOnCreateScopeEffect : EditorModel a -> EffectCell a -> ( EditorModel a, Cmd (Msg a) )
+updateOnCreateScopeEffect : EditorModel isa -> EffectCell isa -> ( EditorModel isa, Cmd (Msg isa) )
 updateOnCreateScopeEffect editorModel effect =
     case effect of
         CreateScopeEffect scopeData ->
@@ -810,7 +810,7 @@ noUpdate editorModel =
     ( { editorModel | runXform = False }, Cmd.none )
 
 
-setScopeInformation : Node a -> CreateScopeEffectData a -> Node a
+setScopeInformation : Node isa -> CreateScopeEffectData isa -> Node isa
 setScopeInformation domainModel scopeData =
     let
         optionNodes =
@@ -824,7 +824,7 @@ setScopeInformation domainModel scopeData =
         domainModel
 
 
-tryDelete : EditorModel a -> DeletionEffectData -> (Node a -> Path -> Maybe (Node a)) -> Int -> Bool -> ( EditorModel a, Cmd (Msg a) )
+tryDelete : EditorModel isa -> DeletionEffectData -> (Node isa -> Path -> Maybe (Node isa)) -> Int -> Bool -> ( EditorModel isa, Cmd (Msg isa) )
 tryDelete editorModel { path } navFun textLength isAtDeletePos =
     if textLength == 0 then
         ( { editorModel | dRoot = deleteNodeUnder path editorModel.dRoot |> updatePaths, runXform = True }, Cmd.none )
@@ -845,7 +845,7 @@ tryDelete editorModel { path } navFun textLength isAtDeletePos =
         noUpdate editorModel
 
 
-updateSelectionOnEnter : Node (Cell a) -> Cmd (Msg a)
+updateSelectionOnEnter : Node (Cell isa) -> Cmd (Msg isa)
 updateSelectionOnEnter cellContext =
     Task.perform
         NavSelection
@@ -856,7 +856,7 @@ updateSelectionOnEnter cellContext =
                     Selection 0 0 ""
 
 
-updateSelection : Node (Cell a) -> NavSelectionEffectData -> Cmd (Msg a)
+updateSelection : Node (Cell isa) -> NavSelectionEffectData -> Cmd (Msg isa)
 updateSelection editorModel navData =
     let
         mbNodeContext =
@@ -873,7 +873,7 @@ updateSelection editorModel navData =
             updateSelectionByOrientation editorModel navData orientation
 
 
-updateSelectionByOrientation : Node (Cell a) -> NavSelectionEffectData -> Orientation -> Cmd (Msg a)
+updateSelectionByOrientation : Node (Cell isa) -> NavSelectionEffectData -> Orientation -> Cmd (Msg isa)
 updateSelectionByOrientation editorModel navData orientation =
     let
         mbCellSelected =
@@ -915,7 +915,7 @@ updateSelectionByOrientation editorModel navData orientation =
                     Cmd.none
 
 
-findPrevInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+findPrevInputCell : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
 findPrevInputCell root current =
     let
         mbPrev =
@@ -939,7 +939,7 @@ findPrevInputCell root current =
                     findPrevInputCell root parent
 
 
-findPrevInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
+findPrevInputCellRec : Node (Cell isa) -> Node (Cell isa) -> Maybe (Node (Cell isa))
 findPrevInputCellRec root prev =
     case isaOf prev of
         ContentCell InputCell ->
@@ -967,7 +967,7 @@ findPrevInputCellRec root prev =
             Just <| findPrevInputCell root prev
 
 
-findNextInputCell : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+findNextInputCell : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
 findNextInputCell root current =
     let
         mbNext =
@@ -991,7 +991,7 @@ findNextInputCell root current =
                     findNextInputCell root parent
 
 
-findNextInputCellRec : Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))
+findNextInputCellRec : Node (Cell isa) -> Node (Cell isa) -> Maybe (Node (Cell isa))
 findNextInputCellRec root next =
     case isaOf next of
         ContentCell InputCell ->
@@ -1019,7 +1019,7 @@ findNextInputCellRec root next =
             Just <| findNextInputCell root next
 
 
-findFirstInputCellRec : Node (Cell a) -> List (Node (Cell a)) -> (Node (Cell a) -> Node (Cell a) -> Maybe (Node (Cell a))) -> Maybe (Node (Cell a))
+findFirstInputCellRec : Node (Cell isa) -> List (Node (Cell isa)) -> (Node (Cell isa) -> Node (Cell isa) -> Maybe (Node (Cell isa))) -> Maybe (Node (Cell isa))
 findFirstInputCellRec root candidates recFun =
     case candidates of
         [] ->
@@ -1042,7 +1042,7 @@ findFirstInputCellRec root candidates recFun =
 -- EDITOR
 
 
-viewEditor : Node (Cell a) -> Html (Msg a)
+viewEditor : Node (Cell isa) -> Html (Msg isa)
 viewEditor root =
     div [ HtmlA.style "font-family" "Consolas" ] <|
         case isaOf root of
@@ -1053,7 +1053,7 @@ viewEditor root =
                 []
 
 
-viewCell : Node (Cell a) -> List (Html (Msg a))
+viewCell : Node (Cell isa) -> List (Html (Msg isa))
 viewCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1068,7 +1068,7 @@ viewCell cell =
             []
 
 
-viewContent : Node (Cell a) -> List (Html (Msg a)) -> List (Html (Msg a))
+viewContent : Node (Cell isa) -> List (Html (Msg isa)) -> List (Html (Msg isa))
 viewContent cell html =
     case isaOf cell of
         ContentCell ccell ->
@@ -1114,7 +1114,7 @@ viewContent cell html =
             []
 
 
-viewSplitCell : Node (Cell a) -> Html (Msg a)
+viewSplitCell : Node (Cell isa) -> Html (Msg isa)
 viewSplitCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1132,7 +1132,7 @@ viewSplitCell cell =
             text ""
 
 
-viewVertSplit : Node (Cell a) -> Html (Msg a)
+viewVertSplit : Node (Cell isa) -> Html (Msg isa)
 viewVertSplit cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1165,7 +1165,7 @@ viewVertSplit cell =
             text ""
 
 
-viewHorizSplit : Node (Cell a) -> Html (Msg a)
+viewHorizSplit : Node (Cell isa) -> Html (Msg isa)
 viewHorizSplit cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1198,7 +1198,7 @@ viewHorizSplit cell =
             text ""
 
 
-viewStackCell : Node (Cell a) -> Html (Msg a)
+viewStackCell : Node (Cell isa) -> Html (Msg isa)
 viewStackCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1216,7 +1216,7 @@ viewStackCell cell =
             text ""
 
 
-viewVertStackCell : Node (Cell a) -> Html (Msg a)
+viewVertStackCell : Node (Cell isa) -> Html (Msg isa)
 viewVertStackCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1233,7 +1233,7 @@ viewVertStackCell cell =
             text ""
 
 
-viewHorizStackCell : Node (Cell a) -> Html (Msg a)
+viewHorizStackCell : Node (Cell isa) -> Html (Msg isa)
 viewHorizStackCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1258,7 +1258,7 @@ viewHorizStackCell cell =
             text ""
 
 
-viewConstantCell : Node (Cell a) -> Html (Msg a)
+viewConstantCell : Node (Cell isa) -> Html (Msg isa)
 viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1278,7 +1278,7 @@ viewConstantCell cell =
             text ""
 
 
-viewInputCell : Node (Cell a) -> Html (Msg a)
+viewInputCell : Node (Cell isa) -> Html (Msg isa)
 viewInputCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1316,7 +1316,7 @@ viewInputCell cell =
             text ""
 
 
-viewPlaceholderCell : Node (Cell a) -> Html (Msg a)
+viewPlaceholderCell : Node (Cell isa) -> Html (Msg isa)
 viewPlaceholderCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1361,7 +1361,7 @@ viewPlaceholderCell cell =
             text ""
 
 
-viewButtonCell : Node (Cell a) -> Html (Msg a)
+viewButtonCell : Node (Cell isa) -> Html (Msg isa)
 viewButtonCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1386,7 +1386,7 @@ viewButtonCell cell =
             text ""
 
 
-viewRefCell : Node (Cell a) -> Html (Msg a)
+viewRefCell : Node (Cell isa) -> Html (Msg isa)
 viewRefCell cell =
     case isaOf cell of
         ContentCell _ ->
@@ -1439,7 +1439,7 @@ viewRefCell cell =
             text ""
 
 
-viewGraphCell : Node (Cell a) -> Html (Msg a)
+viewGraphCell : Node (Cell isa) -> Html (Msg isa)
 viewGraphCell cellGraph =
     svg
         [ HtmlA.style "width" "100%"
@@ -1454,12 +1454,12 @@ viewGraphCell cellGraph =
         ]
 
 
-viewEdgeCells : Node (Cell a) -> List (Html (Msg a))
+viewEdgeCells : Node (Cell isa) -> List (Html (Msg isa))
 viewEdgeCells cellGraph =
     List.map viewEdgeCell (fromToPairs cellGraph)
 
 
-viewEdgeCell : ( Node (Cell a), Node (Cell a) ) -> Html (Msg a)
+viewEdgeCell : ( Node (Cell isa), Node (Cell isa) ) -> Html (Msg isa)
 viewEdgeCell fromTo =
     let
         ( edgeStart, edgeEnd ) =
@@ -1471,7 +1471,7 @@ viewEdgeCell fromTo =
     edgeWithArrowHead edgeLine
 
 
-vertexAnchorsForEdge : ( Node (Cell a), Node (Cell a) ) -> ( Point2d, Point2d )
+vertexAnchorsForEdge : ( Node (Cell isa), Node (Cell isa) ) -> ( Point2d, Point2d )
 vertexAnchorsForEdge ( from, to ) =
     let
         fProps =
@@ -1498,8 +1498,8 @@ vertexAnchorsForEdge ( from, to ) =
         angle =
             D2d.toAngle dir
 
-        sectorFromAngle a =
-            a
+        sectorFromAngle isa =
+            isa
                 |> List.indexedMap
                     (\i ( lowest, highest ) ->
                         if (pi + angle) >= lowest && (pi + angle) < highest then
@@ -1532,7 +1532,7 @@ vertexAnchorsForEdge ( from, to ) =
     ( translate fSector fPos fProps 1, translate tSector tPos tProps -1 )
 
 
-vertexProperties : Node (Cell a) -> VertexProperties
+vertexProperties : Node (Cell isa) -> VertexProperties
 vertexProperties vertex =
     let
         noName =
@@ -1600,7 +1600,7 @@ vertexProperties vertex =
     }
 
 
-viewVertexCell : Node (Cell a) -> Html (Msg a)
+viewVertexCell : Node (Cell isa) -> Html (Msg isa)
 viewVertexCell cell =
     let
         vertexProps =
@@ -1630,7 +1630,7 @@ viewVertexCell cell =
         ]
 
 
-vertexContent : Node (Cell a) -> VertexProperties -> Html (Msg a)
+vertexContent : Node (Cell isa) -> VertexProperties -> Html (Msg isa)
 vertexContent cell { posContent, widthVertex, widthContent, heightContent, content } =
     foreignObject
         [ x <| P2d.xCoordinate posContent
@@ -1658,7 +1658,7 @@ vertexContent cell { posContent, widthVertex, widthContent, heightContent, conte
         ]
 
 
-vertexDragHandle : Node (Cell a) -> VertexProperties -> Html (Msg a)
+vertexDragHandle : Node (Cell isa) -> VertexProperties -> Html (Msg isa)
 vertexDragHandle cell { posVertex } =
     let
         attriutes =
@@ -1687,7 +1687,7 @@ vertexDragHandle cell { posVertex } =
     circle attriutes []
 
 
-edgeWithArrowHead : LS2d.LineSegment2d -> Html (Msg a)
+edgeWithArrowHead : LS2d.LineSegment2d -> Html (Msg isa)
 edgeWithArrowHead lineSegment =
     let
         dir =
@@ -1736,7 +1736,7 @@ edgeWithArrowHead lineSegment =
         ]
 
 
-optionFromScope : Node (Cell a) -> Html (Msg a)
+optionFromScope : Node (Cell isa) -> Html (Msg isa)
 optionFromScope scopeElement =
     let
         scopeValue =
@@ -1747,7 +1747,7 @@ optionFromScope scopeElement =
         []
 
 
-divRowAttributes : Node (Cell a) -> List (Attribute (Msg a))
+divRowAttributes : Node (Cell isa) -> List (Attribute (Msg isa))
 divRowAttributes cell =
     if boolOf roleIsGrid cell then
         [ HtmlA.style "display" "table-row" ]
@@ -1756,7 +1756,7 @@ divRowAttributes cell =
         []
 
 
-divCellAttributes : Node (Cell a) -> List (Attribute (Msg a))
+divCellAttributes : Node (Cell isa) -> List (Attribute (Msg isa))
 divCellAttributes cell =
     if boolOf roleIsGrid cell then
         [ HtmlA.style "display" "table-cell" ]
@@ -1765,12 +1765,12 @@ divCellAttributes cell =
         []
 
 
-marginsAndPaddings : Node (Cell a) -> List (Attribute (Msg a))
+marginsAndPaddings : Node (Cell isa) -> List (Attribute (Msg isa))
 marginsAndPaddings cell =
     [ margins cell, paddings cell ]
 
 
-margins : Node (Cell a) -> Attribute (Msg a)
+margins : Node (Cell isa) -> Attribute (Msg isa)
 margins cell =
     let
         indentMarginLeft =
@@ -1795,12 +1795,12 @@ margins cell =
     HtmlA.style "margin" <| top ++ right ++ bottom ++ left
 
 
-paddings : Node (Cell a) -> Attribute (Msg a)
+paddings : Node (Cell isa) -> Attribute (Msg isa)
 paddings _ =
     HtmlA.style "padding" <| "0px 0px 0px 0px"
 
 
-inputCellAttributesFromEffects : Node (Cell a) -> List (Attribute (Msg a))
+inputCellAttributesFromEffects : Node (Cell isa) -> List (Attribute (Msg isa))
 inputCellAttributesFromEffects cell =
     let
         effectGroups =
@@ -1812,7 +1812,7 @@ inputCellAttributesFromEffects cell =
         |> List.filterMap identity
 
 
-attributeFromEffectGroup : Node (Cell a) -> EffectGroup a -> Maybe (Attribute (Msg a))
+attributeFromEffectGroup : Node (Cell isa) -> EffectGroup isa -> Maybe (Attribute (Msg isa))
 attributeFromEffectGroup cell effectGroup =
     case effectGroup of
         InputEffectGroup effects ->
@@ -1851,7 +1851,7 @@ keyFromDir dir =
             "ArrowRight"
 
 
-inputEffectMap : Node (Cell a) -> List (EffectCell a) -> Dict.Dict String (Msg a)
+inputEffectMap : Node (Cell isa) -> List (EffectCell isa) -> Dict.Dict String (Msg isa)
 inputEffectMap cell effects =
     List.foldl
         (\effect dict ->
@@ -1876,7 +1876,7 @@ inputEffectMap cell effects =
         effects
 
 
-effectAttributeFromKey : Dict.Dict String (Msg a) -> Attribute (Msg a)
+effectAttributeFromKey : Dict.Dict String (Msg isa) -> Attribute (Msg isa)
 effectAttributeFromKey dictKeyToMsg =
     let
         canHandle k =
@@ -1934,7 +1934,7 @@ effectAttributeFromKey dictKeyToMsg =
             JsonD.field "key" JsonD.string
 
 
-orientationOf : Node (Cell a) -> Node (Cell a) -> Maybe Orientation
+orientationOf : Node (Cell isa) -> Node (Cell isa) -> Maybe Orientation
 orientationOf root cell =
     case isaOf cell of
         ContentCell StackCell ->
@@ -1971,12 +1971,12 @@ decodeSelection =
         (JsonD.field "selectionDirection" JsonD.string)
 
 
-griddify : Node (Cell a) -> Node (Cell a)
+griddify : Node (Cell isa) -> Node (Cell isa)
 griddify =
     griddifyI False
 
 
-griddifyI : Bool -> Node (Cell a) -> Node (Cell a)
+griddifyI : Bool -> Node (Cell isa) -> Node (Cell isa)
 griddifyI isGridParent node =
     let
         nodeNew =
@@ -2012,7 +2012,7 @@ initialAngle =
     pi * (3 - sqrt 5)
 
 
-forceEntityFromVertex : Int -> Node (Cell a) -> Force.Entity String { value : Node (Cell a) }
+forceEntityFromVertex : Int -> Node (Cell isa) -> Force.Entity String { value : Node (Cell isa) }
 forceEntityFromVertex index cell =
     let
         mbX =
@@ -2052,13 +2052,13 @@ forceEntityFromVertex index cell =
     }
 
 
-dictNameToVertex : Node (Cell a) -> Dict.Dict String (Node (Cell a))
+dictNameToVertex : Node (Cell isa) -> Dict.Dict String (Node (Cell isa))
 dictNameToVertex cellGraph =
     nodesOf (ContentCell VertexCell) cellGraph
         |> List.foldl (\v d -> Dict.insert (textOf roleText v) v d) Dict.empty
 
 
-edgeForcesFromGraph : Node (Cell a) -> List ( String, String )
+edgeForcesFromGraph : Node (Cell isa) -> List ( String, String )
 edgeForcesFromGraph cellGraph =
     let
         edges =
@@ -2079,7 +2079,7 @@ edgeForcesFromGraph cellGraph =
     List.map idLookup edges
 
 
-customEdgeForcesFromGraph : Node (Cell a) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
+customEdgeForcesFromGraph : Node (Cell isa) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
 customEdgeForcesFromGraph cellGraph =
     let
         edges =
@@ -2123,7 +2123,7 @@ customEdgeForcesFromGraph cellGraph =
         |> List.filterMap identity
 
 
-fromToPairs : Node (Cell a) -> List ( Node (Cell a), Node (Cell a) )
+fromToPairs : Node (Cell isa) -> List ( Node (Cell isa), Node (Cell isa) )
 fromToPairs cellGraph =
     let
         edges =
@@ -2154,7 +2154,7 @@ fromToPairs cellGraph =
             )
 
 
-persistVertexPositions : Node (Cell a) -> Node (Cell a) -> Node (Cell a)
+persistVertexPositions : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
 persistVertexPositions eRootOld eRootNew =
     let
         verticesOld =
@@ -2189,7 +2189,7 @@ persistVertexPositions eRootOld eRootNew =
     List.foldl persistVertexPos eRootNew verticesOld
 
 
-graphComparer : Node (Cell a) -> Node (Cell a) -> Bool
+graphComparer : Node (Cell isa) -> Node (Cell isa) -> Bool
 graphComparer lRoot rRoot =
     let
         mbLGraph =
@@ -2252,7 +2252,7 @@ graphComparer lRoot rRoot =
                 True
 
 
-p2dFromCell : Node (Cell a) -> Point2d
+p2dFromCell : Node (Cell isa) -> Point2d
 p2dFromCell cell =
     P2d.fromCoordinates ( floatOf roleX cell, floatOf roleY cell )
 
