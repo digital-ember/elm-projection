@@ -7565,20 +7565,12 @@ var $author$project$Structure$getUnder = F2(
 	function (role, node) {
 		return _Utils_eq(role, $author$project$Structure$roleDefault) ? $author$project$Structure$getUnderDefault(node) : A2($author$project$Structure$getUnderCustom, role, node);
 	});
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$Structure$updateProperty = F2(
 	function (_v0, n) {
 		var key = _v0.a.a;
 		var primitiveNew = _v0.b;
 		var _v1 = n;
 		var data = _v1.a;
-		var t = A2(
-			$elm$core$Debug$log,
-			'updating',
-			$author$project$Structure$pathAsId(data.path) + (': ' + A2(
-				$author$project$Structure$textOf,
-				$author$project$Structure$Role('text'),
-				n)));
 		return $author$project$Structure$Node(
 			_Utils_update(
 				data,
@@ -7720,10 +7712,10 @@ var $author$project$Structure$nodeAtI = F2(
 		}
 	});
 var $author$project$Structure$nodeAt = F2(
-	function (parent, path) {
+	function (root, path) {
 		var _v0 = $author$project$Structure$dropRootSegment(path);
 		var segmentsNoRoot = _v0.a;
-		return A2($author$project$Structure$nodeAtI, parent, segmentsNoRoot);
+		return A2($author$project$Structure$nodeAtI, root, segmentsNoRoot);
 	});
 var $author$project$Structure$floatOf = F2(
 	function (role, node) {

@@ -660,15 +660,10 @@ tickGraphSimulations editorModel =
                         entities =
                             List.indexedMap (\i v -> forceEntityFromVertex i v) vertices
 
-                        --d2 = Debug.log "Input Force.tick" "(x, y) (vx, vy)"
-                        --d = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
                         ( newSimulationState, entitiesNew ) =
                             entities
                                 |> Force.tick simulation
 
-                        -- |> Debug.log "sim")
-                        --o2 = Debug.log "Output Force.tick" "(x, y) (vx, vy)"
-                        --o = List.map (\e -> ((e.x, e.y), (e.vx, e.vy))) entities |> Debug.log ""
                         childrenNew =
                             List.map addPosToCell entitiesNew
                                 ++ edges
@@ -2182,7 +2177,6 @@ persistVertexPositions eRootOld eRootNew =
 
                         rootNew2 =
                             updatePropertyByPath rootNew1 (pathOf vOld) ( roleY, asPFloat y )
-
                     in
                     rootNew2
     in

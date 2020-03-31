@@ -935,9 +935,6 @@ updateProperty ( Role key, primitiveNew ) n =
     let
         (Node data) =
             n
-
-        t =
-            Debug.log "updating" (pathAsId data.path ++ ": " ++ textOf (Role "text") n)
     in
     Node { data | properties = Dict.insert key primitiveNew data.properties }
 
@@ -1010,11 +1007,7 @@ appendToPath ( feature, index ) (Path segments) =
 
 ancestorOf : Node isa -> Path -> isa -> Maybe (Node isa)
 ancestorOf root path isa =
-    let
-        mbParent =
-            parentOf root path
-    in
-    case mbParent of
+    case parentOf root path of
         Nothing ->
             Nothing
 
@@ -1074,12 +1067,12 @@ sibling root path op =
 
 
 nodeAt : Node isa -> Path -> Maybe (Node isa)
-nodeAt parent path =
+nodeAt root path =
     let
         (Path segmentsNoRoot) =
             dropRootSegment path
     in
-    nodeAtI parent segmentsNoRoot
+    nodeAtI root segmentsNoRoot
 
 
 nodeAtI : Node isa -> List PathSegment -> Maybe (Node isa)
@@ -1089,11 +1082,15 @@ nodeAtI parent segments =
             let
                 mbChildAt child =
                     let
-                        (Path pathSegmentsChild) = pathOf child
-                        mbLastSegment = pathSegmentsChild |> List.reverse |> List.head
+                        (Path pathSegmentsChild) =
+                            pathOf child
+
+                        mbLastSegment =
+                            pathSegmentsChild |> List.reverse |> List.head
                     in
                     case mbLastSegment of
-                        Nothing -> Just child
+                        Nothing ->
+                            Just child
 
                         Just lastSegment ->
                             if lastSegment.index == segment.index then
