@@ -20,7 +20,7 @@ module Editor exposing
     , inputEffect
     , insertionEffect
     , mousePosition
-    , persistVertexPositions
+    , persistGraphInformation
     , placeholderCell
     , refCell
     , replacementEffect
@@ -50,10 +50,11 @@ import Json.Decode as JsonD
 import LineSegment2d as LS2d exposing (LineSegment2d)
 import Point2d as P2d exposing (Point2d)
 import Structure exposing (..)
+import Svg.Events
 import Task as Task
 import Triangle2d as T2d exposing (Triangle2d)
-import TypedSvg exposing (circle, g, rect, svg)
-import TypedSvg.Attributes exposing (fill, stroke)
+import TypedSvg exposing (circle, g, rect, svg, text_)
+import TypedSvg.Attributes exposing (color, fill, stroke, strokeDasharray)
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, y)
 import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Events as TsvgE
@@ -182,6 +183,26 @@ type Msg isa
     | MouseEnter Path
     | MouseLeave Path
     | ResizeVertex Dom.Element (Node (Cell isa))
+    | ShowGravity ShowGravityData
+    | HintGravity ShowGravityData
+    | ManipulateGravity ManipulationData
+
+
+type alias ShowGravityData =
+    { doShow : Bool
+    , path : Path
+    }
+
+
+type alias ManipulationData =
+    { manipulationKind : ManipulationKind
+    , path : Path
+    }
+
+
+type ManipulationKind
+    = Increase
+    | Decrease
 
 
 type Dir
@@ -229,6 +250,18 @@ initEditorModel dRoot eRoot =
     , runXform = True
     , runSimulation = True
     }
+
+
+initGravityX =
+    400
+
+
+initGravityY =
+    300
+
+
+initGravityStrength =
+    150
 
 
 rootCell : Node (Cell isa)
@@ -315,6 +348,9 @@ buttonCell text =
 graphCell : Node (Cell isa)
 graphCell =
     createNode (ContentCell GraphCell)
+        |> addFloat roleGravityStrength initGravityStrength
+        |> addFloat roleGravityX initGravityX
+        |> addFloat roleGravityY initGravityY
 
 
 vertexCell : String -> Node (Cell isa)
@@ -496,8 +532,13 @@ updateEditor msg editorModel =
         ResizeVertex element vertex ->
             let
                 eRootNew =
-                    updatePropertyByPath (pathOf vertex) ( roleWidth, asPFloat element.element.width ) editorModel.eRoot
-                        |> updatePropertyByPath (pathOf vertex) ( roleHeight, asPFloat element.element.height )
+                    updatePropertyByPath
+                        (pathOf vertex)
+                        ( roleWidth, asPFloat element.element.width )
+                        editorModel.eRoot
+                        |> updatePropertyByPath
+                            (pathOf vertex)
+                            ( roleHeight, asPFloat element.element.height )
             in
             ( { editorModel
                 | eRoot = eRootNew
@@ -626,6 +667,15 @@ updateEditor msg editorModel =
         UpdateScope effect ->
             updateOnCreateScopeEffect editorModel effect
 
+        ShowGravity showGravityData ->
+            updateOnShowGravity editorModel roleShowGravity showGravityData
+
+        HintGravity showGravityData ->
+            updateOnShowGravity editorModel roleHintGravity showGravityData
+
+        ManipulateGravity manipulationData ->
+            updateOnManipulateGravity editorModel manipulationData
+
 
 resizeCmd : Node (Cell isa) -> Cmd (Msg isa)
 resizeCmd root =
@@ -659,6 +709,26 @@ resizeCmd root =
         )
 
 
+simulationFromGraph graph =
+    let
+        vertices =
+            nodesOf (ContentCell VertexCell) graph
+
+        gravityX =
+            floatOf roleGravityX graph
+
+        gravityY =
+            floatOf roleGravityY graph
+
+        forces =
+            Force.center gravityX gravityY
+                :: [ Force.customLinks 1 <| customEdgeForcesFromGraph graph (floatOf roleGravityStrength graph)
+                   , Force.manyBodyStrength -500 <| List.map (\v -> pathAsIdFromNode v) <| vertices
+                   ]
+    in
+    Force.simulation forces
+
+
 tickGraphSimulations : EditorModel isa -> ( EditorModel isa, Cmd (Msg isa) )
 tickGraphSimulations editorModel =
     let
@@ -669,31 +739,25 @@ tickGraphSimulations editorModel =
         Nothing ->
             noUpdate editorModel
 
-        Just cellGraph ->
+        Just graph ->
             case editorModel.mbSimulation of
                 Nothing ->
                     let
-                        vertices =
-                            nodesOf (ContentCell VertexCell) cellGraph
-
-                        forces =
-                            [ Force.customLinks 1 <| customEdgeForcesFromGraph cellGraph
-                            , Force.manyBodyStrength -500 <| List.map (\v -> pathAsIdFromNode v) <| vertices
-                            , Force.center 400 300
-                            ]
+                        simulation =
+                            simulationFromGraph graph
                     in
-                    ( { editorModel | mbSimulation = Just <| Force.simulation forces, runXform = False }, resizeCmd editorModel.eRoot )
+                    ( { editorModel | mbSimulation = Just <| simulation, runXform = False }, resizeCmd editorModel.eRoot )
 
                 Just simulation ->
                     let
                         pathToGraph =
-                            pathOf cellGraph
+                            pathOf graph
 
                         vertices =
-                            nodesOf (ContentCell VertexCell) cellGraph
+                            nodesOf (ContentCell VertexCell) graph
 
                         edges =
-                            nodesOf (ContentCell EdgeCell) cellGraph
+                            nodesOf (ContentCell EdgeCell) graph
 
                         addPosToCell e =
                             e.value
@@ -712,7 +776,7 @@ tickGraphSimulations editorModel =
                                 ++ edges
 
                         cellGraphNew =
-                            replaceUnderFeature roleDefault childrenNew cellGraph
+                            replaceUnderFeature roleDefault childrenNew graph
 
                         eRootNew =
                             replaceChildAtPath cellGraphNew pathToGraph editorModel.eRoot
@@ -844,6 +908,56 @@ updateOnCreateScopeEffect editorModel effect =
             noUpdate editorModel
 
 
+updateOnShowGravity : EditorModel isa -> Role -> ShowGravityData -> ( EditorModel isa, Cmd (Msg isa) )
+updateOnShowGravity editorModel role showGravityData =
+    let
+        eRootNew =
+            updatePropertyByPath showGravityData.path ( role, asPBool showGravityData.doShow ) editorModel.eRoot
+    in
+    ( { editorModel | eRoot = eRootNew }, Cmd.none )
+
+
+updateOnManipulateGravity editorModel manipulationData =
+    let
+        mbGraphCell =
+            nodeAt editorModel.eRoot manipulationData.path
+    in
+    case mbGraphCell of
+        Nothing ->
+            noUpdate editorModel
+
+        Just graph ->
+            let
+                gravityStrengthNew =
+                    clamp 50 600 <|
+                        case manipulationData.manipulationKind of
+                            Increase ->
+                                floatOf roleGravityStrength graph + 10
+
+                            Decrease ->
+                                floatOf roleGravityStrength graph - 10
+
+                eRootNew =
+                    updatePropertyByPath manipulationData.path ( roleGravityStrength, asPFloat gravityStrengthNew ) editorModel.eRoot
+
+                ( runSimulationNew, mbSimulationNew ) =
+                    case editorModel.mbSimulation of
+                        Nothing ->
+                            ( True, Nothing )
+
+                        Just sim ->
+                            ( False, Just (simulationFromGraph graph) )
+            in
+            ( { editorModel
+                | eRoot = eRootNew
+                , runSimulation = runSimulationNew
+                , mbSimulation = mbSimulationNew
+              }
+            , Cmd.none
+            )
+
+
+noUpdate : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 noUpdate editorModel =
     ( { editorModel | runXform = False }, Cmd.none )
 
@@ -1479,17 +1593,110 @@ viewRefCell cell =
 
 viewGraphCell : Node (Cell isa) -> Html (Msg isa)
 viewGraphCell cellGraph =
+    let
+        hintGravity =
+            boolOf roleHintGravity cellGraph
+
+        gravity =
+            if hintGravity then
+                [ g [] <|
+                    [ viewGravity cellGraph ]
+                , g []
+                    [ text_
+                        [ x 10
+                        , y 20
+                        , fill <| Paint colorGravityPrimary
+                        ]
+                        [ text "Gravity Control Mode" ]
+                    ]
+                ]
+
+            else
+                []
+    in
     svg
         [ HtmlA.style "width" "100%"
         , HtmlA.style "height" "800px"
         , HtmlA.style "background-color" "AliceBlue"
+        , gravityOnMouseMove HintGravity (pathOf cellGraph)
         ]
-        [ g [] <|
+        ([ g [] <|
             viewEdgeCells cellGraph
-        , g [] <|
+         , g [] <|
             List.map viewVertexCell <|
                 nodesOf (ContentCell VertexCell) cellGraph
-        ]
+         ]
+            ++ gravity
+        )
+
+
+gravityOnMouseMove : (ShowGravityData -> Msg isa) -> Path -> Attribute (Msg isa)
+gravityOnMouseMove msg path =
+    Svg.Events.on "mousemove" <|
+        JsonD.map
+            (\shift ->
+                msg { doShow = shift, path = path }
+            )
+        <|
+            JsonD.field "shiftKey" JsonD.bool
+
+
+viewGravity : Node (Cell isa) -> TypedSvg.Core.Svg (Msg isa)
+viewGravity cellGraph =
+    let
+        onMouseOut =
+            Svg.Events.onMouseOut <| ShowGravity { doShow = False, path = pathOf cellGraph }
+
+        path =
+            pathOf cellGraph
+
+        radius =
+            abs (floatOf roleGravityStrength cellGraph) / 2
+    in
+    if boolOf roleShowGravity cellGraph then
+        circle
+            [ r radius
+            , cx <| floatOf roleGravityX cellGraph
+            , cy <| floatOf roleGravityY cellGraph
+            , stroke PaintNone
+            , strokeWidth 2
+            , fill <| Paint <| colorGravityPrimary
+            , Svg.Events.on "mousewheel" (decodeMouseEvent path)
+            , onMouseOut
+            , gravityOnMouseMove ShowGravity path
+            ]
+            []
+
+    else
+        circle
+            [ r radius
+            , cx <| floatOf roleGravityX cellGraph
+            , cy <| floatOf roleGravityY cellGraph
+            , stroke <| Paint colorGravityPrimary
+            , strokeWidth 2
+            , strokeDasharray "4"
+            , fill <| Paint <| Color.rgba 0 0 0 0
+            , onMouseOut
+            , gravityOnMouseMove ShowGravity path
+            ]
+            []
+
+
+decodeMouseEvent : Path -> JsonD.Decoder (Msg a)
+decodeMouseEvent path =
+    JsonD.map
+        (\dY ->
+            ManipulateGravity
+                { manipulationKind =
+                    if dY < 0 then
+                        Decrease
+
+                    else
+                        Increase
+                , path = path
+                }
+        )
+        (JsonD.field "deltaY" JsonD.float)
 
 
 viewEdgeCells : Node (Cell isa) -> List (Html (Msg isa))
@@ -1653,14 +1860,14 @@ vertexContent cell { posContent, widthVertex, heightVertex } =
         , width <| widthVertex - 20
         , height <| heightVertex - 20
         ]
-        <| viewCell cell
-
+    <|
+        viewCell cell
 
 
 vertexDragHandle : Node (Cell isa) -> VertexProperties -> Html (Msg isa)
 vertexDragHandle cell { posVertex } =
     let
-        attriutes =
+        attributes =
             [ r 5
             , cx <| P2d.xCoordinate posVertex
             , cy <| P2d.yCoordinate posVertex
@@ -1683,7 +1890,7 @@ vertexDragHandle cell { posVertex } =
                         [ TsvgE.onMouseEnter (MouseEnter (pathOf cell)) ]
                    )
     in
-    circle attriutes []
+    circle attributes []
 
 
 edgeWithArrowHead : LS2d.LineSegment2d -> Html (Msg isa)
@@ -2085,8 +2292,8 @@ edgeForcesFromGraph cellGraph =
     List.map idLookup edges
 
 
-customEdgeForcesFromGraph : Node (Cell isa) -> List { source : String, target : String, distance : Float, strength : Maybe Float }
-customEdgeForcesFromGraph cellGraph =
+customEdgeForcesFromGraph : Node (Cell isa) -> Float -> List { source : String, target : String, distance : Float, strength : Maybe Float }
+customEdgeForcesFromGraph cellGraph distance =
     let
         edges =
             nodesOf (ContentCell EdgeCell) cellGraph
@@ -2121,7 +2328,7 @@ customEdgeForcesFromGraph cellGraph =
                         Just
                             { source = source
                             , target = target
-                            , distance = 150
+                            , distance = distance
                             , strength = Nothing
                             }
     in
@@ -2158,6 +2365,55 @@ fromToPairs cellGraph =
                     ( Just from, Just to ) ->
                         Just ( from, to )
             )
+
+
+persistGraphInformation : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
+persistGraphInformation eRootOld eRootNew =
+    persistVertexPositions eRootOld eRootNew
+        |> persistGravityInformation eRootOld
+
+
+persistGravityInformation : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
+persistGravityInformation eRootOld eRootNew =
+    let
+        graphsOld =
+            nodesOf (ContentCell GraphCell) eRootOld
+
+        persistGravity gOld rootNew =
+            let
+                mbGravityStrength =
+                    tryFloatOf roleGravityStrength gOld
+
+                mbGravityX =
+                    tryFloatOf roleGravityX gOld
+
+                mbGravityY =
+                    tryFloatOf roleGravityY gOld
+
+                persistGravityStrength =
+                    case mbGravityStrength of
+                        Nothing ->
+                            rootNew
+
+                        Just strength ->
+                            updatePropertyByPath (pathOf gOld) ( roleGravityStrength, asPFloat strength ) rootNew
+
+                persistGravityPos root =
+                    case ( mbGravityX, mbGravityY ) of
+                        ( Nothing, _ ) ->
+                            root
+
+                        ( _, Nothing ) ->
+                            root
+
+                        ( Just x, Just y ) ->
+                            updatePropertyByPath (pathOf gOld) ( roleGravityX, asPFloat x ) root
+                                |> updatePropertyByPath (pathOf gOld) ( roleGravityY, asPFloat y )
+            in
+            persistGravityStrength
+                |> persistGravityPos
+    in
+    List.foldl persistGravity eRootNew graphsOld
 
 
 persistVertexPositions : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
@@ -2264,6 +2520,10 @@ colorGraphBackground =
     Color.rgb255 240 248 255
 
 
+colorGravityPrimary =
+    Color.rgba 1.0 0 0 0.5
+
+
 
 -- ROLES
 
@@ -2362,3 +2622,23 @@ roleGrabbed =
 
 roleMouseEnter =
     roleFromString "mouseEnter"
+
+
+roleShowGravity =
+    roleFromString "showGravity"
+
+
+roleGravityStrength =
+    roleFromString "gravityStrength"
+
+
+roleGravityX =
+    roleFromString "gravityX"
+
+
+roleGravityY =
+    roleFromString "gravityY"
+
+
+roleHintGravity =
+    roleFromString "hintGravity"

@@ -133,7 +133,7 @@ update msg ({ domain, editorModel } as model) =
                     else
                         Just simul
 
-                (modelNew, resizeCmds) =
+                ( modelNew, resizeCmds ) =
                     if editorModelUpdated.runXform then
                         let
                             domainNew =
@@ -141,7 +141,7 @@ update msg ({ domain, editorModel } as model) =
 
                             rootENew =
                                 runDomainXform domainNew
-                                    |> persistVertexPositions editorModelUpdated.eRoot
+                                    |> persistGraphInformation editorModelUpdated.eRoot
 
                             graphsDiffer =
                                 graphComparer editorModel.eRoot rootENew == False
@@ -157,15 +157,27 @@ update msg ({ domain, editorModel } as model) =
                                     , runSimulation = graphsDiffer
                                 }
                         in
-                        ({ model
+                        ( { model
                             | domain = domainNew
                             , editorModel = editorModelNew
-                        }, resizeCmd editorModelNew.eRoot )
+                          }
+                        , resizeCmd editorModelNew.eRoot
+                        )
 
                     else
-                        ({ model | editorModel = editorModelUpdated }, Cmd.none)
+                        let
+                            mbSimulNew =
+                                editorModelUpdated.mbSimulation
+                                    |> Maybe.andThen (updateSimul False)
+
+                            editorModelNew =
+                                { editorModelUpdated
+                                    | mbSimulation = mbSimulNew
+                                }
+                        in
+                        ( { model | editorModel = editorModelNew }, Cmd.none )
             in
-            ( modelNew, Cmd.batch <| [(Cmd.map EditorMsg editorCmd), (Cmd.map EditorMsg resizeCmds)] )
+            ( modelNew, Cmd.batch <| [ Cmd.map EditorMsg editorCmd, Cmd.map EditorMsg resizeCmds ] )
 
 
 view : Model a -> Html (Msg a)

@@ -47,7 +47,7 @@ editorStatemachine sm =
             )
         |> E.with
             (E.graphCell
-                |> E.withRange (editorStatesvertices sm)
+                |> E.withRange (editorStatesVertices sm)
                 |> E.withRange (editorTransitionsEdges sm)
             )
 
@@ -130,7 +130,7 @@ editorState state =
     E.vertStackCell
         |> E.with (editorStateHead state)
         |> E.with
-            (E.vertStackCell
+            (E.vertGridCell
                 |> E.addIndent
                 |> E.withRange editorTransitionsResult
             )
@@ -175,15 +175,16 @@ editorTransition transition =
             )
 
 
-editorStatesvertices : S.Node Domain -> List (S.Node (E.Cell Domain))
-editorStatesvertices sm =
+editorStatesVertices : S.Node Domain -> List (S.Node (E.Cell Domain))
+editorStatesVertices sm =
     List.map editorStateVertex <| S.getUnderDefault sm
 
 
 editorStateVertex state =
     E.vertexCell (S.textOf S.roleName state)
         |> E.with
-            (editorState state)
+            (E.inputCell S.roleName state)
+            --(editorState state)
 
 
 editorTransitionsEdges : S.Node Domain -> List (S.Node (E.Cell Domain))
