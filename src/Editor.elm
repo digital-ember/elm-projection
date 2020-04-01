@@ -24,6 +24,7 @@ module Editor exposing
     , placeholderCell
     , refCell
     , replacementEffect
+    , resizeCmd
     , rootCell
     , updateEditor
     , vertGridCell
@@ -180,6 +181,7 @@ type Msg isa
     | MouseUp Point2d
     | MouseEnter Path
     | MouseLeave Path
+    | ResizeVertex Dom.Element (Node (Cell isa))
 
 
 type Dir
@@ -210,9 +212,6 @@ type alias VertexProperties =
     , widthVertex : Float
     , heightVertex : Float
     , angleAreas : List ( Float, Float )
-    , widthContent : Int
-    , heightContent : Float
-    , content : String
     }
 
 
@@ -318,11 +317,10 @@ graphCell =
     createNode (ContentCell GraphCell)
 
 
-vertexCell : Role -> Node isa -> Node (Cell isa)
-vertexCell role nodeContext =
+vertexCell : String -> Node (Cell isa)
+vertexCell name =
     createNode (ContentCell VertexCell)
-        |> addText roleText (textOf role nodeContext)
-        |> withEffect (inputEffect (pathOf nodeContext) role)
+        |> addText roleName name
 
 
 edgeCell : Role -> ( String, String ) -> Node isa -> Node (Cell isa)
@@ -495,6 +493,19 @@ grouped effectCells =
 updateEditor : Msg isa -> EditorModel isa -> ( EditorModel isa, Cmd (Msg isa) )
 updateEditor msg editorModel =
     case msg of
+        ResizeVertex element vertex ->
+            let
+                eRootNew =
+                    updatePropertyByPath (pathOf vertex) ( roleWidth, asPFloat element.element.width ) editorModel.eRoot
+                        |> updatePropertyByPath (pathOf vertex) ( roleHeight, asPFloat element.element.height )
+            in
+            ( { editorModel
+                | eRoot = eRootNew
+                , runXform = False
+              }
+            , Cmd.none
+            )
+
         Tick ->
             tickGraphSimulations editorModel
 
@@ -583,10 +594,10 @@ updateEditor msg editorModel =
                     noUpdate editorModel
 
         MouseEnter path ->
-            ( { editorModel | eRoot = updatePropertyByPath editorModel.eRoot path ( roleMouseEnter, asPBool True ), runXform = False }, Cmd.none )
+            ( { editorModel | eRoot = updatePropertyByPath path ( roleMouseEnter, asPBool True ) editorModel.eRoot, runXform = False }, Cmd.none )
 
         MouseLeave path ->
-            ( { editorModel | eRoot = updatePropertyByPath editorModel.eRoot path ( roleMouseEnter, asPBool False ), runXform = False }, Cmd.none )
+            ( { editorModel | eRoot = updatePropertyByPath path ( roleMouseEnter, asPBool False ) editorModel.eRoot, runXform = False }, Cmd.none )
 
         NoOp ->
             noUpdate editorModel
@@ -616,6 +627,38 @@ updateEditor msg editorModel =
             updateOnCreateScopeEffect editorModel effect
 
 
+resizeCmd : Node (Cell isa) -> Cmd (Msg isa)
+resizeCmd root =
+    let
+        vertices =
+            nodesOf (ContentCell VertexCell) root
+
+        childAndVertex v =
+            case getUnderDefault v |> List.head of
+                Nothing ->
+                    Nothing
+
+                Just child ->
+                    Just ( child, v )
+
+        toResizeCmd vertex result =
+            case result of
+                Ok element ->
+                    ResizeVertex element vertex
+
+                Err _ ->
+                    NoOp
+
+        cmdFromTuple ( child, v ) =
+            Task.attempt (toResizeCmd v) (Dom.getElement (pathAsIdFromNode child))
+    in
+    Cmd.batch
+        (List.map childAndVertex vertices
+            |> List.filterMap identity
+            |> List.map cmdFromTuple
+        )
+
+
 tickGraphSimulations : EditorModel isa -> ( EditorModel isa, Cmd (Msg isa) )
 tickGraphSimulations editorModel =
     let
@@ -639,7 +682,7 @@ tickGraphSimulations editorModel =
                             , Force.center 400 300
                             ]
                     in
-                    ( { editorModel | mbSimulation = Just <| Force.simulation forces, runXform = False }, Cmd.none )
+                    ( { editorModel | mbSimulation = Just <| Force.simulation forces, runXform = False }, resizeCmd editorModel.eRoot )
 
                 Just simulation ->
                     let
@@ -682,7 +725,9 @@ tickGraphSimulations editorModel =
                                 Just drag ->
                                     updateDrag eRootNew drag editorModel.mousePos
                     in
-                    ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False }, Cmd.none )
+                    ( { editorModel | eRoot = eRootWithDrag, mbSimulation = Just <| newSimulationState, runXform = False }
+                    , Cmd.none
+                    )
 
 
 updateDrag : Node (Cell isa) -> Drag -> Point2d -> Node (Cell isa)
@@ -693,11 +738,9 @@ updateDrag eRoot drag mousePosCurrent =
 
         ( xNew, yNew ) =
             drag.vertexPosStart |> P2d.translateBy delta |> P2d.coordinates
-
-        eRootTemp =
-            updatePropertyByPath eRoot drag.path ( roleX, asPFloat xNew )
     in
-    updatePropertyByPath eRootTemp drag.path ( roleY, asPFloat yNew )
+    updatePropertyByPath drag.path ( roleX, asPFloat xNew ) eRoot
+        |> updatePropertyByPath drag.path ( roleY, asPFloat yNew )
 
 
 updateOnInsertionEffect : EditorModel isa -> EffectCell isa -> Node (Cell isa) -> ( EditorModel isa, Cmd (Msg isa) )
@@ -771,7 +814,7 @@ updateOnInputEffect editorModel effect value =
     case effect of
         InputEffect { path, role } ->
             ( { editorModel
-                | dRoot = updatePropertyByPath editorModel.dRoot path ( role, asPString value ) |> updatePaths
+                | dRoot = updatePropertyByPath path ( role, asPString value ) editorModel.dRoot |> updatePaths
                 , runXform = True
               }
             , Cmd.none
@@ -1530,24 +1573,11 @@ vertexAnchorsForEdge ( from, to ) =
 vertexProperties : Node (Cell isa) -> VertexProperties
 vertexProperties vertex =
     let
-        noName =
-            "<no value>"
-
-        name =
-            tryTextOf roleText vertex |> Maybe.withDefault noName
-
-        nameContent =
-            if name == "" then
-                noName
-
-            else
-                name
-
         widthVertex =
-            (toFloat <| String.length <| nameContent) * 8.797 + 18
+            floatOf roleWidth vertex + 20
 
         heightVertex =
-            40
+            floatOf roleHeight vertex + 20
 
         halfH =
             heightVertex / 2
@@ -1576,22 +1606,12 @@ vertexProperties vertex =
         posContent =
             posVertex
                 |> P2d.translateBy (V2d.fromComponents ( 9, 9 ))
-
-        widthContent =
-            if nameContent == "" then
-                String.length noName
-
-            else
-                String.length nameContent
     in
     { posVertex = posVertex
     , posContent = posContent
     , widthVertex = widthVertex
     , heightVertex = heightVertex
     , angleAreas = angleAreas
-    , widthContent = widthContent
-    , heightContent = 20
-    , content = nameContent
     }
 
 
@@ -1626,31 +1646,15 @@ viewVertexCell cell =
 
 
 vertexContent : Node (Cell isa) -> VertexProperties -> Html (Msg isa)
-vertexContent cell { posContent, widthVertex, widthContent, heightContent, content } =
+vertexContent cell { posContent, widthVertex, heightVertex } =
     foreignObject
         [ x <| P2d.xCoordinate posContent
         , y <| P2d.yCoordinate posContent
-        , width widthVertex
-        , height heightContent
+        , width <| widthVertex - 20
+        , height <| heightVertex - 20
         ]
-        [ form []
-            [ input
-                ([ HtmlA.style "border-width" "0px"
-                 , HtmlA.style "font-family" "Consolas"
-                 , HtmlA.style "font-size" "16px"
-                 , HtmlA.style "border" "none"
-                 , HtmlA.style "outline" "none"
-                 , HtmlA.placeholder "<no value>"
-                 , HtmlA.value content
-                 , HtmlA.size widthContent
-                 , HtmlA.style "background-color" "transparent"
-                 , HtmlA.disabled <| boolOf roleGrabbed cell
-                 ]
-                    ++ inputCellAttributesFromEffects cell
-                )
-                []
-            ]
-        ]
+        <| viewCell cell
+
 
 
 vertexDragHandle : Node (Cell isa) -> VertexProperties -> Html (Msg isa)
@@ -2050,7 +2054,14 @@ forceEntityFromVertex index cell =
 dictNameToVertex : Node (Cell isa) -> Dict.Dict String (Node (Cell isa))
 dictNameToVertex cellGraph =
     nodesOf (ContentCell VertexCell) cellGraph
-        |> List.foldl (\v d -> Dict.insert (textOf roleText v) v d) Dict.empty
+        |> List.foldl
+            (\v d ->
+                Dict.insert
+                    (textOf roleName v)
+                    v
+                    d
+            )
+            Dict.empty
 
 
 edgeForcesFromGraph : Node (Cell isa) -> List ( String, String )
@@ -2171,14 +2182,8 @@ persistVertexPositions eRootOld eRootNew =
                     rootNew
 
                 ( Just x, Just y ) ->
-                    let
-                        rootNew1 =
-                            updatePropertyByPath rootNew (pathOf vOld) ( roleX, asPFloat x )
-
-                        rootNew2 =
-                            updatePropertyByPath rootNew1 (pathOf vOld) ( roleY, asPFloat y )
-                    in
-                    rootNew2
+                    updatePropertyByPath (pathOf vOld) ( roleX, asPFloat x ) rootNew
+                        |> updatePropertyByPath (pathOf vOld) ( roleY, asPFloat y )
     in
     List.foldl persistVertexPos eRootNew verticesOld
 
@@ -2313,6 +2318,14 @@ roleX =
 
 roleY =
     roleFromString "y"
+
+
+roleWidth =
+    roleFromString "width"
+
+
+roleHeight =
+    roleFromString "height"
 
 
 roleFrom =

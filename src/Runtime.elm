@@ -133,7 +133,7 @@ update msg ({ domain, editorModel } as model) =
                     else
                         Just simul
 
-                modelNew =
+                (modelNew, resizeCmds) =
                     if editorModelUpdated.runXform then
                         let
                             domainNew =
@@ -157,15 +157,15 @@ update msg ({ domain, editorModel } as model) =
                                     , runSimulation = graphsDiffer
                                 }
                         in
-                        { model
+                        ({ model
                             | domain = domainNew
                             , editorModel = editorModelNew
-                        }
+                        }, resizeCmd editorModelNew.eRoot )
 
                     else
-                        { model | editorModel = editorModelUpdated }
+                        ({ model | editorModel = editorModelUpdated }, Cmd.none)
             in
-            ( modelNew, Cmd.map EditorMsg editorCmd )
+            ( modelNew, Cmd.batch <| [(Cmd.map EditorMsg editorCmd), (Cmd.map EditorMsg resizeCmds)] )
 
 
 view : Model a -> Html (Msg a)

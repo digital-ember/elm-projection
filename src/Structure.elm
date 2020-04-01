@@ -882,8 +882,8 @@ deleteNodeAt segment parent =
     replaceUnderFeature segment.role childrenNew parent
 
 
-updatePropertyByPath : Node isa -> Path -> ( Role, Primitive ) -> Node isa
-updatePropertyByPath root path kvp =
+updatePropertyByPath : Path -> ( Role, Primitive ) -> Node isa -> Node isa
+updatePropertyByPath path kvp root =
     let
         (Path segmentsNoRoot) =
             dropRootSegment path
