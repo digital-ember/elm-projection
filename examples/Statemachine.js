@@ -10313,39 +10313,6 @@ var $elm_community$typed_svg$TypedSvg$Attributes$fill = A2(
 	$elm$core$Basics$composeL,
 	$elm_community$typed_svg$TypedSvg$Core$attribute('fill'),
 	$elm_community$typed_svg$TypedSvg$TypesToStrings$paintToString);
-var $elm$virtual_dom$VirtualDom$nodeNS = function (tag) {
-	return _VirtualDom_nodeNS(
-		_VirtualDom_noScript(tag));
-};
-var $elm_community$typed_svg$TypedSvg$Core$node = $elm$virtual_dom$VirtualDom$nodeNS('http://www.w3.org/2000/svg');
-var $elm_community$typed_svg$TypedSvg$Core$foreignObject = $elm_community$typed_svg$TypedSvg$Core$node('foreignObject');
-var $elm_community$typed_svg$TypedSvg$g = $elm_community$typed_svg$TypedSvg$Core$node('g');
-var $elm$json$Json$Decode$bool = _Json_decodeBool;
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$svg$Svg$Events$on = $elm$html$Html$Events$on;
-var $author$project$Editor$gravityOnMouseMove = F2(
-	function (msg, path) {
-		return A2(
-			$elm$svg$Svg$Events$on,
-			'mousemove',
-			A2(
-				$elm$json$Json$Decode$map,
-				function (shift) {
-					return msg(
-						{doShow: shift, path: path});
-				},
-				A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool)));
-	});
 var $elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString = function (length) {
 	switch (length.$) {
 		case 'Cm':
@@ -10380,16 +10347,59 @@ var $elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString = function (
 			return $elm$core$String$fromFloat(x) + 'px';
 	}
 };
-var $elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
+var $elm_community$typed_svg$TypedSvg$Attributes$fontSize = function (length) {
 	return A2(
 		$elm_community$typed_svg$TypedSvg$Core$attribute,
-		'height',
+		'font-size',
 		$elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
 };
 var $elm_community$typed_svg$TypedSvg$Types$Px = function (a) {
 	return {$: 'Px', a: a};
 };
 var $elm_community$typed_svg$TypedSvg$Types$px = $elm_community$typed_svg$TypedSvg$Types$Px;
+var $elm_community$typed_svg$TypedSvg$Attributes$InPx$fontSize = function (value) {
+	return $elm_community$typed_svg$TypedSvg$Attributes$fontSize(
+		$elm_community$typed_svg$TypedSvg$Types$px(value));
+};
+var $elm$virtual_dom$VirtualDom$nodeNS = function (tag) {
+	return _VirtualDom_nodeNS(
+		_VirtualDom_noScript(tag));
+};
+var $elm_community$typed_svg$TypedSvg$Core$node = $elm$virtual_dom$VirtualDom$nodeNS('http://www.w3.org/2000/svg');
+var $elm_community$typed_svg$TypedSvg$Core$foreignObject = $elm_community$typed_svg$TypedSvg$Core$node('foreignObject');
+var $elm_community$typed_svg$TypedSvg$g = $elm_community$typed_svg$TypedSvg$Core$node('g');
+var $elm$json$Json$Decode$bool = _Json_decodeBool;
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$svg$Svg$Events$on = $elm$html$Html$Events$on;
+var $author$project$Editor$gravityOnMouseMove = F2(
+	function (msg, path) {
+		return A2(
+			$elm$svg$Svg$Events$on,
+			'mousemove',
+			A2(
+				$elm$json$Json$Decode$map,
+				function (shift) {
+					return msg(
+						{doShow: shift, path: path});
+				},
+				A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool)));
+	});
+var $elm_community$typed_svg$TypedSvg$Attributes$height = function (length) {
+	return A2(
+		$elm_community$typed_svg$TypedSvg$Core$attribute,
+		'height',
+		$elm_community$typed_svg$TypedSvg$TypesToStrings$lengthToString(length));
+};
 var $elm_community$typed_svg$TypedSvg$Attributes$InPx$height = function (value) {
 	return $elm_community$typed_svg$TypedSvg$Attributes$height(
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
@@ -11752,6 +11762,22 @@ var $author$project$Editor$viewGraphCell = function (cellGraph) {
 					_List_fromArray(
 						[
 							$elm$html$Html$text('Gravity Control Mode')
+						])),
+					A2(
+					$elm_community$typed_svg$TypedSvg$text_,
+					_List_fromArray(
+						[
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$x(10),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(40),
+							$elm_community$typed_svg$TypedSvg$Attributes$fill(
+							$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGravityPrimary)),
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$fontSize(12)
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							'gravity strength: ' + $elm$core$String$fromFloat(
+								A2($author$project$Structure$floatOf, $author$project$Editor$roleGravityStrength, cellGraph)))
 						]))
 				]))
 		]) : _List_Nil;

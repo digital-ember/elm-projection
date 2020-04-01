@@ -55,7 +55,7 @@ import Task as Task
 import Triangle2d as T2d exposing (Triangle2d)
 import TypedSvg exposing (circle, g, rect, svg, text_)
 import TypedSvg.Attributes exposing (color, fill, stroke, strokeDasharray)
-import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, rx, ry, strokeWidth, width, x, y)
+import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, height, r, rx, ry, strokeWidth, width, x, y)
 import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Events as TsvgE
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
@@ -1607,7 +1607,14 @@ viewGraphCell cellGraph =
                         , y 20
                         , fill <| Paint colorGravityPrimary
                         ]
-                        [ text "Gravity Control Mode" ]
+                        [ text <| "Gravity Control Mode" ]
+                    , text_
+                        [ x 10
+                        , y 40
+                        , fill <| Paint colorGravityPrimary
+                        , fontSize 14
+                        ]
+                        [ text <| "gravity strength: " ++ (String.fromFloat <| floatOf roleGravityStrength cellGraph) ]
                     ]
                 ]
 
