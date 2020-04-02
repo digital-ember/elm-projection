@@ -5684,28 +5684,27 @@ var $author$project$Statemachine$editorStates = function (sm) {
 	}();
 	return A2($author$project$Editor$withRange, editorStatesResult, $author$project$Editor$vertStackCell);
 };
-var $author$project$Editor$VertexCell = {$: 'VertexCell'};
-var $author$project$Editor$roleName = $author$project$Structure$roleFromString('name');
-var $author$project$Editor$vertexCell = function (name) {
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$core$String$fromInt = _String_fromNumber;
+var $elm$core$List$length = function (xs) {
 	return A3(
-		$author$project$Structure$addText,
-		$author$project$Editor$roleName,
-		name,
-		$author$project$Structure$createNode(
-			$author$project$Editor$ContentCell($author$project$Editor$VertexCell)));
-};
-var $author$project$Statemachine$editorStateVertex = function (state) {
-	return A2(
-		$author$project$Editor$with,
-		A2($author$project$Editor$inputCell, $author$project$Structure$roleName, state),
-		$author$project$Editor$vertexCell(
-			A2($author$project$Structure$textOf, $author$project$Structure$roleName, state)));
-};
-var $author$project$Statemachine$editorStatesVertices = function (sm) {
-	return A2(
-		$elm$core$List$map,
-		$author$project$Statemachine$editorStateVertex,
-		$author$project$Structure$getUnderDefault(sm));
+		$elm$core$List$foldl,
+		F2(
+			function (_v0, i) {
+				return i + 1;
+			}),
+		0,
+		xs);
 };
 var $elm$core$List$append = F2(
 	function (xs, ys) {
@@ -5717,6 +5716,106 @@ var $elm$core$List$append = F2(
 	});
 var $elm$core$List$concat = function (lists) {
 	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $elm$core$Dict$values = function (dict) {
+	return A3(
+		$elm$core$Dict$foldr,
+		F3(
+			function (key, value, valueList) {
+				return A2($elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
+var $author$project$Structure$getAllUnderCustoms = function (_v0) {
+	var features = _v0.a.features;
+	return $elm$core$List$concat(
+		$elm$core$Dict$values(features.custom));
+};
+var $author$project$Structure$isaOf = function (_v0) {
+	var isa = _v0.a.isa;
+	return isa;
+};
+var $author$project$Structure$nodesOfRec = F3(
+	function (isa, node, result) {
+		var _v0 = _Utils_eq(
+			$author$project$Structure$isaOf(node),
+			isa);
+		if (_v0) {
+			return A2($elm$core$List$cons, node, result);
+		} else {
+			var allChildren = A2(
+				$elm$core$List$append,
+				$author$project$Structure$getAllUnderCustoms(node),
+				$author$project$Structure$getUnderDefault(node));
+			return A3(
+				$elm$core$List$foldl,
+				$author$project$Structure$nodesOfRec(isa),
+				result,
+				allChildren);
+		}
+	});
+var $author$project$Structure$nodesOf = F2(
+	function (isa, root) {
+		return A3($author$project$Structure$nodesOfRec, isa, root, _List_Nil);
+	});
+var $author$project$Editor$VertexCell = {$: 'VertexCell'};
+var $author$project$Editor$roleName = $author$project$Structure$roleFromString('name');
+var $author$project$Editor$vertexCell = function (name) {
+	return A3(
+		$author$project$Structure$addText,
+		$author$project$Editor$roleName,
+		name,
+		$author$project$Structure$createNode(
+			$author$project$Editor$ContentCell($author$project$Editor$VertexCell)));
+};
+var $author$project$Statemachine$editorStateVertex = F2(
+	function (sm, state) {
+		var numOfOutgoingTransitions = $elm$core$String$fromInt(
+			$elm$core$List$length(
+				$author$project$Structure$getUnderDefault(state)));
+		var numOfIncomingTransitions = $elm$core$String$fromInt(
+			$elm$core$List$length(
+				A2(
+					$elm$core$List$filter,
+					function (t) {
+						return _Utils_eq(
+							A2($author$project$Structure$textOf, $author$project$Statemachine$roleStateRef, t),
+							A2($author$project$Structure$textOf, $author$project$Structure$roleName, state));
+					},
+					A2($author$project$Structure$nodesOf, $author$project$Statemachine$Transition, sm))));
+		return A2(
+			$author$project$Editor$with,
+			A2(
+				$author$project$Editor$with,
+				A2(
+					$author$project$Editor$with,
+					$author$project$Editor$constantCell(numOfOutgoingTransitions),
+					A2(
+						$author$project$Editor$with,
+						$author$project$Editor$constantCell('Outgoing:'),
+						$author$project$Editor$horizStackCell)),
+				A2(
+					$author$project$Editor$with,
+					A2(
+						$author$project$Editor$with,
+						$author$project$Editor$constantCell(numOfIncomingTransitions),
+						A2(
+							$author$project$Editor$with,
+							$author$project$Editor$constantCell('Incoming:'),
+							$author$project$Editor$horizStackCell)),
+					A2(
+						$author$project$Editor$with,
+						A2($author$project$Editor$inputCell, $author$project$Structure$roleName, state),
+						$author$project$Editor$vertStackCell))),
+			$author$project$Editor$vertexCell(
+				A2($author$project$Structure$textOf, $author$project$Structure$roleName, state)));
+	});
+var $author$project$Statemachine$editorStatesVertices = function (sm) {
+	return A2(
+		$elm$core$List$map,
+		$author$project$Statemachine$editorStateVertex(sm),
+		$author$project$Structure$getUnderDefault(sm));
 };
 var $author$project$Editor$EdgeCell = {$: 'EdgeCell'};
 var $author$project$Editor$roleFrom = $author$project$Structure$roleFromString('propFrom');
@@ -5986,7 +6085,6 @@ var $elm$core$String$all = _String_all;
 var $elm$core$Basics$and = _Basics_and;
 var $elm$core$Basics$append = _Utils_append;
 var $elm$json$Json$Encode$encode = _Json_encode;
-var $elm$core$String$fromInt = _String_fromNumber;
 var $elm$core$String$join = F2(
 	function (sep, chunks) {
 		return A2(
@@ -6004,16 +6102,6 @@ var $elm$json$Json$Decode$indent = function (str) {
 		$elm$core$String$join,
 		'\n    ',
 		A2($elm$core$String$split, '\n', str));
-};
-var $elm$core$List$length = function (xs) {
-	return A3(
-		$elm$core$List$foldl,
-		F2(
-			function (_v0, i) {
-				return i + 1;
-			}),
-		0,
-		xs);
 };
 var $elm$core$List$map2 = _List_map2;
 var $elm$core$Basics$le = _Utils_le;
@@ -7179,17 +7267,6 @@ var $author$project$Runtime$subscriptions = function (model) {
 	return $elm$core$Platform$Sub$batch(
 		A2($elm$core$List$cons, mouseMoveSub, graphSubs));
 };
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
 var $elm$core$List$any = F2(
 	function (isOkay, list) {
 		any:
@@ -7295,10 +7372,6 @@ var $author$project$Structure$compareProperties = F3(
 			true,
 			lProps);
 	});
-var $author$project$Structure$isaOf = function (_v0) {
-	var isa = _v0.a.isa;
-	return isa;
-};
 var $author$project$Structure$pathSegmentAsId = F2(
 	function (segment, idPart) {
 		var idPartWSeparator = (idPart === '') ? '' : (idPart + '-');
@@ -7339,44 +7412,6 @@ var $author$project$Structure$flatNodeListComparer = F3(
 					$author$project$Structure$flatNodeComparer(mbRoles),
 					lNodes,
 					rNodes)));
-	});
-var $elm$core$Dict$values = function (dict) {
-	return A3(
-		$elm$core$Dict$foldr,
-		F3(
-			function (key, value, valueList) {
-				return A2($elm$core$List$cons, value, valueList);
-			}),
-		_List_Nil,
-		dict);
-};
-var $author$project$Structure$getAllUnderCustoms = function (_v0) {
-	var features = _v0.a.features;
-	return $elm$core$List$concat(
-		$elm$core$Dict$values(features.custom));
-};
-var $author$project$Structure$nodesOfRec = F3(
-	function (isa, node, result) {
-		var _v0 = _Utils_eq(
-			$author$project$Structure$isaOf(node),
-			isa);
-		if (_v0) {
-			return A2($elm$core$List$cons, node, result);
-		} else {
-			var allChildren = A2(
-				$elm$core$List$append,
-				$author$project$Structure$getAllUnderCustoms(node),
-				$author$project$Structure$getUnderDefault(node));
-			return A3(
-				$elm$core$List$foldl,
-				$author$project$Structure$nodesOfRec(isa),
-				result,
-				allChildren);
-		}
-	});
-var $author$project$Structure$nodesOf = F2(
-	function (isa, root) {
-		return A3($author$project$Structure$nodesOfRec, isa, root, _List_Nil);
 	});
 var $author$project$Editor$dictNameToVertex = function (cellGraph) {
 	return A3(
@@ -11771,7 +11806,7 @@ var $author$project$Editor$viewGraphCell = function (cellGraph) {
 							$elm_community$typed_svg$TypedSvg$Attributes$InPx$y(40),
 							$elm_community$typed_svg$TypedSvg$Attributes$fill(
 							$elm_community$typed_svg$TypedSvg$Types$Paint($author$project$Editor$colorGravityPrimary)),
-							$elm_community$typed_svg$TypedSvg$Attributes$InPx$fontSize(12)
+							$elm_community$typed_svg$TypedSvg$Attributes$InPx$fontSize(14)
 						]),
 					_List_fromArray(
 						[

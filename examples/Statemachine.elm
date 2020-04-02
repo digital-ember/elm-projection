@@ -177,14 +177,37 @@ editorTransition transition =
 
 editorStatesVertices : S.Node Domain -> List (S.Node (E.Cell Domain))
 editorStatesVertices sm =
-    List.map editorStateVertex <| S.getUnderDefault sm
+    S.getUnderDefault sm
+        |> List.map (editorStateVertex sm)
 
 
-editorStateVertex state =
+editorStateVertex sm state =
+    let
+        numOfOutgoingTransitions =
+            List.length (S.getUnderDefault state)
+                |> String.fromInt
+
+        numOfIncomingTransitions =
+            S.nodesOf Transition sm
+            |> List.filter (\t -> S.textOf roleStateRef t == S.textOf S.roleName state)
+            |> List.length
+            |> String.fromInt
+    in
     E.vertexCell (S.textOf S.roleName state)
         |> E.with
-            (E.inputCell S.roleName state)
-            --(editorState state)
+            (E.vertStackCell
+                |> E.with (E.inputCell S.roleName state)
+                |> E.with
+                    (E.horizStackCell
+                        |> E.with (E.constantCell "Incoming:")
+                        |> E.with (E.constantCell numOfIncomingTransitions)
+                    )
+                |> E.with
+                    (E.horizStackCell
+                        |> E.with (E.constantCell "Outgoing:")
+                        |> E.with (E.constantCell numOfOutgoingTransitions)
+                    )
+            )
 
 
 editorTransitionsEdges : S.Node Domain -> List (S.Node (E.Cell Domain))

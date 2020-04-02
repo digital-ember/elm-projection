@@ -23,7 +23,7 @@
   border-right: solid;
   position: fixed;
   height: 100%;
-  width: 48%;
+  width: 38%;
 }
 
 /* Control the right side */
@@ -31,5 +31,5 @@
   right: 0;
   position: fixed;
     height: 100%;
-    width: 48%;
+    width: 58%;
 }
