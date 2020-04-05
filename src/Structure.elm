@@ -1,7 +1,9 @@
 module Structure exposing
     ( Node
     , Path(..)
+    , Primitive
     , Role
+    , primitiveToString
     , addBool
     , addChildAtPath
     , addFloat
@@ -9,12 +11,14 @@ module Structure exposing
     , addProperty
     , addRangeAtPath
     , addRangeToCustom
+    , customFeatures
     , addRangeToDefault
     , addText
     , addToCustom
     , addToDefault
     , ancestorOf
     , asPBool
+    , propertiesOf
     , asPFloat
     , asPInt
     , asPString
@@ -115,6 +119,11 @@ isaOf : Node isa -> isa
 isaOf (Node { isa }) =
     isa
 
+propertiesOf node =
+    Dict.toList <| propsOf node
+
+customFeatures (Node {features}) =
+    Dict.toList features.custom
 
 isasUnderCustom : Role -> Node isa -> List isa
 isasUnderCustom role parent =

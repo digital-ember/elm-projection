@@ -7,6 +7,7 @@ module Runtime exposing
 import Browser exposing (..)
 import Browser.Events
 import Editor exposing (..)
+import Editor.ReflectiveEditor exposing (editorReflection)
 import Force
 import Html exposing (..)
 import Json.Decode as JsonD exposing (Decoder)
@@ -17,6 +18,7 @@ import Time
 type alias Model a =
     { domain : Domain a (Cell a)
     , editorModel : EditorModel a
+    , showReflectiveView : Bool
     }
 
 
@@ -31,6 +33,7 @@ type Msg a
     | Tick (Editor.Msg a) Time.Posix
     | MouseUp (Editor.Msg a)
     | MouseMove (Editor.Msg a)
+    | ToggleReflectiveView
 
 
 projection : Node a -> (Node a -> Node (Cell a)) -> Program () (Model a) (Msg a)
@@ -48,6 +51,7 @@ projection dRoot xform =
         initialModel =
             { domain = domain
             , editorModel = initEditorModel dRootWithPaths eRoot
+            , showReflectiveView = False
             }
 
         init () =
@@ -64,6 +68,19 @@ projection dRoot xform =
 subscriptions : Model a -> Sub (Msg a)
 subscriptions model =
     let
+        hotkeySub =
+            JsonD.map2
+                (\key alt ->
+                    if alt == True && key == "r" then
+                        ToggleReflectiveView |> Debug.log "actually..."
+
+                    else
+                        EditorMsg NoOp
+                )
+                (JsonD.field "key" JsonD.string)
+                (JsonD.field "altKey" JsonD.bool)
+                |> Browser.Events.onKeyDown
+
         tickSub =
             Tick Editor.Tick |> Browser.Events.onAnimationFrame
 
@@ -98,7 +115,7 @@ subscriptions model =
                     ]
     in
     Sub.batch
-        (mouseMoveSub :: graphSubs)
+        ([ hotkeySub, mouseMoveSub ] ++ graphSubs)
 
 
 update : Msg a -> Model a -> ( Model a, Cmd (Msg a) )
@@ -120,6 +137,9 @@ update msg ({ domain, editorModel } as model) =
 
         MouseUp eMsg ->
             updateEditorOnly eMsg
+
+        ToggleReflectiveView ->
+            ( { model | showReflectiveView = model.showReflectiveView == False }, Cmd.none )
 
         EditorMsg eMsg ->
             let
@@ -182,7 +202,15 @@ update msg ({ domain, editorModel } as model) =
 
 view : Model a -> Html (Msg a)
 view model =
-    viewEditor model.editorModel.eRoot
+    let
+        eRoot =
+            if model.showReflectiveView then
+                editorReflection model.editorModel.dRoot
+
+            else
+                model.editorModel.eRoot
+    in
+    viewEditor eRoot
         |> Html.map EditorMsg
 
 

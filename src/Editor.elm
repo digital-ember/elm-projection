@@ -6,6 +6,7 @@ module Editor exposing
     , Msg(..)
     , addIndent
     , addMargin
+    , addSeparator
     , buttonCell
     , constantCell
     , deletionEffect
@@ -25,7 +26,9 @@ module Editor exposing
     , refCell
     , replacementEffect
     , resizeCmd
+    , roleSeparator
     , rootCell
+    , setPropertyEffect
     , updateEditor
     , vertGridCell
     , vertSplitCell
@@ -41,6 +44,7 @@ import Browser.Dom as Dom
 import Color exposing (Color)
 import Dict as Dict exposing (Dict)
 import Direction2d as D2d exposing (Direction2d)
+import Editor.Styles as EStyles
 import Force exposing (Entity, Force, State)
 import Geometry.Svg as GSvg
 import Html exposing (..)
@@ -87,6 +91,7 @@ type EffectCell isa
     | InputEffect InputEffectData
     | NavSelectionEffect NavSelectionEffectData
     | CreateScopeEffect (CreateScopeEffectData isa)
+    | SetPropertyEffect SetPropertyEffectData
 
 
 type alias EditorModel isa =
@@ -148,6 +153,13 @@ type alias CreateScopeEffectData isa =
     }
 
 
+type alias SetPropertyEffectData =
+    { pathContextNode : Path
+    , role : Role
+    , primitive : Primitive
+    }
+
+
 type alias Selection =
     { start : Int
     , end : Int
@@ -159,6 +171,7 @@ type EffectGroup isa
     = InputEffectGroup (List (EffectCell isa))
     | KeyboardEffectGroup (List (EffectCell isa))
     | FocusEffectGroup (List (EffectCell isa))
+    | PropertyEffectGroup (List (EffectCell isa))
 
 
 type Orientation
@@ -402,6 +415,11 @@ addMargin side space node =
     addInt key space node
 
 
+addSeparator : String -> Node (Cell isa) -> Node (Cell isa)
+addSeparator separator node =
+    addText roleSeparator separator node
+
+
 
 -- EFFECTS
 
@@ -440,6 +458,12 @@ createScopeEffect : isa -> Path -> Maybe (List String) -> EffectCell isa
 createScopeEffect target path scopeProvider =
     CreateScopeEffect <|
         CreateScopeEffectData target path scopeProvider
+
+
+setPropertyEffect : Node isa -> Role -> Primitive -> EffectCell isa
+setPropertyEffect nodeContext role primitiveToInsert =
+    SetPropertyEffect <|
+        SetPropertyEffectData (pathOf nodeContext) role primitiveToInsert
 
 
 navEffects : Path -> List (Cell isa)
@@ -502,6 +526,9 @@ grouped effectCells =
                         CreateScopeEffect _ ->
                             Dict.update "focus" (updateGroup effect) groupDict
 
+                        SetPropertyEffect _ ->
+                            Dict.update "property" (updateGroup effect) groupDict
+
         dictGrouped =
             List.foldl toDict Dict.empty effectCells
 
@@ -515,6 +542,9 @@ grouped effectCells =
 
                 "focus" ->
                     FocusEffectGroup v :: effectGroupList
+
+                "property" ->
+                    PropertyEffectGroup v :: effectGroupList
 
                 _ ->
                     effectGroupList
@@ -647,10 +677,10 @@ updateEditor msg editorModel =
             noUpdate editorModel
 
         OnEnter effect cellContext ->
-            updateOnInsertionEffect editorModel effect cellContext
+            updateOnEnterEffect editorModel effect cellContext
 
         OnClick effect cellContext ->
-            updateOnInsertionEffect editorModel effect cellContext
+            updateOnEnterEffect editorModel effect cellContext
 
         OnDelete effect cellContext ->
             updateOnDeleteEffect editorModel effect cellContext
@@ -807,8 +837,8 @@ updateDrag eRoot drag mousePosCurrent =
         |> updatePropertyByPath drag.path ( roleY, asPFloat yNew )
 
 
-updateOnInsertionEffect : EditorModel isa -> EffectCell isa -> Node (Cell isa) -> ( EditorModel isa, Cmd (Msg isa) )
-updateOnInsertionEffect editorModel effect cellContext =
+updateOnEnterEffect : EditorModel isa -> EffectCell isa -> Node (Cell isa) -> ( EditorModel isa, Cmd (Msg isa) )
+updateOnEnterEffect editorModel effect cellContext =
     case effect of
         InsertionEffect { path, nodeToInsert, isReplace, role } ->
             if isReplace then
@@ -824,6 +854,13 @@ updateOnInsertionEffect editorModel effect cellContext =
                         insertChildAfterPath nodeToInsert path editorModel.dRoot |> updatePaths
                 in
                 ( { editorModel | dRoot = dRootNew, runXform = True }, updateSelectionOnEnter cellContext )
+
+        SetPropertyEffect { pathContextNode, role, primitive } ->
+            let
+                dRootNew =
+                    updatePropertyByPath pathContextNode ( role, primitive ) editorModel.dRoot
+            in
+            ( { editorModel | dRoot = dRootNew, runXform = True }, Cmd.none )
 
         _ ->
             noUpdate editorModel
@@ -1208,16 +1245,34 @@ viewEditor root =
 viewCell : Node (Cell isa) -> List (Html (Msg isa))
 viewCell cell =
     case isaOf cell of
+        ContentCell StackCell ->
+            case getUnderDefault cell of
+                [] ->
+                    [ viewEmpty ]
+
+                children ->
+                    case tryTextOf roleSeparator cell of
+                        Nothing ->
+                            List.foldl viewContent [] children
+
+                        Just separator ->
+                            List.foldl viewContent [] children
+                                |> List.intersperse (text separator)
+
         ContentCell _ ->
             case getUnderDefault cell of
                 [] ->
-                    [ text "" ]
+                    [ viewEmpty ]
 
                 children ->
                     List.foldl viewContent [] children
 
         EffectCell _ ->
             []
+
+
+viewEmpty =
+    text ""
 
 
 viewContent : Node (Cell isa) -> List (Html (Msg isa)) -> List (Html (Msg isa))
@@ -1255,10 +1310,10 @@ viewContent cell html =
                             viewGraphCell cell
 
                         VertexCell ->
-                            text ""
+                            viewEmpty
 
                         EdgeCell ->
-                            text ""
+                            viewEmpty
             in
             htmlNew :: List.reverse html |> List.reverse
 
@@ -1281,7 +1336,7 @@ viewSplitCell cell =
                 viewVertSplit cell
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewVertSplit : Node (Cell isa) -> Html (Msg isa)
@@ -1292,7 +1347,7 @@ viewVertSplit cell =
                 ( left, right ) =
                     case getUnderDefault cell of
                         [] ->
-                            ( [ text "Completely empty split cell" ], [ text "" ] )
+                            ( [ text "Completely empty split cell" ], [ viewEmpty ] )
 
                         first :: [] ->
                             ( viewContent first []
@@ -1306,15 +1361,15 @@ viewVertSplit cell =
             in
             div []
                 [ div
-                    [ HtmlA.class "split left" ]
+                    EStyles.styleSplitLeft
                     left
                 , div
-                    [ HtmlA.class "split right" ]
+                    EStyles.styleSplitRight
                     right
                 ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewHorizSplit : Node (Cell isa) -> Html (Msg isa)
@@ -1325,7 +1380,7 @@ viewHorizSplit cell =
                 ( top, bottom ) =
                     case getUnderDefault cell of
                         [] ->
-                            ( [ text "Completely empty split cell" ], [ text "" ] )
+                            ( [ text "Completely empty split cell" ], [ viewEmpty ] )
 
                         first :: [] ->
                             ( viewCell first
@@ -1337,35 +1392,31 @@ viewHorizSplit cell =
                             , viewContent second []
                             )
             in
-            div []
+            div EStyles.styleSplitHoriz
                 [ div
-                    [ HtmlA.class "split top" ]
+                    EStyles.styleSplitTop
                     top
                 , div
-                    [ HtmlA.class "split bottom" ]
+                    EStyles.styleSplitBottom
                     bottom
                 ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewStackCell : Node (Cell isa) -> Html (Msg isa)
 viewStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            let
-                bO =
-                    boolOf roleIsHoriz cell
-            in
-            if bO then
+            if boolOf roleIsHoriz cell then
                 viewHorizStackCell cell
 
             else
                 viewVertStackCell cell
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewVertStackCell : Node (Cell isa) -> Html (Msg isa)
@@ -1382,7 +1433,7 @@ viewVertStackCell cell =
                 viewCell cell
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewHorizStackCell : Node (Cell isa) -> Html (Msg isa)
@@ -1407,7 +1458,7 @@ viewHorizStackCell cell =
                 viewCell cell
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewConstantCell : Node (Cell isa) -> Html (Msg isa)
@@ -1415,19 +1466,18 @@ viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
             div
-                (divCellAttributes cell)
+                ((divCellAttributes cell) ++ marginsAndPaddings cell)
                 [ label
                     ([ HtmlA.id (pathAsIdFromNode cell)
-                     , HtmlA.style "font-weight" "bold"
-                     , HtmlA.style "color" "darkblue"
+                     --, HtmlA.style "font-weight" "bold"
+                     --, HtmlA.style "color" "darkblue"
                      ]
-                        ++ marginsAndPaddings cell
                     )
                     [ text (textOf roleConstant cell) ]
                 ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewInputCell : Node (Cell isa) -> Html (Msg isa)
@@ -1440,10 +1490,10 @@ viewInputCell cell =
 
                 inputSize =
                     if inputValue == "" then
-                        String.length "<no value>"
+                        String.length "<no value>" - 1
 
                     else
-                        String.length inputValue
+                        String.length inputValue - 1
             in
             div
                 (divCellAttributes cell)
@@ -1455,7 +1505,13 @@ viewInputCell cell =
                      , HtmlA.style "outline" "none"
                      , HtmlA.placeholder "<no value>"
                      , HtmlA.value inputValue
-                     , HtmlA.size inputSize
+                     , HtmlA.size
+                        (if inputSize < 1 then
+                            1
+
+                         else
+                            inputSize
+                        )
                      , HtmlA.id (pathAsIdFromNode cell)
                      ]
                         ++ marginsAndPaddings cell
@@ -1465,7 +1521,7 @@ viewInputCell cell =
                 ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewPlaceholderCell : Node (Cell isa) -> Html (Msg isa)
@@ -1510,7 +1566,7 @@ viewPlaceholderCell cell =
                 ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewButtonCell : Node (Cell isa) -> Html (Msg isa)
@@ -1535,7 +1591,7 @@ viewButtonCell cell =
             button (marginsAndPaddings cell ++ onClick) [ text (textOf roleText cell) ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewRefCell : Node (Cell isa) -> Html (Msg isa)
@@ -1588,7 +1644,7 @@ viewRefCell cell =
                 ]
 
         EffectCell _ ->
-            text ""
+            viewEmpty
 
 
 viewGraphCell : Node (Cell isa) -> Html (Msg isa)
@@ -2047,6 +2103,15 @@ attributeFromEffectGroup cell effectGroup =
                 _ ->
                     Nothing
 
+        PropertyEffectGroup effects ->
+            case effects of
+                effect :: [] ->
+                    -- todo: this is not correct, the whole effect handling is not optimal atm
+                    Just (HtmlE.onClick (OnClick effect cell))
+
+                _ ->
+                    Nothing
+
 
 keyFromDir : Dir -> String
 keyFromDir dir =
@@ -2083,6 +2148,9 @@ inputEffectMap cell effects =
                     dict
 
                 CreateScopeEffect _ ->
+                    dict
+
+                SetPropertyEffect _ ->
                     dict
         )
         Dict.empty
@@ -2553,6 +2621,10 @@ roleScopeValue =
 
 roleName =
     roleFromString "name"
+
+
+roleSeparator =
+    roleFromString "separator"
 
 
 roleInput =
