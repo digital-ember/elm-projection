@@ -72,7 +72,7 @@ subscriptions model =
             JsonD.map2
                 (\key alt ->
                     if alt == True && key == "r" then
-                        ToggleReflectiveView |> Debug.log "actually..."
+                        ToggleReflectiveView
 
                     else
                         EditorMsg NoOp
