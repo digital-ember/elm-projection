@@ -18,8 +18,13 @@ import Time
 type alias Model a =
     { domain : Domain a (Cell a)
     , editorModel : EditorModel a
-    , showReflectiveView : Bool
+    , kView : KView
     }
+
+
+type KView
+    = NormalView
+    | ReflectiveView
 
 
 type alias Domain a b =
@@ -51,7 +56,7 @@ projection dRoot xform =
         initialModel =
             { domain = domain
             , editorModel = initEditorModel dRootWithPaths eRoot
-            , showReflectiveView = False
+            , kView = NormalView
             }
 
         init () =
@@ -139,7 +144,30 @@ update msg ({ domain, editorModel } as model) =
             updateEditorOnly eMsg
 
         ToggleReflectiveView ->
-            ( { model | showReflectiveView = model.showReflectiveView == False }, Cmd.none )
+            let
+                kViewNew =
+                    case model.kView of
+                        NormalView ->
+                            ReflectiveView
+
+                        ReflectiveView ->
+                            NormalView
+
+                eRootNew =
+                    case kViewNew of
+                        NormalView ->
+                            runDomainXform domain
+                                |> persistGraphInformation editorModel.eRoot
+
+                        ReflectiveView ->
+                            editorReflection ( model.editorModel.dRoot, model.editorModel.eRoot ) |> updatePaths
+
+                editorModelNew =
+                    { editorModel
+                        | eRoot = eRootNew
+                    }
+            in
+            ( { model | kView = kViewNew, editorModel = editorModelNew }, Cmd.none )
 
         EditorMsg eMsg ->
             let
@@ -159,9 +187,17 @@ update msg ({ domain, editorModel } as model) =
                             domainNew =
                                 { domain | root = editorModelUpdated.dRoot }
 
-                            rootENew =
+                            eRootForDomain =
                                 runDomainXform domainNew
                                     |> persistGraphInformation editorModelUpdated.eRoot
+
+                            rootENew =
+                                case model.kView of
+                                    NormalView ->
+                                        eRootForDomain
+
+                                    ReflectiveView ->
+                                        editorReflection ( editorModelUpdated.dRoot, eRootForDomain ) |> updatePaths
 
                             graphsDiffer =
                                 graphComparer editorModel.eRoot rootENew == False
@@ -202,15 +238,7 @@ update msg ({ domain, editorModel } as model) =
 
 view : Model a -> Html (Msg a)
 view model =
-    let
-        eRoot =
-            if model.showReflectiveView then
-                editorReflection model.editorModel.dRoot
-
-            else
-                model.editorModel.eRoot
-    in
-    viewEditor eRoot
+    viewEditor model.editorModel.eRoot
         |> Html.map EditorMsg
 
 

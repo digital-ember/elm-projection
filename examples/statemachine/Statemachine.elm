@@ -1,5 +1,6 @@
 module Statemachine exposing (main)
 
+import Color
 import Editor as E
 import Runtime as R
 import Structure as S
@@ -38,12 +39,13 @@ editor sm =
 
 editorStatemachine : S.Node Domain -> S.Node (E.Cell Domain)
 editorStatemachine sm =
-    E.vertSplitCell
+    E.horizStackCell
         |> E.with
             (E.vertStackCell
                 |> E.with (editorStatemachineName sm)
                 |> E.with (editorEvents sm)
                 |> E.with (editorStates sm)
+                |> E.setCollapsible
             )
         |> E.with
             (E.graphCell
@@ -55,7 +57,7 @@ editorStatemachine sm =
 editorStatemachineName : S.Node Domain -> S.Node (E.Cell Domain)
 editorStatemachineName sm =
     E.horizStackCell
-        |> E.with (E.constantCell "name:")
+        |> E.with (E.constantCell "name:" |> withKeywordStyle)
         |> E.with (E.inputCell S.roleName sm)
         |> E.addMargin E.Bottom 20
 
@@ -72,13 +74,13 @@ editorEvents sm =
                     List.map editorEvent events
     in
     E.vertStackCell
-        |> E.with (E.constantCell "events")
+        |> E.with (E.constantCell "events" |> withKeywordStyle)
         |> E.with
             (E.vertStackCell
                 |> E.addIndent
                 |> E.withRange editorEventsResult
             )
-        |> E.with (E.constantCell "end")
+        |> E.with (E.constantCell "end" |> withKeywordStyle)
         |> E.addMargin E.Bottom 20
 
 
@@ -134,7 +136,7 @@ editorState state =
                 |> E.addIndent
                 |> E.withRange editorTransitionsResult
             )
-        |> E.with (E.constantCell "end")
+        |> E.with (E.constantCell "end" |> withKeywordStyle)
         |> E.with
             (E.buttonCell "+"
                 |> E.withEffect (E.insertionEffect state ctorState)
@@ -145,7 +147,7 @@ editorState state =
 editorStateHead : S.Node Domain -> S.Node (E.Cell Domain)
 editorStateHead state =
     E.horizStackCell
-        |> E.with (E.constantCell "state")
+        |> E.with (E.constantCell "state" |> withKeywordStyle)
         |> E.with
             (E.inputCell S.roleName state
                 |> E.withEffect (E.insertionEffect state ctorState)
@@ -189,9 +191,9 @@ editorStateVertex sm state =
 
         numOfIncomingTransitions =
             S.nodesOf Transition sm
-            |> List.filter (\t -> S.textOf roleStateRef t == S.textOf S.roleName state)
-            |> List.length
-            |> String.fromInt
+                |> List.filter (\t -> S.textOf roleStateRef t == S.textOf S.roleName state)
+                |> List.length
+                |> String.fromInt
     in
     E.vertexCell (S.textOf S.roleName state)
         |> E.with
@@ -254,6 +256,15 @@ ctorTransition =
     S.createNode Transition
         |> S.addText roleEventRef ""
         |> S.addText roleStateRef ""
+
+
+
+-- STYLES
+
+
+withKeywordStyle =
+    E.withStyle E.styleBold
+        >> E.withStyle (E.styleTextColor Color.darkBlue)
 
 
 

@@ -7,6 +7,8 @@ module Editor exposing
     , addIndent
     , addMargin
     , addSeparator
+    , styleBold
+    , styleBoldItalic
     , buttonCell
     , constantCell
     , deletionEffect
@@ -20,6 +22,7 @@ module Editor exposing
     , inputCell
     , inputEffect
     , insertionEffect
+    , styleItalic
     , mousePosition
     , persistGraphInformation
     , placeholderCell
@@ -28,7 +31,9 @@ module Editor exposing
     , resizeCmd
     , roleSeparator
     , rootCell
+    , setCollapsible
     , setPropertyEffect
+    , styleTextColor
     , updateEditor
     , vertGridCell
     , vertSplitCell
@@ -38,13 +43,13 @@ module Editor exposing
     , with
     , withEffect
     , withRange
+    , withStyle
     )
 
 import Browser.Dom as Dom
 import Color exposing (Color)
 import Dict as Dict exposing (Dict)
 import Direction2d as D2d exposing (Direction2d)
-import Editor.Styles as EStyles
 import Force exposing (Entity, Force, State)
 import Geometry.Svg as GSvg
 import Html exposing (..)
@@ -57,9 +62,9 @@ import Structure exposing (..)
 import Svg.Events
 import Task as Task
 import Triangle2d as T2d exposing (Triangle2d)
-import TypedSvg exposing (circle, g, rect, svg, text_)
+import TypedSvg exposing (circle, g, line, rect, svg, text_)
 import TypedSvg.Attributes exposing (color, fill, stroke, strokeDasharray)
-import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, height, r, rx, ry, strokeWidth, width, x, y)
+import TypedSvg.Attributes.InPx exposing (cx, cy, fontSize, height, r, rx, ry, strokeWidth, width, x, x1, x2, y, y1, y2)
 import TypedSvg.Core exposing (foreignObject)
 import TypedSvg.Events as TsvgE
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..))
@@ -69,6 +74,7 @@ import Vector2d as V2d exposing (Vector2d)
 type Cell isa
     = ContentCell ContentCell
     | EffectCell (EffectCell isa)
+    | StyleCell StyleCell
 
 
 type ContentCell
@@ -92,6 +98,18 @@ type EffectCell isa
     | NavSelectionEffect NavSelectionEffectData
     | CreateScopeEffect (CreateScopeEffectData isa)
     | SetPropertyEffect SetPropertyEffectData
+
+
+type StyleCell
+    = FontStyle FontStyle
+    | Color Color
+
+
+type FontStyle
+    = Regular
+    | Bold
+    | BoldItalic
+    | Italic
 
 
 type alias EditorModel isa =
@@ -199,6 +217,7 @@ type Msg isa
     | ShowGravity ShowGravityData
     | HintGravity ShowGravityData
     | ManipulateGravity ManipulationData
+    | ToggleCollapsed Path
 
 
 type alias ShowGravityData =
@@ -420,6 +439,20 @@ addSeparator separator node =
     addText roleSeparator separator node
 
 
+setCollapsible : Node (Cell isa) -> Node (Cell isa)
+setCollapsible cell =
+    case isaOf cell of
+        ContentCell StackCell ->
+            if boolOf roleIsHoriz cell then
+                cell
+
+            else
+                addBool roleCollapsible True cell
+
+        _ ->
+            cell
+
+
 
 -- EFFECTS
 
@@ -485,6 +518,37 @@ navEffect dir path =
             }
 
 
+
+-- STYLES
+
+
+withStyle : StyleCell -> Node (Cell isa) -> Node (Cell isa)
+withStyle style =
+    addToCustom roleStyles <|
+        createNode <|
+            StyleCell style
+
+
+styleBold : StyleCell
+styleBold =
+    FontStyle Bold
+
+
+styleBoldItalic : StyleCell
+styleBoldItalic =
+    FontStyle BoldItalic
+
+
+styleItalic : StyleCell
+styleItalic =
+    FontStyle Italic
+
+
+styleTextColor : Color -> StyleCell
+styleTextColor color =
+    Color color
+
+
 emptySelection : Selection
 emptySelection =
     { start = -1
@@ -507,6 +571,9 @@ grouped effectCells =
         toDict effectCell groupDict =
             case effectCell of
                 ContentCell _ ->
+                    groupDict
+
+                StyleCell _ ->
                     groupDict
 
                 EffectCell effect ->
@@ -705,6 +772,9 @@ updateEditor msg editorModel =
 
         ManipulateGravity manipulationData ->
             updateOnManipulateGravity editorModel manipulationData
+
+        ToggleCollapsed path ->
+            updateOnToggleCollapsed editorModel path
 
 
 resizeCmd : Node (Cell isa) -> Cmd (Msg isa)
@@ -994,6 +1064,31 @@ updateOnManipulateGravity editorModel manipulationData =
             )
 
 
+updateOnToggleCollapsed : EditorModel a -> Path -> ( EditorModel a, Cmd (Msg a) )
+updateOnToggleCollapsed editorModel path =
+    let
+        mbNodeToToggle =
+            nodeAt editorModel.eRoot path
+    in
+    case mbNodeToToggle of
+        Nothing ->
+            noUpdate editorModel
+
+        Just nodeToToggle ->
+            let
+                toggleTo =
+                    boolOf roleCollapsed nodeToToggle == False
+
+                eRootNew =
+                    updatePropertyByPath path ( roleCollapsed, asPBool toggleTo ) editorModel.eRoot
+            in
+            ( { editorModel
+                | eRoot = eRootNew
+              }
+            , Cmd.none
+            )
+
+
 noUpdate : EditorModel a -> ( EditorModel a, Cmd (Msg a) )
 noUpdate editorModel =
     ( { editorModel | runXform = False }, Cmd.none )
@@ -1241,6 +1336,9 @@ viewEditor root =
             EffectCell _ ->
                 []
 
+            StyleCell _ ->
+                []
+
 
 viewCell : Node (Cell isa) -> List (Html (Msg isa))
 viewCell cell =
@@ -1257,7 +1355,13 @@ viewCell cell =
 
                         Just separator ->
                             List.foldl viewContent [] children
-                                |> List.intersperse (text separator)
+                                |> List.intersperse
+                                    (div
+                                        [ HtmlA.style "margin-left" "-5px"
+                                        , HtmlA.style "margin-right" "5px"
+                                        ]
+                                        [ text separator ]
+                                    )
 
         ContentCell _ ->
             case getUnderDefault cell of
@@ -1268,6 +1372,9 @@ viewCell cell =
                     List.foldl viewContent [] children
 
         EffectCell _ ->
+            []
+
+        StyleCell _ ->
             []
 
 
@@ -1320,6 +1427,9 @@ viewContent cell html =
         EffectCell _ ->
             []
 
+        StyleCell _ ->
+            []
+
 
 viewSplitCell : Node (Cell isa) -> Html (Msg isa)
 viewSplitCell cell =
@@ -1336,6 +1446,9 @@ viewSplitCell cell =
                 viewVertSplit cell
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1361,14 +1474,17 @@ viewVertSplit cell =
             in
             div []
                 [ div
-                    EStyles.styleSplitLeft
+                    styleSplitLeft
                     left
                 , div
-                    EStyles.styleSplitRight
+                    styleSplitRight
                     right
                 ]
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1392,16 +1508,19 @@ viewHorizSplit cell =
                             , viewContent second []
                             )
             in
-            div EStyles.styleSplitHoriz
+            div styleSplitHoriz
                 [ div
-                    EStyles.styleSplitTop
+                    styleSplitTop
                     top
                 , div
-                    EStyles.styleSplitBottom
+                    styleSplitBottom
                     bottom
                 ]
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1418,21 +1537,100 @@ viewStackCell cell =
         EffectCell _ ->
             viewEmpty
 
+        StyleCell _ ->
+            viewEmpty
+
 
 viewVertStackCell : Node (Cell isa) -> Html (Msg isa)
 viewVertStackCell cell =
     case isaOf cell of
         ContentCell _ ->
-            div
-                ([ HtmlA.id (pathAsIdFromNode cell)
-                 , HtmlA.style "display" "table"
-                 ]
-                    ++ marginsAndPaddings cell
-                )
-            <|
-                viewCell cell
+            if boolOf roleCollapsible cell then
+                viewCollapsibleVertStackCell cell
+
+            else
+                div
+                    ([ HtmlA.id (pathAsIdFromNode cell)
+                     , HtmlA.style "display" "table"
+                     ]
+                        ++ marginsAndPaddings cell
+                    )
+                <|
+                    viewCell cell
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
+            viewEmpty
+
+
+viewCollapsibleVertStackCell cell =
+    case isaOf cell of
+        ContentCell _ ->
+            let
+                collapseButton =
+                    div [ HtmlA.style "display" "table-cell" ]
+                        [ svg
+                            [ HtmlA.style "width" "16"
+                            , HtmlA.style "height" "12"
+                            ]
+                            [ g [ Svg.Events.onClick <| ToggleCollapsed (pathOf cell) ]
+                                ([ circle
+                                    [ r 4
+                                    , cx 6
+                                    , cy 6
+                                    , strokeWidth 1
+                                    , stroke <| Paint <| Color.darkBlue
+                                    , fill <| Paint <| Color.white
+                                    ]
+                                    []
+                                 , line
+                                    [ x1 3
+                                    , y1 6
+                                    , x2 9
+                                    , y2 6
+                                    , stroke <| Paint <| Color.darkBlue
+                                    ]
+                                    []
+                                 ]
+                                    ++ (if boolOf roleCollapsed cell then
+                                            [ line
+                                                [ x1 6
+                                                , y1 3
+                                                , x2 6
+                                                , y2 9
+                                                , stroke <| Paint <| Color.darkBlue
+                                                ]
+                                                []
+                                            ]
+
+                                        else
+                                            []
+                                       )
+                                )
+                            ]
+                        ]
+            in
+            div
+                ([ HtmlA.style "display" "flex" ] ++ marginsAndPaddings cell)
+                [ collapseButton
+                , div
+                    [ HtmlA.id (pathAsIdFromNode cell)
+                    , HtmlA.style "display" "table"
+                    ]
+                  <|
+                    if boolOf roleCollapsed cell then
+                        [ text "[...]" ]
+
+                    else
+                        viewCell cell
+                ]
+
+        EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1460,23 +1658,29 @@ viewHorizStackCell cell =
         EffectCell _ ->
             viewEmpty
 
+        StyleCell _ ->
+            viewEmpty
+
 
 viewConstantCell : Node (Cell isa) -> Html (Msg isa)
 viewConstantCell cell =
     case isaOf cell of
         ContentCell _ ->
             div
-                ((divCellAttributes cell) ++ marginsAndPaddings cell)
+                (divCellAttributes cell)
                 [ label
-                    ([ HtmlA.id (pathAsIdFromNode cell)
-                     --, HtmlA.style "font-weight" "bold"
-                     --, HtmlA.style "color" "darkblue"
-                     ]
+                    ((HtmlA.id (pathAsIdFromNode cell)
+                        :: styleAttributesFromCell cell
+                     )
+                        ++ marginsAndPaddings cell
                     )
                     [ text (textOf roleConstant cell) ]
                 ]
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1521,6 +1725,9 @@ viewInputCell cell =
                 ]
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1568,6 +1775,9 @@ viewPlaceholderCell cell =
         EffectCell _ ->
             viewEmpty
 
+        StyleCell _ ->
+            viewEmpty
+
 
 viewButtonCell : Node (Cell isa) -> Html (Msg isa)
 viewButtonCell cell =
@@ -1591,6 +1801,9 @@ viewButtonCell cell =
             button (marginsAndPaddings cell ++ onClick) [ text (textOf roleText cell) ]
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -1644,6 +1857,9 @@ viewRefCell cell =
                 ]
 
         EffectCell _ ->
+            viewEmpty
+
+        StyleCell _ ->
             viewEmpty
 
 
@@ -2032,6 +2248,42 @@ divCellAttributes cell =
 
     else
         []
+
+
+styleAttributesFromCell : Node (Cell isa) -> List (Html.Attribute (Msg isa))
+styleAttributesFromCell cell =
+    let
+        styles =
+            isasUnderCustom roleStyles cell
+    in
+    List.map attributeFromStyle styles
+        |> List.concat
+
+
+attributeFromStyle : Cell isa -> List (Html.Attribute (Msg isa))
+attributeFromStyle styleCell =
+    case styleCell of
+        StyleCell style ->
+            case style of
+                FontStyle fontStyle ->
+                    case fontStyle of
+                        Regular ->
+                            [ HtmlA.style "font-weight" "regular" ]
+
+                        Bold ->
+                            [ HtmlA.style "font-weight" "bold" ]
+
+                        Italic ->
+                            [ HtmlA.style "font-style" "italic" ]
+
+                        BoldItalic ->
+                            [ HtmlA.style "font-weight" "bold", HtmlA.style "font-style" "italic" ]
+
+                Color color ->
+                    [ HtmlA.style "color" <| Color.toCssString color ]
+
+        _ ->
+            []
 
 
 marginsAndPaddings : Node (Cell isa) -> List (Attribute (Msg isa))
@@ -2627,6 +2879,14 @@ roleSeparator =
     roleFromString "separator"
 
 
+roleCollapsible =
+    roleFromString "collapsible"
+
+
+roleCollapsed =
+    roleFromString "collapsed"
+
+
 roleInput =
     roleFromString "input"
 
@@ -2721,3 +2981,58 @@ roleGravityY =
 
 roleHintGravity =
     roleFromString "hintGravity"
+
+
+roleStyles =
+    roleFromString "styles"
+
+
+styleSplit =
+    [ HtmlA.style "z-index" "1"
+    , HtmlA.style "top" "0"
+    , HtmlA.style "overflow-x" "hidden"
+    , HtmlA.style "padding" "1%"
+    ]
+
+
+styleSplitHoriz =
+    styleSplit
+        ++ [ HtmlA.style "width" "100%"
+           , HtmlA.style "height" "100%"
+           , HtmlA.style "display" "table"
+           , HtmlA.style "border-collapse" "collapse"
+           ]
+
+
+styleSplitTop =
+    [ HtmlA.style "display" "table-row"
+    , HtmlA.style "height" "48%"
+    , HtmlA.style "padding" "1%"
+    ]
+
+
+styleSplitBottom =
+    [ HtmlA.style "display" "table-row"
+    , HtmlA.style "height" "48%"
+    , HtmlA.style "border-top" "2px solid"
+    , HtmlA.style "padding" "1%"
+    ]
+
+
+styleSplitLeft =
+    styleSplit
+        ++ [ HtmlA.style "left" "0"
+           , HtmlA.style "border-right" "solid"
+           , HtmlA.style "position" "absolute"
+           , HtmlA.style "height" "100%"
+           , HtmlA.style "width" "38%"
+           ]
+
+
+styleSplitRight =
+    styleSplit
+        ++ [ HtmlA.style "right" "0"
+           , HtmlA.style "position" "absolute"
+           , HtmlA.style "height" "100%"
+           , HtmlA.style "width" "58%"
+           ]
