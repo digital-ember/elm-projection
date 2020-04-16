@@ -1,18 +1,20 @@
-module DialogScript2 exposing (..)
+module DialogScript exposing (..)
 
+import Color
 import Editor as E
 import Runtime as R
 import Structure as S
 
 
-type DialogDomain
+
+-- DOMAIN TYPES
+
+
+type Domain
     = Script
     | Character
     | Conditional
 
-
-
--- ROLES
 
 
 roleCharacters =
@@ -32,32 +34,40 @@ roleShowConditionalsHoriz =
 
 
 main =
-    R.projection testScript editor
+    R.projection emptyScript editorRoot
 
 
 emptyScript =
     S.createRoot Script
 
 
-
--- EDITOR
-
-
-editor script =
+editorRoot : S.Node Domain -> S.Node (E.Cell Domain)
+editorRoot script =
     E.rootCell
         |> E.with
-            (E.horizStackCell
-                |> E.with (editorScript script)
-               {- |> E.with
-                    (E.vertStackCell
-                        |> E.with (E.constantCell "Statistics")
-                        |> E.with (E.constantCell "Graphical")
-                    )
-                    -}
-            )
+            (editorScript script)
 
 
 editorScript script =
+    E.vertStackCell
+        |> E.with (editorCharacters script)
+        |> E.with (editorConditionals script)
+
+
+editorCharacters script =
+    E.horizStackCell
+        |> E.with
+            (E.constantCell "Characters:"
+                |> withKeywordStyle
+            )
+        |> E.with
+            (E.horizStackCellPH "no characters" roleCharacters createCharacter script
+                |> E.addSeparator ","
+                |> E.addMargin E.Bottom 20
+            )
+
+
+editorConditionals script =
     let
         isHoriz =
             S.boolOf roleShowConditionalsHoriz script
@@ -73,38 +83,6 @@ editorScript script =
             S.asPBool (isHoriz == False)
                 |> E.setPropertyEffect script roleShowConditionalsHoriz
 
-        editorCharacters =
-            editorLabeledNamedList
-                True
-                "Characters:"
-                "no characters"
-                roleCharacters
-                createCharacter
-                script
-
-        editorConditionals =
-            E.vertStackCell
-                |> E.with
-                    (E.buttonCell textButton
-                        |> E.withEffect setPropertyEffect
-                    )
-                |> E.with
-                    (editorLabeledNamedList
-                        isHoriz
-                        "Conditionals:"
-                        "no conditionals"
-                        roleConditionals
-                        createConditional
-                        script
-                    )
-    in
-    E.vertStackCell
-        |> E.with editorCharacters
-        |> E.with editorConditionals
-
-
-editorLabeledNamedList isHoriz label placeholderText role creator parent =
-    let
         stackCell =
             if isHoriz then
                 E.horizStackCell
@@ -113,19 +91,19 @@ editorLabeledNamedList isHoriz label placeholderText role creator parent =
                 E.vertStackCell
 
         placeholderCell =
-            E.placeholderCell placeholderText
+            E.placeholderCell "no conditionals"
                 |> E.withEffect
-                    (E.replacementEffect role parent creator)
+                    (E.replacementEffect roleConditionals script createConditional)
 
         editorInputCell namedNode =
             E.inputCell S.roleName namedNode
-                |> E.withEffect (E.insertionEffect namedNode creator)
+                |> E.withEffect (E.insertionEffect namedNode createConditional)
                 |> E.withEffect (E.deletionEffect namedNode)
 
         editorInputList =
             let
                 editorInputListI =
-                    case S.getUnderCustom role parent of
+                    case S.getUnderCustom roleConditionals script of
                         [] ->
                             placeholderCell
 
@@ -138,10 +116,17 @@ editorLabeledNamedList isHoriz label placeholderText role creator parent =
             else
                 editorInputListI |> E.addIndent
     in
-    stackCell
-        |> E.with (E.constantCell label)
-        |> E.with editorInputList
-        |> E.addMargin E.Bottom 20
+    E.vertStackCell
+        |> E.with
+            (E.buttonCell textButton
+                |> E.withEffect setPropertyEffect
+            )
+        |> E.with
+            (stackCell
+                |> E.with (E.constantCell "Conditionals:" |> withKeywordStyle)
+                |> E.with editorInputList
+                |> E.addMargin E.Bottom 20
+            )
 
 
 createCharacter =
@@ -150,6 +135,11 @@ createCharacter =
 
 createConditional =
     S.createNode Conditional
+
+
+withKeywordStyle =
+    E.withStyle (E.styleTextColor Color.darkBlue)
+        >> E.withStyle E.styleBold
 
 
 

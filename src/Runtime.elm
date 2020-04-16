@@ -158,9 +158,13 @@ update msg ({ domain, editorModel } as model) =
                         NormalView ->
                             runDomainXform domain
                                 |> persistGraphInformation editorModel.eRoot
+                                |> persistCollapsedInformation editorModel.eRoot
 
                         ReflectiveView ->
-                            editorReflection ( model.editorModel.dRoot, model.editorModel.eRoot ) |> updatePaths
+                            editorReflection ( model.editorModel.dRoot, model.editorModel.eRoot )
+                                |> updatePaths
+                                |> persistGraphInformation editorModel.eRoot
+                                |> persistCollapsedInformation editorModel.eRoot
 
                 editorModelNew =
                     { editorModel
@@ -190,6 +194,7 @@ update msg ({ domain, editorModel } as model) =
                             eRootForDomain =
                                 runDomainXform domainNew
                                     |> persistGraphInformation editorModelUpdated.eRoot
+                                    |> persistCollapsedInformation editorModelUpdated.eRoot
 
                             rootENew =
                                 case model.kView of
@@ -197,7 +202,10 @@ update msg ({ domain, editorModel } as model) =
                                         eRootForDomain
 
                                     ReflectiveView ->
-                                        editorReflection ( editorModelUpdated.dRoot, eRootForDomain ) |> updatePaths
+                                        editorReflection ( editorModelUpdated.dRoot, eRootForDomain )
+                                            |> updatePaths
+                                            |> persistGraphInformation editorModelUpdated.eRoot
+                                            |> persistCollapsedInformation editorModelUpdated.eRoot
 
                             graphsDiffer =
                                 graphComparer editorModel.eRoot rootENew == False

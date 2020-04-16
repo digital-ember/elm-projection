@@ -5968,6 +5968,9 @@ var $author$project$Editor$setCollapsible = function (cell) {
 		return cell;
 	}
 };
+var $author$project$Editor$SplitCell = {$: 'SplitCell'};
+var $author$project$Editor$vertSplitCell = $author$project$Structure$createNode(
+	$author$project$Editor$ContentCell($author$project$Editor$SplitCell));
 var $author$project$Statemachine$editorStatemachine = function (sm) {
 	return A2(
 		$author$project$Editor$with,
@@ -5991,7 +5994,7 @@ var $author$project$Statemachine$editorStatemachine = function (sm) {
 							$author$project$Editor$with,
 							$author$project$Statemachine$editorStatemachineName(sm),
 							$author$project$Editor$vertStackCell)))),
-			$author$project$Editor$horizStackCell));
+			$author$project$Editor$vertSplitCell));
 };
 var $author$project$Editor$RootCell = {$: 'RootCell'};
 var $author$project$Structure$roleRoot = $author$project$Structure$roleFromString('root');
@@ -7604,17 +7607,14 @@ var $author$project$Editor$ReflectiveEditor$editorReflection = function (_v0) {
 		$author$project$Editor$with,
 		A2(
 			$author$project$Editor$with,
+			cellTreeContent,
 			A2(
 				$author$project$Editor$with,
-				cellTreeContent,
+				$author$project$Editor$ReflectiveEditor$editorTree(cellTree),
 				A2(
 					$author$project$Editor$with,
-					$author$project$Editor$ReflectiveEditor$editorTree(cellTree),
-					A2(
-						$author$project$Editor$with,
-						$author$project$Editor$ReflectiveEditor$editorTree(domainTree),
-						$author$project$Editor$horizStackCell))),
-			$author$project$Editor$vertGridCell),
+					$author$project$Editor$ReflectiveEditor$editorTree(domainTree),
+					$author$project$Editor$vertSplitCell))),
 		$author$project$Editor$rootCell);
 };
 var $elm$core$List$any = F2(
@@ -10963,9 +10963,6 @@ var $author$project$Editor$styleSplitBottom = _List_fromArray(
 	]);
 var $author$project$Editor$styleSplit = _List_fromArray(
 	[
-		A2($elm$html$Html$Attributes$style, 'z-index', '1'),
-		A2($elm$html$Html$Attributes$style, 'top', '0'),
-		A2($elm$html$Html$Attributes$style, 'overflow-x', 'hidden'),
 		A2($elm$html$Html$Attributes$style, 'padding', '1%')
 	]);
 var $author$project$Editor$styleSplitHoriz = _Utils_ap(
@@ -10977,31 +10974,24 @@ var $author$project$Editor$styleSplitHoriz = _Utils_ap(
 			A2($elm$html$Html$Attributes$style, 'display', 'table'),
 			A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse')
 		]));
-var $author$project$Editor$styleSplitLeft = _Utils_ap(
-	$author$project$Editor$styleSplit,
-	_List_fromArray(
-		[
-			A2($elm$html$Html$Attributes$style, 'left', '0'),
-			A2($elm$html$Html$Attributes$style, 'border-right', 'solid'),
-			A2($elm$html$Html$Attributes$style, 'position', 'absolute'),
-			A2($elm$html$Html$Attributes$style, 'height', '100%'),
-			A2($elm$html$Html$Attributes$style, 'width', '38%')
-		]));
-var $author$project$Editor$styleSplitRight = _Utils_ap(
-	$author$project$Editor$styleSplit,
-	_List_fromArray(
-		[
-			A2($elm$html$Html$Attributes$style, 'right', '0'),
-			A2($elm$html$Html$Attributes$style, 'position', 'absolute'),
-			A2($elm$html$Html$Attributes$style, 'height', '100%'),
-			A2($elm$html$Html$Attributes$style, 'width', '58%')
-		]));
 var $author$project$Editor$styleSplitTop = _List_fromArray(
 	[
 		A2($elm$html$Html$Attributes$style, 'display', 'table-row'),
 		A2($elm$html$Html$Attributes$style, 'height', '48%'),
 		A2($elm$html$Html$Attributes$style, 'padding', '1%')
 	]);
+var $author$project$Editor$styleSplitVert = function (num) {
+	var widthAsString = $elm$core$String$fromInt((100 / num) | 0);
+	return _List_fromArray(
+		[
+			A2($elm$html$Html$Attributes$style, 'padding', '1%'),
+			A2($elm$html$Html$Attributes$style, 'box-sizing', 'border-box'),
+			A2($elm$html$Html$Attributes$style, 'width', widthAsString + '%'),
+			A2($elm$html$Html$Attributes$style, 'overflow', 'auto'),
+			A2($elm$html$Html$Attributes$style, 'height', '97.5vh'),
+			A2($elm$html$Html$Attributes$style, 'border', '1px solid')
+		]);
+};
 var $elm_community$typed_svg$TypedSvg$svg = $elm_community$typed_svg$TypedSvg$Core$node('svg');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
@@ -12271,10 +12261,10 @@ var $elm_community$typed_svg$TypedSvg$Attributes$InPx$y2 = function (value) {
 		$elm_community$typed_svg$TypedSvg$Types$px(value));
 };
 var $author$project$Editor$vertexContent = F2(
-	function (cell, _v20) {
-		var posContent = _v20.posContent;
-		var widthVertex = _v20.widthVertex;
-		var heightVertex = _v20.heightVertex;
+	function (cell, _v18) {
+		var posContent = _v18.posContent;
+		var widthVertex = _v18.widthVertex;
+		var heightVertex = _v18.heightVertex;
 		return A2(
 			$elm_community$typed_svg$TypedSvg$Core$foreignObject,
 			_List_fromArray(
@@ -12289,22 +12279,22 @@ var $author$project$Editor$vertexContent = F2(
 			$author$project$Editor$viewCell(cell));
 	});
 var $author$project$Editor$viewCell = function (cell) {
-	var _v15 = $author$project$Structure$isaOf(cell);
-	switch (_v15.$) {
+	var _v13 = $author$project$Structure$isaOf(cell);
+	switch (_v13.$) {
 		case 'ContentCell':
-			if (_v15.a.$ === 'StackCell') {
-				var _v16 = _v15.a;
-				var _v17 = $author$project$Structure$getUnderDefault(cell);
-				if (!_v17.b) {
+			if (_v13.a.$ === 'StackCell') {
+				var _v14 = _v13.a;
+				var _v15 = $author$project$Structure$getUnderDefault(cell);
+				if (!_v15.b) {
 					return _List_fromArray(
 						[$author$project$Editor$viewEmpty]);
 				} else {
-					var children = _v17;
-					var _v18 = A2($author$project$Structure$tryTextOf, $author$project$Editor$roleSeparator, cell);
-					if (_v18.$ === 'Nothing') {
+					var children = _v15;
+					var _v16 = A2($author$project$Structure$tryTextOf, $author$project$Editor$roleSeparator, cell);
+					if (_v16.$ === 'Nothing') {
 						return A3($elm$core$List$foldl, $author$project$Editor$viewContent, _List_Nil, children);
 					} else {
-						var separator = _v18.a;
+						var separator = _v16.a;
 						return A2(
 							$elm$core$List$intersperse,
 							A2(
@@ -12322,12 +12312,12 @@ var $author$project$Editor$viewCell = function (cell) {
 					}
 				}
 			} else {
-				var _v19 = $author$project$Structure$getUnderDefault(cell);
-				if (!_v19.b) {
+				var _v17 = $author$project$Structure$getUnderDefault(cell);
+				if (!_v17.b) {
 					return _List_fromArray(
 						[$author$project$Editor$viewEmpty]);
 				} else {
-					var children = _v19;
+					var children = _v17;
 					return A3($elm$core$List$foldl, $author$project$Editor$viewContent, _List_Nil, children);
 				}
 			}
@@ -12338,8 +12328,8 @@ var $author$project$Editor$viewCell = function (cell) {
 	}
 };
 var $author$project$Editor$viewCollapsibleVertStackCell = function (cell) {
-	var _v14 = $author$project$Structure$isaOf(cell);
-	switch (_v14.$) {
+	var _v12 = $author$project$Structure$isaOf(cell);
+	switch (_v12.$) {
 		case 'ContentCell':
 			var collapseButton = A2(
 				$elm$html$Html$div,
@@ -12445,10 +12435,10 @@ var $author$project$Editor$viewCollapsibleVertStackCell = function (cell) {
 };
 var $author$project$Editor$viewContent = F2(
 	function (cell, html) {
-		var _v12 = $author$project$Structure$isaOf(cell);
-		switch (_v12.$) {
+		var _v10 = $author$project$Structure$isaOf(cell);
+		switch (_v10.$) {
 			case 'ContentCell':
-				var ccell = _v12.a;
+				var ccell = _v10.a;
 				var htmlNew = function () {
 					switch (ccell.$) {
 						case 'SplitCell':
@@ -12566,12 +12556,12 @@ var $author$project$Editor$viewGraphCell = function (cellGraph) {
 			gravity));
 };
 var $author$project$Editor$viewHorizSplit = function (cell) {
-	var _v8 = $author$project$Structure$isaOf(cell);
-	switch (_v8.$) {
+	var _v6 = $author$project$Structure$isaOf(cell);
+	switch (_v6.$) {
 		case 'ContentCell':
-			var _v9 = function () {
-				var _v10 = $author$project$Structure$getUnderDefault(cell);
-				if (!_v10.b) {
+			var _v7 = function () {
+				var _v8 = $author$project$Structure$getUnderDefault(cell);
+				if (!_v8.b) {
 					return _Utils_Tuple2(
 						_List_fromArray(
 							[
@@ -12580,8 +12570,8 @@ var $author$project$Editor$viewHorizSplit = function (cell) {
 						_List_fromArray(
 							[$author$project$Editor$viewEmpty]));
 				} else {
-					if (!_v10.b.b) {
-						var first = _v10.a;
+					if (!_v8.b.b) {
+						var first = _v8.a;
 						return _Utils_Tuple2(
 							$author$project$Editor$viewCell(first),
 							_List_fromArray(
@@ -12589,17 +12579,17 @@ var $author$project$Editor$viewHorizSplit = function (cell) {
 									$elm$html$Html$text('Empty bottom side')
 								]));
 					} else {
-						var first = _v10.a;
-						var _v11 = _v10.b;
-						var second = _v11.a;
+						var first = _v8.a;
+						var _v9 = _v8.b;
+						var second = _v9.a;
 						return _Utils_Tuple2(
 							A2($author$project$Editor$viewContent, first, _List_Nil),
 							A2($author$project$Editor$viewContent, second, _List_Nil));
 					}
 				}
 			}();
-			var top = _v9.a;
-			var bottom = _v9.b;
+			var top = _v7.a;
+			var bottom = _v7.b;
 			return A2(
 				$elm$html$Html$div,
 				$author$project$Editor$styleSplitHoriz,
@@ -12615,8 +12605,8 @@ var $author$project$Editor$viewHorizSplit = function (cell) {
 	}
 };
 var $author$project$Editor$viewHorizStackCell = function (cell) {
-	var _v7 = $author$project$Structure$isaOf(cell);
-	switch (_v7.$) {
+	var _v5 = $author$project$Structure$isaOf(cell);
+	switch (_v5.$) {
 		case 'ContentCell':
 			var displayAttrs = $author$project$Editor$divRowAttributes(cell);
 			return A2(
@@ -12639,8 +12629,8 @@ var $author$project$Editor$viewHorizStackCell = function (cell) {
 	}
 };
 var $author$project$Editor$viewSplitCell = function (cell) {
-	var _v6 = $author$project$Structure$isaOf(cell);
-	switch (_v6.$) {
+	var _v4 = $author$project$Structure$isaOf(cell);
+	switch (_v4.$) {
 		case 'ContentCell':
 			var bO = A2($author$project$Structure$boolOf, $author$project$Editor$roleIsHoriz, cell);
 			return bO ? $author$project$Editor$viewHorizSplit(cell) : $author$project$Editor$viewVertSplit(cell);
@@ -12651,8 +12641,8 @@ var $author$project$Editor$viewSplitCell = function (cell) {
 	}
 };
 var $author$project$Editor$viewStackCell = function (cell) {
-	var _v5 = $author$project$Structure$isaOf(cell);
-	switch (_v5.$) {
+	var _v3 = $author$project$Structure$isaOf(cell);
+	switch (_v3.$) {
 		case 'ContentCell':
 			return A2($author$project$Structure$boolOf, $author$project$Editor$roleIsHoriz, cell) ? $author$project$Editor$viewHorizStackCell(cell) : $author$project$Editor$viewVertStackCell(cell);
 		case 'EffectCell':
@@ -12665,45 +12655,62 @@ var $author$project$Editor$viewVertSplit = function (cell) {
 	var _v1 = $author$project$Structure$isaOf(cell);
 	switch (_v1.$) {
 		case 'ContentCell':
-			var _v2 = function () {
-				var _v3 = $author$project$Structure$getUnderDefault(cell);
-				if (!_v3.b) {
-					return _Utils_Tuple2(
-						_List_fromArray(
+			var splits = function () {
+				var _v2 = $author$project$Structure$getUnderDefault(cell);
+				if (!_v2.b) {
+					return _List_fromArray(
+						[
+							_List_fromArray(
 							[
 								$elm$html$Html$text('Completely empty split cell')
 							]),
-						_List_fromArray(
-							[$author$project$Editor$viewEmpty]));
-				} else {
-					if (!_v3.b.b) {
-						var first = _v3.a;
-						return _Utils_Tuple2(
-							A2($author$project$Editor$viewContent, first, _List_Nil),
 							_List_fromArray(
+							[$author$project$Editor$viewEmpty])
+						]);
+				} else {
+					if (!_v2.b.b) {
+						var first = _v2.a;
+						return _List_fromArray(
+							[
+								A2($author$project$Editor$viewContent, first, _List_Nil),
+								_List_fromArray(
 								[
 									$elm$html$Html$text('Empty right side')
-								]));
+								])
+							]);
 					} else {
-						var first = _v3.a;
-						var _v4 = _v3.b;
-						var second = _v4.a;
-						return _Utils_Tuple2(
-							A2($author$project$Editor$viewContent, first, _List_Nil),
-							A2($author$project$Editor$viewContent, second, _List_Nil));
+						var moreThanTwo = _v2;
+						return A2(
+							$elm$core$List$map,
+							function (split) {
+								return A2($author$project$Editor$viewContent, split, _List_Nil);
+							},
+							moreThanTwo);
 					}
 				}
 			}();
-			var left = _v2.a;
-			var right = _v2.b;
+			var numOfSplits = $elm$core$List$length(splits);
+			var totalWidth = $elm$core$String$fromInt((((100 / numOfSplits) | 0) * (numOfSplits - 1)) + 100);
+			var widthFactor = function (i) {
+				return _Utils_eq(i, numOfSplits - 1) ? 1 : numOfSplits;
+			};
+			var divFromSplit = F2(
+				function (i, split) {
+					return A2(
+						$elm$html$Html$div,
+						$author$project$Editor$styleSplitVert(
+							widthFactor(i)),
+						split);
+				});
+			var divsFromSplit = A2($elm$core$List$indexedMap, divFromSplit, splits);
 			return A2(
 				$elm$html$Html$div,
-				_List_Nil,
 				_List_fromArray(
 					[
-						A2($elm$html$Html$div, $author$project$Editor$styleSplitLeft, left),
-						A2($elm$html$Html$div, $author$project$Editor$styleSplitRight, right)
-					]));
+						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+						A2($elm$html$Html$Attributes$style, 'width', totalWidth + '%')
+					]),
+				divsFromSplit);
 		case 'EffectCell':
 			return $author$project$Editor$viewEmpty;
 		default:

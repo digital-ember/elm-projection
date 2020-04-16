@@ -13,13 +13,10 @@ editorReflection ( domainTree, cellTree ) =
     in
     E.rootCell
         |> E.with
-            (E.vertGridCell
-                |> E.with
-                    (E.horizStackCell
-                        |> E.with (editorTree domainTree)
-                        |> E.with (editorTree cellTree)
-                        |> E.with cellTreeContent
-                    )
+            (E.vertSplitCell
+                |> E.with (editorTree domainTree)
+                |> E.with (editorTree cellTree)
+                |> E.with cellTreeContent
             )
 
 
@@ -27,8 +24,15 @@ editorTree : S.Node b -> S.Node (E.Cell a)
 editorTree tree =
     E.vertStackCell
         |> E.with
-            (E.constantCell ("Node " ++ (Debug.toString <| S.isaOf tree))
-                |> withKeywordStyle
+            (E.horizStackCell
+                |> E.with
+                    (E.constantCell "Node"
+                        |> withKeywordStyle
+                    )
+                |> E.with
+                    (E.constantCell (Debug.toString <| S.isaOf tree)
+                        |> withIsaStyle
+                    )
                 |> E.addMargin E.Bottom 15
             )
         |> E.with (editorPath tree)
@@ -146,6 +150,10 @@ editorProperty ( role, primitive ) =
         |> E.addMargin E.Bottom 15
 
 
+withIsaStyle =
+    E.withStyle E.styleItalic
+        >> E.withStyle (E.styleTextColor Color.darkBrown)
+
 withKeywordStyle =
     E.withStyle E.styleBold
         >> E.withStyle (E.styleTextColor Color.darkBlue)
@@ -157,4 +165,5 @@ withHintStyle =
 
 
 withLabelStyle =
-    E.withStyle (E.styleTextColor Color.darkGreen)
+    E.withStyle E.styleBold
+            >> E.withStyle (E.styleTextColor Color.darkGreen)

@@ -39,7 +39,7 @@ editor sm =
 
 editorStatemachine : S.Node Domain -> S.Node (E.Cell Domain)
 editorStatemachine sm =
-    E.horizStackCell
+    E.vertSplitCell
         |> E.with
             (E.vertStackCell
                 |> E.with (editorStatemachineName sm)

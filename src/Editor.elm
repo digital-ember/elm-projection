@@ -7,8 +7,6 @@ module Editor exposing
     , addIndent
     , addMargin
     , addSeparator
-    , styleBold
-    , styleBoldItalic
     , buttonCell
     , constantCell
     , deletionEffect
@@ -22,8 +20,8 @@ module Editor exposing
     , inputCell
     , inputEffect
     , insertionEffect
-    , styleItalic
     , mousePosition
+    , persistCollapsedInformation
     , persistGraphInformation
     , placeholderCell
     , refCell
@@ -33,11 +31,16 @@ module Editor exposing
     , rootCell
     , setCollapsible
     , setPropertyEffect
+    , styleBold
+    , styleBoldItalic
+    , styleItalic
     , styleTextColor
     , updateEditor
     , vertGridCell
     , vertSplitCell
     , vertStackCell
+    , horizStackCellPH
+    , vertStackCellPH
     , vertexCell
     , viewEditor
     , with
@@ -346,6 +349,50 @@ vertStackCell : Node (Cell isa)
 vertStackCell =
     createNode (ContentCell StackCell)
         |> addBool roleIsHoriz False
+
+
+vertStackCellPH : String -> Role -> Node isa -> Node isa -> Node (Cell isa)
+vertStackCellPH placeholderText role creator parent =
+    let
+        ph =
+            placeholderCell placeholderText
+                |> withEffect
+                    (replacementEffect role parent creator)
+
+        editorInputCell namedNode =
+            inputCell roleName namedNode
+                |> withEffect (insertionEffect namedNode creator)
+                |> withEffect (deletionEffect namedNode)
+    in
+    case getUnderCustom role parent of
+        [] ->
+            ph
+
+        items ->
+            vertStackCell
+                |> withRange (List.map editorInputCell items)
+
+
+horizStackCellPH : String -> Role -> Node isa -> Node isa -> Node (Cell isa)
+horizStackCellPH placeholderText role creator parent =
+    let
+        ph =
+            placeholderCell placeholderText
+                |> withEffect
+                    (replacementEffect role parent creator)
+
+        editorInputCell namedNode =
+            inputCell roleName namedNode
+                |> withEffect (insertionEffect namedNode creator)
+                |> withEffect (deletionEffect namedNode)
+    in
+    case getUnderCustom role parent of
+        [] ->
+            ph
+
+        items ->
+            horizStackCell
+                |> withRange (List.map editorInputCell items)
 
 
 vertSplitCell : Node (Cell isa)
@@ -1457,29 +1504,52 @@ viewVertSplit cell =
     case isaOf cell of
         ContentCell _ ->
             let
-                ( left, right ) =
+                splits =
                     case getUnderDefault cell of
                         [] ->
-                            ( [ text "Completely empty split cell" ], [ viewEmpty ] )
+                            [ [ text "Completely empty split cell" ]
+                            , [ viewEmpty ]
+                            ]
 
                         first :: [] ->
-                            ( viewContent first []
+                            [ viewContent first []
                             , [ text "Empty right side" ]
-                            )
+                            ]
 
-                        first :: (second :: _) ->
-                            ( viewContent first []
-                            , viewContent second []
-                            )
+                        moreThanTwo ->
+                            List.map (\split -> viewContent split []) moreThanTwo
+
+                numOfSplits =
+                    List.length splits
+
+                totalWidth =
+                    (100 // numOfSplits)
+                        * (numOfSplits - 1)
+                        + 100
+                        |> String.fromInt
+
+                widthFactor i =
+                    if i == (numOfSplits - 1) then
+                        1
+
+                    else
+                        numOfSplits
+
+                divFromSplit i split =
+                    div
+                        (styleSplitVert (widthFactor i))
+                        split
+
+                divsFromSplit =
+                    List.indexedMap
+                        divFromSplit
+                        splits
             in
-            div []
-                [ div
-                    styleSplitLeft
-                    left
-                , div
-                    styleSplitRight
-                    right
+            div
+                [ HtmlA.style "display" "flex"
+                , HtmlA.style "width" (totalWidth ++ "%")
                 ]
+                divsFromSplit
 
         EffectCell _ ->
             viewEmpty
@@ -2694,6 +2764,24 @@ fromToPairs cellGraph =
             )
 
 
+persistCollapsedInformation : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
+persistCollapsedInformation eRootOld eRootNew =
+    let
+        mbCollapsed =
+            tryBoolOf roleCollapsed eRootOld
+    in
+    case mbCollapsed of
+        Nothing ->
+            List.foldl persistCollapsedInformation eRootNew (getUnderDefault eRootOld)
+
+        Just collapsed ->
+            let
+                eRootNew2 =
+                    updatePropertyByPath (pathOf eRootOld) ( roleCollapsed, asPBool collapsed ) eRootNew
+            in
+            List.foldl persistCollapsedInformation eRootNew2 (getUnderDefault eRootOld)
+
+
 persistGraphInformation : Node (Cell isa) -> Node (Cell isa) -> Node (Cell isa)
 persistGraphInformation eRootOld eRootNew =
     persistVertexPositions eRootOld eRootNew
@@ -2988,10 +3076,10 @@ roleStyles =
 
 
 styleSplit =
-    [ HtmlA.style "z-index" "1"
-    , HtmlA.style "top" "0"
-    , HtmlA.style "overflow-x" "hidden"
-    , HtmlA.style "padding" "1%"
+    [ --HtmlA.style "z-index" "1"
+      --, HtmlA.style "top" "0"
+      --, HtmlA.style "overflow-x" "hidden"
+      HtmlA.style "padding" "1%"
     ]
 
 
@@ -3019,14 +3107,18 @@ styleSplitBottom =
     ]
 
 
-styleSplitLeft =
-    styleSplit
-        ++ [ HtmlA.style "left" "0"
-           , HtmlA.style "border-right" "solid"
-           , HtmlA.style "position" "absolute"
-           , HtmlA.style "height" "100%"
-           , HtmlA.style "width" "38%"
-           ]
+styleSplitVert num =
+    let
+        widthAsString =
+            100 // num |> String.fromInt
+    in
+    [ HtmlA.style "padding" "10px"
+    , HtmlA.style "box-sizing" "border-box"
+    , HtmlA.style "width" (widthAsString ++ "%")
+    , HtmlA.style "overflow" "auto"
+    , HtmlA.style "height" "97.5vh"
+    , HtmlA.style "border" "1px solid"
+    ]
 
 
 styleSplitRight =
