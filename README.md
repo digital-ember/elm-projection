@@ -8,4 +8,5 @@ _ToDo: description_
 
 # Demo videos
 - March 25, 2020: [Demo of graphical editor](https://www.youtube.com/watch?v=Pj2h8bsjz1A)
+- April 01, 2020: [New features for graphical editor](https://www.youtube.com/watch?v=rLqyW3YnYc4)
 
